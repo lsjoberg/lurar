@@ -1,0 +1,52 @@
+name: Klang
+options:
+  bundleIdPrefix: se.linus
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+settings:
+  base:
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.9"
+    ENABLE_HARDENED_RUNTIME: YES
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
+targets:
+  Klang:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Klang
+        excludes:
+          - "Info.plist"
+          - "Klang.entitlements"
+    info:
+      path: Klang/Info.plist
+      properties:
+        CFBundleName: Klang
+        CFBundleDisplayName: Klang
+        CFBundleIdentifier: se.linus.klang
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundlePackageType: APPL
+        LSUIElement: true
+        LSMinimumSystemVersion: "14.0"
+        NSMicrophoneUsageDescription: "Klang needs audio input access to capture system audio from BlackHole and apply EQ before routing to your DAC."
+        NSHighResolutionCapable: true
+    entitlements:
+      path: Klang/Klang.entitlements
+      properties:
+        com.apple.security.app-sandbox: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: se.linus.klang
+        PRODUCT_NAME: Klang
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Klang/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Klang/Klang.entitlements
+        COMBINE_HIDPI_IMAGES: YES
+        ENABLE_HARDENED_RUNTIME: YES

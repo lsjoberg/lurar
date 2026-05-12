@@ -1,0 +1,19 @@
+## Build artifacts
+build/
+DerivedData/
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+*.xcuserstate
+
+## XcodeGen
+Klang.xcodeproj
+
+## macOS
+.DS_Store
+
+## Swift Package Manager
+.swiftpm/
+Packages/
+Package.resolved
+.build/
