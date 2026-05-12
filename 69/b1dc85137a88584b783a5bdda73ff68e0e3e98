@@ -1,0 +1,79 @@
+Klang/Info.plist
+  s_82b9497abc1d04::t_32f7e9a9dc5a6d 1-5,7-32
+Klang/Klang.entitlements
+  s_82b9497abc1d04::t_d7ee55a965f621 1-8
+Klang/KlangApp.swift
+  s_82b9497abc1d04::t_c011155374ed6a 1-39
+Klang/AudioEngine/DeviceManager.swift
+  s_82b9497abc1d04::t_fa89c0fea397f8 1-34,65,76,79
+  s_82b9497abc1d04::t_2100a90f7c99fd 53-54,58-64
+  s_82b9497abc1d04::t_236a410874b45e 35-52,55-57,66-75,77-78
+Klang/AudioEngine/EQBand.swift
+  s_82b9497abc1d04::t_b19ff8b81ee206 1-70
+Klang/AudioEngine/CoreAudioHelpers.swift
+  s_82b9497abc1d04::t_1ac9ecd623cf50 150-151,153,156-157
+  s_82b9497abc1d04::t_5c93b1c9b8e80e 253-256,259,262,275-288
+  s_82b9497abc1d04::t_30f93f24261bce 244-252,258
+  s_82b9497abc1d04::t_e45cc993834fae 307-309,346,348,370-374
+  s_82b9497abc1d04::t_c3fb424c7f7ee3 349-350,353-354,356,367
+  s_82b9497abc1d04::t_905a5b507b52b2 1-149,152,154-155,158-243,257,263-272,274,294-298,305-306,310-315,317-327,329-345,347,377-419
+  s_82b9497abc1d04::t_96e6c0fa2cf166 299-302,304
+  s_82b9497abc1d04::t_15001fa113660a 260-261,273,289-293
+  s_82b9497abc1d04::t_3e037e4e764aab 303,316,328,351-352,355,357-366,368-369,375-376
+.gitignore
+  s_82b9497abc1d04::t_4c19ba56ebccb2 1-19
+Klang/AudioEngine/EQEngine.swift
+  s_82b9497abc1d04::t_fbbb7d2c7c936d 1-14,32-36,44,46-52,84,86,88,92,103-104,109-115,118-121,123,126-129,136-175,191
+  s_82b9497abc1d04::t_2bd2debc113ad7 95,101
+  s_82b9497abc1d04::t_1c0450cd6eea95 105,108
+  s_82b9497abc1d04::t_f22261adca0893 130-135
+  s_82b9497abc1d04::t_faa77619b09402 26-28,38-39,41
+  s_82b9497abc1d04::t_c857bf10a07792 79,83,85,87
+  s_82b9497abc1d04::t_939a0dbd936d6f 176-177,179,182,184,190
+  s_82b9497abc1d04::t_ac5640392dfb99 189
+  s_82b9497abc1d04::t_7bfb7bbd579004 15-25,29-31,37,40,42,57-67,70,72,76-77,80,89-91,93-94,96-100,102,106-107,116-117,122,124-125,178,180-181,183,185-188
+  s_82b9497abc1d04::t_d62ea07088371a 43,45,53-56,68-69,71,73-75,81-82
+  s_82b9497abc1d04::t_7be11d7e342789 78
+Klang/UI/MenuBarView.swift
+  s_82b9497abc1d04::t_4701f612456739 25
+  s_82b9497abc1d04::t_f12b8b15961724 1-24,26-106,130-155,157-189,196-224
+  s_82b9497abc1d04::t_f60fc7ffea40a9 156
+  s_82b9497abc1d04::t_b7a1972e679db1 190-195
+  s_82b9497abc1d04::t_a034d77e356b84 107-129
+Klang/AudioEngine/RingBuffer.swift
+  s_82b9497abc1d04::t_99a4362e918ef3 1-100
+Klang/AudioEngine/HALOutput.swift
+  s_82b9497abc1d04::t_feaef6132caf15 1-161
+Klang/Models/PresetStore.swift
+  s_82b9497abc1d04::t_72667417ebd48f 1-29,32-175
+  s_82b9497abc1d04::t_34d278e1c6902d 30-31
+Klang/Resources/presets.json
+  s_82b9497abc1d04::t_6a17f2df983dbe 1-26
+Klang/UI/EQCurveView.swift
+  s_82b9497abc1d04::t_2a82092e8d3a15 99-100
+  s_82b9497abc1d04::t_b152bcfcf662db 1-98,101-189
+project.yml
+  s_82b9497abc1d04::t_c03676a8d78ff9 1-52
+Klang/Models/EQPreset.swift
+  s_82b9497abc1d04::t_442b219b83725f 1-61
+README.md
+  s_82b9497abc1d04::t_877495cbf2e204 1-41
+Klang/UI/EQEditorView.swift
+  s_82b9497abc1d04::t_462f5cc1d9f967 1-210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "69b1dc85137a88584b783a5bdda73ff68e0e3e98",
+  "prompts": {},
+  "sessions": {
+    "s_82b9497abc1d04": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da540c9a-74f4-4ba1-ad0c-99742f92b4fe",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Linus Sjöberg <linus.sjoberg@tradera.com>"
+    }
+  }
+}
