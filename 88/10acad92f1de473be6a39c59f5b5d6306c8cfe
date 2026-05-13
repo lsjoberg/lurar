@@ -1,0 +1,19 @@
+README.md
+  s_b0844c59198d61::t_ea091163f1de90 3,11-12,21-22,31-32,34-35,39-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "8810acad92f1de473be6a39c59f5b5d6306c8cfe",
+  "prompts": {},
+  "sessions": {
+    "s_b0844c59198d61": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6df10182-3350-478b-b12e-3c7968797d09",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Linus Sjöberg <linus.sjoberg@tradera.com>"
+    }
+  }
+}
