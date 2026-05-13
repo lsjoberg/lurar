@@ -1,0 +1,26 @@
+Klang/AudioEngine/EQProcessor.swift
+  s_99bb944e49c088::t_32c3764c0e16df 14
+Klang/Resources/presets.json
+  s_99bb944e49c088::t_e1a230c70a33b9 6,8-17
+Klang/Models/EQPreset.swift
+  s_99bb944e49c088::t_ff4912e99b7335 9
+  s_99bb944e49c088::t_c28cc9326be5d0 40,42-51
+Klang/AudioEngine/EQEngine.swift
+  s_99bb944e49c088::t_fb364d62eef09c 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "c10b2cb8d5c85eb314aa4f057b36ae06fb02d36e",
+  "prompts": {},
+  "sessions": {
+    "s_99bb944e49c088": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9e619ba-9428-42a3-9271-4e797b71d05e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Linus Sjöberg <linus.sjoberg@tradera.com>"
+    }
+  }
+}
