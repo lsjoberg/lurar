@@ -1,13 +1,14 @@
 # Klang
 
-A macOS menu bar parametric EQ for headphone listening. Routes system audio through BlackHole → 4-band vDSP biquad EQ → your DAC via two raw HAL Audio Units (no AVAudioEngine).
+A macOS menu bar parametric EQ for headphone listening. Captures every app's audio via a Core Audio Process Tap, runs it through a 4-band vDSP biquad EQ, and plays the result through your DAC via a raw HAL Audio Unit (no AVAudioEngine, no BlackHole, no virtual loopback driver).
 
 ## Prerequisites
 
 ```bash
 brew install xcodegen
-brew install --cask blackhole-2ch
 ```
+
+That's it — no audio driver to install. Requires macOS 14.2 or later (Core Audio Process Tap API).
 
 ## Build & run
 
@@ -17,6 +18,8 @@ brew install --cask blackhole-2ch
 
 That regenerates the Xcode project, builds with ad-hoc signing, kills any running instance, and launches the fresh `Klang.app`. No Xcode UI required — no signing team to configure.
 
+On first engine-on, macOS prompts for **Audio Capture** permission. Grant it. Klang also declares the `com.apple.security.device.audio-input` entitlement, which is required by Core Audio to deliver tap samples even with TCC granted — but it does **not** bring up the orange microphone indicator, because the tap is read via `AudioDeviceIOProc` on a private aggregate device, not a HAL input AU.
+
 In a second terminal, tail OSLog output:
 
 ```bash
@@ -25,13 +28,19 @@ In a second terminal, tail OSLog output:
 
 ## Use
 
-1. System Settings → Sound → Output → **BlackHole 2ch**.
-2. Klang menu bar → pick your output device (e.g. **HIFIMAN-EF500**).
+1. System Settings → Sound → Output → the device you actually want to listen on (e.g. **HIFIMAN-EF500**). This is also what the tap rides for clock; apps' direct output to this device is muted while the engine is on.
+2. Klang menu bar → set Output to the same device.
 3. Pick a preset (ships with HiFiMan Arya Stealth · Oratory1990).
-4. Toggle the engine **ON**.
-5. Play audio — it flows: app → BlackHole → Klang DSP → DAC → headphones.
+4. Toggle the engine **ON** and accept the audio-capture prompt the first time.
+5. Play audio in any app — it flows: app → process tap → Klang DSP → HALOutput → DAC → headphones.
 
 Tap *Open Editor…* for live band tweaking. Edits apply to the running engine instantly. Save as new preset / overwrite / duplicate from the editor.
+
+### Known limitations
+
+- Apps that start producing audio **after** the engine is toggled on aren't tapped until you toggle Engine off → on. (The tap target list is enumerated at start; a process-list listener is a possible follow-up.)
+- Apps using HAL hog / exclusive mode (some hi-res music players) bypass Core Audio's mixer entirely and can't be tapped. Switch those apps off exclusive mode if you want them EQ'd.
+- Third-party HAL drivers can intercept tap data. Rogue Amoeba's ARK driver (SoundSource, Audio Hijack, Loopback) is the most common culprit — if you're getting silence in the EQ'd path, quit the corresponding app and run `launchctl bootout gui/$(id -u)/com.rogueamoeba.arkaudiod`.
 
 ## Presets
 
