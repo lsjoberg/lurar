@@ -12,8 +12,17 @@ struct EQEditorView: View {
     @State private var showSaveSheet = false
     @State private var showDeleteConfirm = false
     @State private var showLibrary = false
+    /// When the user picks a different preset in the dropdown but the current
+    /// draft has unsaved edits, we stash the target here and present the
+    /// Save/Revert/Cancel alert. Mirrors `closeCoordinator.pendingClose` but
+    /// resolves to a preset switch instead of a window close.
+    @State private var pendingSwitchTargetID: UUID? = nil
     @StateObject private var closeCoordinator = EditorCloseCoordinator()
     @State private var hostWindow: NSWindow?
+
+    private var visiblePresets: [EQPreset] {
+        Klang.visiblePresets(catalog: presetCatalog, store: presetStore)
+    }
 
     /// Both bundled Flat and any catalog-sourced preset are read-only — users must
     /// "Save As New…" to keep edits.
@@ -34,6 +43,7 @@ struct EQEditorView: View {
         HSplitView {
             // Left: curve + header
             VStack(alignment: .leading, spacing: 12) {
+                editorTopBar
                 header
                 EQCurveView(bands: draft.bands, preamp: draft.preamp)
                     .frame(minHeight: 220)
@@ -54,14 +64,6 @@ struct EQEditorView: View {
             .frame(minWidth: 320)
         }
         .toolbar {
-            ToolbarItemGroup(placement: .navigation) {
-                Button {
-                    showLibrary = true
-                } label: {
-                    Label("Browse Library…", systemImage: "books.vertical")
-                }
-                .help("Pick which AutoEq headphone presets to show in the menu")
-            }
             ToolbarItemGroup(placement: .destructiveAction) {
                 if !isBuiltIn && savedVersion != nil {
                     Button(role: .destructive) {
@@ -111,6 +113,26 @@ struct EQEditorView: View {
         } message: {
             Text("Your edits haven't been saved. Save them, revert to the on-disk version, or cancel and keep editing.")
         }
+        .alert(
+            "Save changes to \u{201C}\(draft.name)\u{201D}?",
+            isPresented: Binding(
+                get: { pendingSwitchTargetID != nil },
+                set: { if !$0 { pendingSwitchTargetID = nil } }
+            )
+        ) {
+            Button("Save") {
+                presetStore.update(draft)
+                commitPendingSwitch()
+            }
+            Button("Discard", role: .destructive) {
+                commitPendingSwitch()
+            }
+            Button("Cancel", role: .cancel) {
+                pendingSwitchTargetID = nil
+            }
+        } message: {
+            Text("Your edits haven't been saved. Save them, discard them, or cancel to keep editing this preset.")
+        }
         .background(WindowAccessor(window: $hostWindow))
         .task {
             if let current = engine.currentPreset { draft = current }
@@ -136,6 +158,58 @@ struct EQEditorView: View {
     }
 
     // MARK: - Sections
+
+    private var editorTopBar: some View {
+        HStack(spacing: 8) {
+            Text("Preset")
+                .foregroundStyle(.secondary)
+            FixedWidthPopUp(
+                width: 280,
+                selection: Binding(
+                    get: { draft.id.uuidString },
+                    set: { newID in attemptSwitch(to: UUID(uuidString: newID)) }
+                ),
+                items: visiblePresets.map { preset in
+                    .init(id: preset.id.uuidString, title: preset.menuLabel)
+                }
+            )
+            .disabled(visiblePresets.isEmpty)
+
+            Spacer()
+
+            Button {
+                showLibrary = true
+            } label: {
+                Label("Preset Library…", systemImage: "books.vertical")
+            }
+            .help("Pick which AutoEq headphone presets to show")
+        }
+    }
+
+    private func attemptSwitch(to id: UUID?) {
+        guard let id, id != draft.id,
+              visiblePresets.contains(where: { $0.id == id }) else { return }
+        if !isDirty || isBuiltIn {
+            commitSwitch(to: id)
+        } else {
+            pendingSwitchTargetID = id
+        }
+    }
+
+    private func commitPendingSwitch() {
+        guard let id = pendingSwitchTargetID else { return }
+        commitSwitch(to: id)
+    }
+
+    private func commitSwitch(to id: UUID) {
+        guard let target = visiblePresets.first(where: { $0.id == id }) else {
+            pendingSwitchTargetID = nil
+            return
+        }
+        draft = target
+        engine.apply(preset: target)
+        pendingSwitchTargetID = nil
+    }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 2) {
