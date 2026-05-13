@@ -15,10 +15,8 @@ struct MenuBarView: View {
     @State private var selectedPresetID: UUID?
     @State private var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled
 
-    /// Catalog-enabled built-ins first, then the user's own presets. The catalog
-    /// section is empty until the index loads and entries hydrate.
     private var visiblePresets: [EQPreset] {
-        presetCatalog.enabledPresets + presetStore.presets
+        Klang.visiblePresets(catalog: presetCatalog, store: presetStore)
     }
 
     var body: some View {
@@ -124,32 +122,11 @@ struct MenuBarView: View {
                     }
                 ),
                 items: visiblePresets.map { preset in
-                    .init(id: preset.id.uuidString, title: presetMenuLabel(for: preset))
+                    .init(id: preset.id.uuidString, title: preset.menuLabel)
                 }
             )
             .disabled(visiblePresets.isEmpty)
         }
-    }
-
-    private func presetMenuLabel(for preset: EQPreset) -> String {
-        let suffix = presetSourceSuffix(for: preset)
-        guard !suffix.isEmpty else { return preset.name }
-        // Don't double-up if the preset name already ends with this source (some
-        // legacy bundled names already had the source baked in).
-        if preset.name.lowercased().hasSuffix(suffix.lowercased()) {
-            return preset.name
-        }
-        return "\(preset.name) · \(suffix)"
-    }
-
-    /// Pick a short disambiguating tag from `source`. Klang's own user presets get
-    /// no suffix; catalog entries surface their measurer/rig.
-    private func presetSourceSuffix(for preset: EQPreset) -> String {
-        let trimmed = preset.source.trimmingCharacters(in: .whitespaces)
-        if trimmed.isEmpty || trimmed.caseInsensitiveCompare("Klang") == .orderedSame {
-            return ""
-        }
-        return trimmed
     }
 
     private var outputPicker: some View {
@@ -235,65 +212,3 @@ struct MenuBarView: View {
     }
 }
 
-// MARK: - Fixed-width popup
-
-/// Wraps `NSPopUpButton` so we can hand it an explicit width that it actually
-/// respects. SwiftUI's `Picker` and `Menu` both bridge to AppKit chrome that
-/// content-hugs and ignores `.frame(width:)`, which is why we drop to AppKit.
-private struct FixedWidthPopUp: NSViewRepresentable {
-    struct Item: Hashable {
-        let id: String
-        let title: String
-    }
-
-    let width: CGFloat
-    @Binding var selection: String
-    let items: [Item]
-
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-
-    func makeNSView(context: Context) -> NSPopUpButton {
-        let button = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: width, height: 24), pullsDown: false)
-        button.controlSize = .regular
-        button.target = context.coordinator
-        button.action = #selector(Coordinator.selectionChanged(_:))
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        button.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        return button
-    }
-
-    func updateNSView(_ button: NSPopUpButton, context: Context) {
-        context.coordinator.parent = self
-
-        // Rebuild items only if the set changed — preserves selection animation.
-        let titles = items.map(\.title)
-        let existing = button.itemArray.map(\.title)
-        if titles != existing {
-            button.removeAllItems()
-            for item in items {
-                button.addItem(withTitle: item.title)
-                button.lastItem?.representedObject = item.id
-            }
-        }
-        if let index = items.firstIndex(where: { $0.id == selection }) {
-            if button.indexOfSelectedItem != index {
-                button.selectItem(at: index)
-            }
-        }
-    }
-
-    func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSPopUpButton, context: Context) -> CGSize? {
-        CGSize(width: width, height: nsView.intrinsicContentSize.height)
-    }
-
-    final class Coordinator: NSObject {
-        var parent: FixedWidthPopUp
-        init(_ parent: FixedWidthPopUp) { self.parent = parent }
-
-        @objc func selectionChanged(_ sender: NSPopUpButton) {
-            guard let id = sender.selectedItem?.representedObject as? String else { return }
-            parent.selection = id
-        }
-    }
-}
