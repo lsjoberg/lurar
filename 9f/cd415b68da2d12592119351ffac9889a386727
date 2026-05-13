@@ -1,0 +1,32 @@
+Klang/UI/EQEditorView.swift
+  s_1c69864c2298bc::t_f68cd2af5f8453 199
+  s_1c69864c2298bc::t_a1de8d27df9081 258
+  s_1c69864c2298bc::t_4265d619b053a2 1,13-14
+  s_1c69864c2298bc::t_053d0fc9c84213 242
+  s_1c69864c2298bc::t_96e225994f2976 308
+  s_1c69864c2298bc::t_9d20fed96298dd 76-81,84-89,92-97,106-117
+  s_1c69864c2298bc::t_c96bf38fa42605 160,162-173,177-179
+  s_1c69864c2298bc::t_0f22c80b4d0c50 224
+  s_1c69864c2298bc::t_eeec9447fca5bb 323-354
+  s_1c69864c2298bc::t_cf73d6f8982578 274
+  s_1c69864c2298bc::t_f7c3507b4662de 82-83,90-91
+Klang/UI/MenuBarView.swift
+  s_1c69864c2298bc::t_6f13b89859bf92 161
+  s_1c69864c2298bc::t_1c97a46664d380 60-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "9fcd415b68da2d12592119351ffac9889a386727",
+  "prompts": {},
+  "sessions": {
+    "s_1c69864c2298bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b2fed93-8192-4c25-a328-21c116125caf",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Linus Sjöberg <linus.sjoberg@tradera.com>"
+    }
+  }
+}
