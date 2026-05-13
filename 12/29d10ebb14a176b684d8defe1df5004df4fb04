@@ -1,0 +1,40 @@
+Klang/AudioEngine/BiquadCascade.swift
+  s_fe533c6167659e::t_8c4cc4d0a7273a 1-34,44-121
+  s_fe533c6167659e::t_2d0c5a6a818a67 35-43
+Klang/AudioEngine/EQProcessor.swift
+  s_fe533c6167659e::t_097d51c12e1afc 1-120
+scripts/logs.sh
+  s_fe533c6167659e::t_502120c158aac6 1-3
+scripts/dev.sh
+  s_fe533c6167659e::t_7616b2bf41a84f 1-34
+Klang/AudioEngine/CoreAudioHelpers.swift
+  s_fe533c6167659e::t_8723618a9fd42c 228
+  s_fe533c6167659e::t_85027a2ce726b0 238,241,249-251
+Klang/KlangApp.swift
+  s_fe533c6167659e::t_efd48af2f9280a 38
+Klang/AudioEngine/HALInput.swift
+  s_fe533c6167659e::t_68c4b1391c25c7 1-247
+Klang/AudioEngine/EQEngine.swift
+  s_fe533c6167659e::t_3ae9fe23127d45 3-4,17-19,21-26,33-38,47-48,50,52,70,82-86,88-89,91-93,96,105-106,109,114,120-121,132-143,147,150-151,156,158-159,168,172-173,187-191,196,204
+  s_fe533c6167659e::t_72146edecf1ced 45
+  s_fe533c6167659e::t_1255e80c4e8670 157
+README.md
+  s_fe533c6167659e::t_035494ed00fa24 3,15,18-24
+  s_fe533c6167659e::t_6a75701f3850d4 42-43,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "1229d10ebb14a176b684d8defe1df5004df4fb04",
+  "prompts": {},
+  "sessions": {
+    "s_fe533c6167659e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8162bc17-c5e7-41ae-92ae-7f6d041125ce",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Linus Sjöberg <linus.sjoberg@tradera.com>"
+    }
+  }
+}
