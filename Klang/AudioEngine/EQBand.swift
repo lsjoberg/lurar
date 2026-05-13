@@ -1,5 +1,4 @@
 import Foundation
-import AVFoundation
 
 struct EQBand: Codable, Hashable, Identifiable {
     enum FilterType: String, Codable, CaseIterable, Identifiable {
@@ -14,14 +13,6 @@ struct EQBand: Codable, Hashable, Identifiable {
             case .lowShelf:  return "Low shelf"
             case .peak:      return "Peak"
             case .highShelf: return "High shelf"
-            }
-        }
-
-        var auFilterType: AVAudioUnitEQFilterType {
-            switch self {
-            case .lowShelf:  return .lowShelf
-            case .peak:      return .parametric
-            case .highShelf: return .highShelf
             }
         }
     }
@@ -60,11 +51,3 @@ struct EQBand: Codable, Hashable, Identifiable {
     }
 }
 
-extension Float {
-    /// AVAudioUnitEQ takes bandwidth in octaves rather than Q. Conversion only meaningful for
-    /// parametric bands; shelves ignore the value.
-    var qToBandwidthOctaves: Float {
-        let q = max(self, 0.0001)
-        return 2 * asinh(1 / (2 * q)) / log(2)
-    }
-}

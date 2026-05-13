@@ -1,6 +1,6 @@
 # Klang
 
-A macOS menu bar parametric EQ for headphone listening. Routes system audio through BlackHole → 4-band AVAudioEngine EQ → your DAC.
+A macOS menu bar parametric EQ for headphone listening. Routes system audio through BlackHole → 4-band vDSP biquad EQ → your DAC via two raw HAL Audio Units (no AVAudioEngine).
 
 ## Prerequisites
 
@@ -12,11 +12,16 @@ brew install --cask blackhole-2ch
 ## Build & run
 
 ```bash
-xcodegen generate
-open Klang.xcodeproj
+./scripts/dev.sh
 ```
 
-In Xcode, set your **Signing team** under *Signing & Capabilities* on the `Klang` target (one-time; `project.yml` deliberately leaves it blank so it isn't checked into git). Then ⌘R.
+That regenerates the Xcode project, builds with ad-hoc signing, kills any running instance, and launches the fresh `Klang.app`. No Xcode UI required — no signing team to configure.
+
+In a second terminal, tail OSLog output:
+
+```bash
+./scripts/logs.sh
+```
 
 ## Use
 
@@ -34,8 +39,10 @@ User-editable JSON lives at `~/Library/Application Support/Klang/presets.json`. 
 
 ## Regenerating after editing `project.yml`
 
+`./scripts/dev.sh` already runs `xcodegen generate` for you on every build. Run it manually only if you need to regenerate without building:
+
 ```bash
 xcodegen generate
 ```
 
-Keep `project.yml` and `Klang/` under git; `Klang.xcodeproj` is gitignored.
+Keep `project.yml`, `Klang/`, and `scripts/` under git; `Klang.xcodeproj` and `build/` are gitignored.
