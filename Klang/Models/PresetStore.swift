@@ -9,6 +9,8 @@ final class PresetStore: ObservableObject {
     @Published private(set) var presets: [EQPreset] = []
 
     private let fileURL: URL
+    private let builtInPresets: [EQPreset]
+    private let builtInIDs: Set<UUID>
     private var fileSource: DispatchSourceFileSystemObject?
     private var fileDescriptor: Int32 = -1
     private var reloadWorkItem: DispatchWorkItem?
@@ -21,9 +23,52 @@ final class PresetStore: ObservableObject {
         try? FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
         self.fileURL = support.appendingPathComponent("presets.json")
 
+        let bundled = Self.loadBundledPresets()
+        self.builtInPresets = bundled
+        self.builtInIDs = Set(bundled.map(\.id))
+
         seedIfNeeded()
         load()
+        migrateBuiltInsIfNeeded()
         startWatching()
+    }
+
+    func isBuiltIn(_ preset: EQPreset) -> Bool {
+        builtInIDs.contains(preset.id)
+    }
+
+    func builtIn(matching preset: EQPreset) -> EQPreset? {
+        builtInPresets.first { $0.id == preset.id }
+    }
+
+    private static func loadBundledPresets() -> [EQPreset] {
+        if let url = Bundle.main.url(forResource: "presets", withExtension: "json"),
+           let data = try? Data(contentsOf: url),
+           let decoded = try? JSONDecoder().decode([EQPreset].self, from: data) {
+            return decoded
+        }
+        log.error("Bundled presets.json missing or unreadable — falling back to in-code defaults")
+        return [EQPreset.aryaStealthOratory1990, EQPreset.flat]
+    }
+
+    /// Users upgrading from a version that seeded built-ins with random UUIDs end up with
+    /// "orphan" copies that won't be recognized as built-in. Re-introduce the canonical
+    /// built-ins and remove any structurally-identical legacy seed entries.
+    private func migrateBuiltInsIfNeeded() {
+        let presentIDs = Set(presets.map(\.id))
+        let missing = builtInPresets.filter { !presentIDs.contains($0.id) }
+        guard !missing.isEmpty else { return }
+
+        var next = presets
+        // Drop legacy seed copies that exactly match a bundled built-in by content.
+        next.removeAll { existing in
+            builtInIDs.contains(existing.id) == false &&
+            builtInPresets.contains { $0.sameContent(as: existing) }
+        }
+        // Prepend the canonical built-ins in bundle order.
+        next.insert(contentsOf: missing, at: 0)
+        write(next)
+        log.info("Migrated presets.json — added \(missing.count) built-in(s)")
     }
 
     deinit {

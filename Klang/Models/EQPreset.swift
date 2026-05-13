@@ -33,7 +33,13 @@ struct EQPreset: Codable, Hashable, Identifiable {
 }
 
 extension EQPreset {
+    // Stable IDs — mirror Klang/Resources/presets.json so PresetStore can
+    // recognize these as built-in even when seeded from the in-code fallback.
+    static let aryaStealthOratory1990ID = UUID(uuidString: "B2626DF3-DEDE-4EA6-A1C5-A34C0B320552")!
+    static let flatID = UUID(uuidString: "C1996F66-CC88-4D92-8511-7407391A0BE2")!
+
     static let aryaStealthOratory1990 = EQPreset(
+        id: aryaStealthOratory1990ID,
         name: "HiFiMan Arya Stealth · Oratory1990",
         headphone: "HiFiMan Arya Stealth",
         source: "Oratory1990",
@@ -53,6 +59,7 @@ extension EQPreset {
     )
 
     static let flat = EQPreset(
+        id: flatID,
         name: "Flat",
         headphone: "Any",
         source: "Klang",
@@ -64,4 +71,19 @@ extension EQPreset {
             EQBand(type: .highShelf, frequency: 10000, gain: 0, q: 0.71)
         ]
     )
+
+    func sameContent(as other: EQPreset) -> Bool {
+        guard name == other.name,
+              headphone == other.headphone,
+              source == other.source,
+              preamp == other.preamp,
+              bands.count == other.bands.count
+        else { return false }
+        for (a, b) in zip(bands, other.bands) {
+            if a.type != b.type || a.frequency != b.frequency || a.gain != b.gain || a.q != b.q {
+                return false
+            }
+        }
+        return true
+    }
 }

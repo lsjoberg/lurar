@@ -8,6 +8,18 @@ struct EQEditorView: View {
     @State private var draft: EQPreset = .flat
     @State private var newPresetName: String = ""
     @State private var showSaveSheet = false
+    @State private var showDeleteConfirm = false
+
+    private var isBuiltIn: Bool { presetStore.isBuiltIn(draft) }
+
+    private var savedVersion: EQPreset? {
+        presetStore.presets.first(where: { $0.id == draft.id })
+    }
+
+    private var isDirty: Bool {
+        guard let saved = savedVersion else { return true }
+        return !draft.sameContent(as: saved)
+    }
 
     var body: some View {
         HSplitView {
@@ -33,18 +45,30 @@ struct EQEditorView: View {
             .frame(minWidth: 320)
         }
         .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                Button("Save As New…") { showSaveSheet = true }
-                Button("Overwrite Current") { presetStore.update(draft) }
-                    .disabled(!presetStore.presets.contains(where: { $0.id == draft.id }))
-                Button("Duplicate") {
-                    let copy = presetStore.duplicate(draft)
-                    draft = copy
+            ToolbarItemGroup(placement: .destructiveAction) {
+                if !isBuiltIn && savedVersion != nil {
+                    Button(role: .destructive) {
+                        showDeleteConfirm = true
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
                 }
+            }
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button("Save") { presetStore.update(draft) }
+                    .disabled(isBuiltIn || !isDirty)
+                    .help(isBuiltIn ? "Built-in preset — use Save As New… to keep changes" : "")
+                Button("Save As New…") { showSaveSheet = true }
             }
         }
         .sheet(isPresented: $showSaveSheet) {
             saveSheet
+        }
+        .alert("Delete \u{201C}\(draft.name)\u{201D}?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) { deleteCurrent() }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This preset will be permanently removed.")
         }
         .task {
             if let current = engine.currentPreset { draft = current }
@@ -60,16 +84,45 @@ struct EQEditorView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 2) {
-            TextField("Preset name", text: $draft.name)
-                .font(.title2.weight(.semibold))
-                .textFieldStyle(.plain)
+            HStack(spacing: 8) {
+                TextField("Preset name", text: $draft.name)
+                    .font(.title2.weight(.semibold))
+                    .textFieldStyle(.plain)
+                    .disabled(isBuiltIn)
+                if isBuiltIn {
+                    Text("Built-in")
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.secondary.opacity(0.15), in: Capsule())
+                        .foregroundStyle(.secondary)
+                } else if isDirty {
+                    Text("Unsaved")
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.orange.opacity(0.18), in: Capsule())
+                        .foregroundStyle(.orange)
+                }
+            }
             HStack(spacing: 8) {
                 TextField("Headphone", text: $draft.headphone)
                     .textFieldStyle(.roundedBorder)
+                    .disabled(isBuiltIn)
                 TextField("Source", text: $draft.source)
                     .textFieldStyle(.roundedBorder)
+                    .disabled(isBuiltIn)
             }
             .font(.callout)
+        }
+    }
+
+    private func deleteCurrent() {
+        let deletedID = draft.id
+        presetStore.delete(id: deletedID)
+        if let next = presetStore.presets.first {
+            draft = next
+            engine.apply(preset: next)
         }
     }
 
