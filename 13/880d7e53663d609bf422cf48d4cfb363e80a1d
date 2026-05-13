@@ -1,0 +1,27 @@
+Klang/Models/EQPreset.swift
+  s_0891fc876db192::t_cb4182b2ae7174 36-40,42,62,74-88
+README.md
+  s_0891fc876db192::t_cb4182b2ae7174 37
+Klang/UI/EQEditorView.swift
+  s_0891fc876db192::t_cb4182b2ae7174 11-22,48-56,58-60,67-72,87-107,111,114,120-125
+Klang/Resources/presets.json
+  s_0891fc876db192::t_cb4182b2ae7174 3,22
+Klang/Models/PresetStore.swift
+  s_0891fc876db192::t_cb4182b2ae7174 12-13,26-29,32,36-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "13880d7e53663d609bf422cf48d4cfb363e80a1d",
+  "prompts": {},
+  "sessions": {
+    "s_0891fc876db192": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55bccba4-cbd9-4bb9-9de8-b5294ae66f7f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Linus Sjöberg <linus.sjoberg@tradera.com>"
+    }
+  }
+}
