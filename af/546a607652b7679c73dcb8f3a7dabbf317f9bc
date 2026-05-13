@@ -1,0 +1,28 @@
+Klang/UI/EQEditorView.swift
+  s_55d04a0f51d3bd::t_de71cf6c9a0c4d 116-135
+  s_55d04a0f51d3bd::t_a830587fa5e204 46
+  s_55d04a0f51d3bd::t_8ef19ce82305ed 15-19,23-25
+  s_55d04a0f51d3bd::t_a0e5845313384a 162-213
+Klang/UI/PresetPicker.swift
+  s_55d04a0f51d3bd::t_e33024e5b85ad4 5
+  s_55d04a0f51d3bd::t_d677645ca8b8c6 1-4,6-91
+Klang/UI/MenuBarView.swift
+  s_55d04a0f51d3bd::t_a81a7a38967e87 125
+  s_55d04a0f51d3bd::t_f417d323fc3577 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "af546a607652b7679c73dcb8f3a7dabbf317f9bc",
+  "prompts": {},
+  "sessions": {
+    "s_55d04a0f51d3bd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e8b28d1-1afe-45f0-855b-7b280cf55c13",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Linus Sjöberg <linus.sjoberg@tradera.com>"
+    }
+  }
+}
