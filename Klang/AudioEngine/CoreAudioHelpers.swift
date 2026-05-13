@@ -1,7 +1,6 @@
 import Foundation
 import CoreAudio
 import AudioToolbox
-import AVFoundation
 import OSLog
 
 private let log = Logger(subsystem: "se.linus.klang", category: "CoreAudio")
@@ -12,7 +11,6 @@ enum CoreAudioError: Error, CustomStringConvertible {
     case osStatus(OSStatus, String)
     case noDefaultDevice
     case deviceNotFound(String)
-    case audioUnitMissing
     case sampleRateUnsupported(Double)
 
     var description: String {
@@ -21,7 +19,6 @@ enum CoreAudioError: Error, CustomStringConvertible {
             return "OSStatus \(code) (\(fourCharCode(code))) — \(context)"
         case .noDefaultDevice: return "No default audio device"
         case .deviceNotFound(let id): return "Device not found: \(id)"
-        case .audioUnitMissing: return "AVAudioNode has no underlying AudioUnit"
         case .sampleRateUnsupported(let sr): return "Sample rate \(sr) Hz not supported on device"
         }
     }
@@ -228,7 +225,7 @@ enum CoreAudioSampleRate {
         let inRate = try nominal(for: input)
         let outRate = try nominal(for: output)
         if abs(inRate - outRate) < 0.5 { return inRate }
-        log.warning("Sample rate mismatch — input \(inRate) Hz, output \(outRate) Hz")
+        log.info("Sample rate differs — input \(inRate) Hz, output \(outRate) Hz; picking a common rate")
         for candidate in [96000.0, 48000.0, 44100.0] {
             if supports(candidate, for: input) && supports(candidate, for: output) {
                 return candidate
@@ -238,11 +235,10 @@ enum CoreAudioSampleRate {
     }
 }
 
-// MARK: - AUHAL binding (binds AVAudioEngine input/output nodes to specific devices)
+// MARK: - HAL AU helpers
 
 enum AUHAL {
-    /// Log the AU's component description so we know what kind of unit AVAudioEngine actually
-    /// gave us. DefaultOutput vs HALOutput is the critical distinction.
+    /// Log the AU's component description for diagnostics.
     static func logComponentDescription(_ au: AudioUnit, label: String) {
         var desc = AudioComponentDescription()
         let comp = AudioComponentInstanceGetComponent(au)
@@ -250,53 +246,9 @@ enum AUHAL {
         log.info("\(label) AU component: type=\(fourCharCode(OSStatus(bitPattern: desc.componentType))) subType=\(fourCharCode(OSStatus(bitPattern: desc.componentSubType))) manufacturer=\(fourCharCode(OSStatus(bitPattern: desc.componentManufacturer)))")
     }
 
-    /// Bind the engine's output node to the given device and configure its client stream format.
-    /// The format passed in is what AVAudioEngine will feed into the output AU's Input scope on
-    /// element 0; the AU then converts it to the device's native format on its Output scope.
-    static func bindOutput(_ deviceID: AudioDeviceID, to node: AVAudioOutputNode, clientFormat: AVAudioFormat) throws {
-        guard let au = node.audioUnit else { throw CoreAudioError.audioUnitMissing }
-        logComponentDescription(au, label: "output")
-
-        let uninitStatus = AudioUnitUninitialize(au)
-        log.info("output AU uninit status: \(uninitStatus)")
-
-        var id = deviceID
-        try check(
-            AudioUnitSetProperty(
-                au,
-                kAudioOutputUnitProperty_CurrentDevice,
-                kAudioUnitScope_Global,
-                0,
-                &id,
-                UInt32(MemoryLayout<AudioDeviceID>.size)
-            ),
-            "set output AU CurrentDevice (id=\(deviceID))"
-        )
-
-        var asbd = clientFormat.streamDescription.pointee
-        try check(
-            AudioUnitSetProperty(
-                au,
-                kAudioUnitProperty_StreamFormat,
-                kAudioUnitScope_Input,
-                0, // element 0 = the bus we feed
-                &asbd,
-                UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
-            ),
-            "set output AU client StreamFormat"
-        )
-
-        let initStatus = AudioUnitInitialize(au)
-        log.info("output AU init status: \(initStatus)")
-        if initStatus != noErr {
-            throw CoreAudioError.osStatus(initStatus, "initialize output AU after bind")
-        }
-    }
-
-    /// Raise an AU's `MaximumFramesPerSlice` so it can absorb bursty large render calls. We've
-    /// seen the input AU push ~1100-frame bursts at high sample rates during transitions, which
-    /// trips `-10874 kAudioUnitErr_TooManyFramesToProcess` on downstream nodes still configured
-    /// for the 512-frame default.
+    /// Raise an AU's `MaximumFramesPerSlice` so it can absorb bursty large render calls. The
+    /// 512-frame default trips `-10874 kAudioUnitErr_TooManyFramesToProcess` on the ~1100-frame
+    /// bursts that HAL inputs emit during sample-rate transitions.
     static func setMaxFramesPerSlice(_ frames: UInt32, on au: AudioUnit?) {
         guard let au else { return }
         var f = frames
@@ -311,89 +263,6 @@ enum AUHAL {
         if status != noErr {
             log.warning("setMaxFramesPerSlice(\(frames)) returned \(status); continuing.")
         }
-    }
-
-    /// Bind the engine's input node to the given device. Also enables IO on bus 1 (input) and
-    /// disables IO on bus 0 (output) of the underlying AUHAL, which is required when the input
-    /// node is being used as a non-default input source.
-    /// Bind the input AU to the given device, then force its client stream format on the OUTPUT
-    /// scope of element 1. The AU's internal converter reconciles the hardware format (whatever
-    /// the device actually delivers) with the client format we want. Returns the actual format
-    /// passed in, for chaining.
-    @discardableResult
-    static func bindInput(_ deviceID: AudioDeviceID, to node: AVAudioInputNode, clientFormat: AVAudioFormat) throws -> AVAudioFormat {
-        guard let au = node.audioUnit else { throw CoreAudioError.audioUnitMissing }
-
-        let uninitStatus = AudioUnitUninitialize(au)
-        log.info("input AU uninit status: \(uninitStatus)")
-
-        var enable: UInt32 = 1
-        try check(
-            AudioUnitSetProperty(
-                au,
-                kAudioOutputUnitProperty_EnableIO,
-                kAudioUnitScope_Input,
-                1,
-                &enable,
-                UInt32(MemoryLayout<UInt32>.size)
-            ),
-            "enable input AU bus 1"
-        )
-
-        var disable: UInt32 = 0
-        let dStatus = AudioUnitSetProperty(
-            au,
-            kAudioOutputUnitProperty_EnableIO,
-            kAudioUnitScope_Output,
-            0,
-            &disable,
-            UInt32(MemoryLayout<UInt32>.size)
-        )
-        if dStatus != noErr {
-            log.info("Disabling bus 0 on input AU returned \(dStatus); continuing.")
-        }
-
-        var id = deviceID
-        try check(
-            AudioUnitSetProperty(
-                au,
-                kAudioOutputUnitProperty_CurrentDevice,
-                kAudioUnitScope_Global,
-                0,
-                &id,
-                UInt32(MemoryLayout<AudioDeviceID>.size)
-            ),
-            "set input AU CurrentDevice (id=\(deviceID))"
-        )
-
-        // Log the hardware format for diagnostics; we don't actually need it because the AU's
-        // built-in converter handles hw→client conversion.
-        var hwFormat = AudioStreamBasicDescription()
-        var size = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
-        if AudioUnitGetProperty(au, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 1, &hwFormat, &size) == noErr {
-            log.info("input AU hw format: \(hwFormat.mChannelsPerFrame) ch, \(hwFormat.mSampleRate) Hz")
-        }
-
-        var clientASBD = clientFormat.streamDescription.pointee
-        try check(
-            AudioUnitSetProperty(
-                au,
-                kAudioUnitProperty_StreamFormat,
-                kAudioUnitScope_Output,
-                1,
-                &clientASBD,
-                UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
-            ),
-            "set input AU client StreamFormat (\(clientFormat))"
-        )
-
-        let initStatus = AudioUnitInitialize(au)
-        log.info("input AU init status: \(initStatus)")
-        if initStatus != noErr {
-            throw CoreAudioError.osStatus(initStatus, "initialize input AU after bind")
-        }
-
-        return clientFormat
     }
 }
 
