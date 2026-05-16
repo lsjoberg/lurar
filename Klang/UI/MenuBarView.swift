@@ -16,6 +16,7 @@ struct MenuBarView: View {
     @State private var selectedPresetID: UUID?
     @State private var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled
     @State private var showCrossfeedHelp: Bool = false
+    @State private var showLoudnessHelp: Bool = false
 
     private var visiblePresets: [EQPreset] {
         Klang.visiblePresets(catalog: presetCatalog, store: presetStore)
@@ -35,6 +36,7 @@ struct MenuBarView: View {
             Divider()
 
             crossfeedRow
+            loudnessRow
 
             Divider()
 
@@ -167,6 +169,67 @@ struct MenuBarView: View {
             )
             .disabled(deviceManager.outputDevices.isEmpty)
         }
+    }
+
+    /// Global ISO 226-based loudness compensation. Sits next to crossfeed in
+    /// the menu bar because both are global processing that apply on top of
+    /// every preset, not part of one. Same row layout as the crossfeed
+    /// control so the two read as a pair.
+    private var loudnessRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                Text("Loudness").bold()
+                Button {
+                    showLoudnessHelp.toggle()
+                } label: {
+                    Image(systemName: "questionmark.circle")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("What is loudness compensation?")
+                .popover(isPresented: $showLoudnessHelp, arrowEdge: .top) {
+                    loudnessHelp
+                }
+                Spacer()
+                Text(loudnessValueLabel)
+                    .monospacedDigit()
+                    .font(.callout)
+            }
+            Slider(
+                value: Binding(
+                    get: { Double(engine.loudnessOffsetDB) },
+                    set: { engine.setLoudnessOffset(Float($0)) }
+                ),
+                in: Double(EQEngine.loudnessOffsetRange.lowerBound)...Double(EQEngine.loudnessOffsetRange.upperBound)
+            )
+        }
+    }
+
+    /// |value| < 0.5 reads as "Off" — the slider snaps to a numerically tiny
+    /// but non-zero value as the user drags through; we don't want the
+    /// readout flickering or showing "-0 dB".
+    private var loudnessValueLabel: String {
+        if abs(engine.loudnessOffsetDB) < 0.5 { return "Off" }
+        return String(format: "%.0f dB", engine.loudnessOffsetDB)
+    }
+
+    private var loudnessHelp: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Loudness").font(.headline)
+            Text("Boosts low and high frequencies when listening below typical mastering level, compensating for the way your ears perceive less bass and treble when audio is quieter (the Fletcher\u{2013}Munson effect). Pull down when listening softly; leave at 0 for normal listening levels.")
+                .fixedSize(horizontal: false, vertical: true)
+            Divider()
+            Text("Typical settings").font(.subheadline.bold())
+            VStack(alignment: .leading, spacing: 4) {
+                helpRow("0 dB", "Off. Normal or loud listening \u{2014} the music already sounds the way the mix engineer intended.")
+                helpRow("\u{2212}10 dB", "Comfortable evening listening below mix level. Mild bass and treble lift.")
+                helpRow("\u{2212}20 dB", "Quiet listening (late night, low background). The bread-and-butter setting.")
+                helpRow("\u{2212}40 dB", "Very low background. The cascade attenuates preamp heavily to make room for the bass lift, so absolute output gets quieter \u{2014} turn your amp up.")
+            }
+        }
+        .font(.callout)
+        .padding(14)
+        .frame(width: 320)
     }
 
     private var statusRow: some View {
