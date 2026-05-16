@@ -12,6 +12,11 @@ final class EQEngine: ObservableObject {
     @Published private(set) var isRunning: Bool = false
     @Published private(set) var statusMessage: String = "Idle"
     @Published private(set) var currentPreset: EQPreset?
+    /// True while the EQ is running the A/B comparison slot mode (two presets
+    /// pre-loaded, toggling between them). Editor sliders watch this to gate
+    /// per-band edits — those calls no-op against the processor while slot
+    /// mode is active, but the UI shouldn't pretend the slider is live.
+    @Published private(set) var isInComparisonMode: Bool = false
 
     // Signal flow:
     //   ProcessTap (system audio, excl. own process) → aggregate device
@@ -179,6 +184,10 @@ final class EQEngine: ObservableObject {
         try? tapInput.stop()
         try? halOutput.stop()
         ringBuffer.reset()
+        if isInComparisonMode {
+            eqProcessor.exitSlotMode()
+            isInComparisonMode = false
+        }
         activeOutput = nil
         activeSampleRate = nil
         isRunning = false
@@ -243,15 +252,22 @@ final class EQEngine: ObservableObject {
     // MARK: - Preset / band updates
 
     func apply(preset: EQPreset) {
-        currentPreset = preset
-        if let sampleRate = activeSampleRate {
-            eqProcessor.configure(preset: preset, sampleRate: sampleRate)
-        } else {
-            eqProcessor.configure(preset: preset, sampleRate: 48_000)
+        if isInComparisonMode {
+            // The user picked a preset somewhere (menu bar / editor dropdown) —
+            // honour that by exiting comparison mode silently. The session view
+            // observes `isInComparisonMode` and resets itself.
+            eqProcessor.exitSlotMode()
+            isInComparisonMode = false
         }
+        currentPreset = preset
+        eqProcessor.configure(preset: preset, sampleRate: activeSampleRate ?? 48_000)
     }
 
     func updateBand(index: Int, band: EQBand) {
+        // Per-band edits are gated in the editor UI while comparison is active,
+        // but defend the audio path too: don't let a stray slider drag desync
+        // from the playing slot.
+        guard !isInComparisonMode else { return }
         eqProcessor.updateBand(index: index, band: band)
         if var p = currentPreset, p.bands.indices.contains(index) {
             p.bands[index] = band
@@ -260,10 +276,56 @@ final class EQEngine: ObservableObject {
     }
 
     func setPreamp(_ dB: Float) {
+        guard !isInComparisonMode else { return }
         eqProcessor.setPreamp(dB: dB)
         if var p = currentPreset {
             p.preamp = dB
             currentPreset = p
+        }
+    }
+
+    // MARK: - A/B comparison
+
+    /// Load two presets into the EQ's slot mode. `matchGain*` are dB attenuations
+    /// (≤ 0) from `LoudnessMatcher` so neither preset has a perceived loudness
+    /// advantage. Caller must ensure both presets are fully hydrated snapshots.
+    func loadComparisonSlots(
+        presetA: EQPreset,
+        presetB: EQPreset,
+        matchGainA: Float,
+        matchGainB: Float
+    ) {
+        let sr = activeSampleRate ?? 48_000
+        eqProcessor.loadSlots(
+            presetA: presetA,
+            presetB: presetB,
+            sampleRate: sr,
+            extraGainDBA: matchGainA,
+            extraGainDBB: matchGainB
+        )
+        isInComparisonMode = true
+    }
+
+    func setComparisonSlot(_ slot: EQProcessor.Slot) {
+        guard isInComparisonMode else { return }
+        eqProcessor.setActiveSlot(slot)
+    }
+
+    /// Briefly mute the output (post-cascade) so the comparison flow can hide
+    /// the audible swap between trials. Caller schedules the unmute.
+    func setComparisonMute(_ muted: Bool) {
+        guard isInComparisonMode else { return }
+        eqProcessor.setMute(muted)
+    }
+
+    /// Leave comparison mode and re-publish the engine's `currentPreset` so the
+    /// cascades are coherent with whatever the rest of the UI thinks is selected.
+    func exitComparisonMode() {
+        guard isInComparisonMode else { return }
+        eqProcessor.exitSlotMode()
+        isInComparisonMode = false
+        if let preset = currentPreset {
+            eqProcessor.configure(preset: preset, sampleRate: activeSampleRate ?? 48_000)
         }
     }
 }
