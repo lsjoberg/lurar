@@ -252,22 +252,20 @@ struct EQEditorView: View {
         presetStore.delete(id: deletedID)
 
         // Pick a neighbor: same index after removal (was the one below), else
-        // the previous one, else the first remaining preset.
+        // the previous one, else the first remaining user preset, else the
+        // first visible preset (built-in Flat is always present).
         let neighbor: EQPreset? = {
             if let idx = deletedIndex {
                 if idx < presetStore.presets.count { return presetStore.presets[idx] }
                 if idx > 0 { return presetStore.presets[idx - 1] }
             }
-            return presetStore.presets.first
+            return presetStore.presets.first ?? visiblePresets.first
         }()
 
         if let next = neighbor {
             draft = next
             engine.apply(preset: next)
         }
-
-        let window = hostWindow
-        DispatchQueue.main.async { window?.close() }
     }
 
     private var preampRow: some View {
