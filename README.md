@@ -1,6 +1,6 @@
 # Klang
 
-A macOS menu bar parametric EQ for headphone listening. Captures every app's audio via a Core Audio Process Tap, runs it through a 4-band vDSP biquad EQ, and plays the result through your DAC via a raw HAL Audio Unit (no AVAudioEngine, no BlackHole, no virtual loopback driver).
+A macOS menu bar parametric EQ for headphone listening. Captures every app's audio via a Core Audio Process Tap, runs it through a 10-band vDSP biquad EQ, and plays the result through your DAC via a raw HAL Audio Unit (no AVAudioEngine, no BlackHole, no virtual loopback driver).
 
 ## Prerequisites
 
@@ -30,7 +30,7 @@ In a second terminal, tail OSLog output:
 
 1. System Settings → Sound → Output → the device you actually want to listen on (e.g. **HIFIMAN-EF500**). This is also what the tap rides for clock; apps' direct output to this device is muted while the engine is on.
 2. Klang menu bar → set Output to the same device.
-3. Pick a preset (ships with HiFiMan Arya Stealth · Oratory1990).
+3. Pick a preset. Klang ships with a **Flat** preset; choose **Add more presets…** in the picker to browse the AutoEq catalog (Oratory1990 measurements for HiFiMan Arya Stealth et al.) and add ones for your headphones.
 4. Toggle the engine **ON** and accept the audio-capture prompt the first time.
 5. Play audio in any app — it flows: app → process tap → Klang DSP → HALOutput → DAC → headphones.
 
