@@ -50,6 +50,15 @@ final class BiquadCascade {
             vDSP_biquad(setup, delay.baseAddress!, buffer, 1, buffer, 1, vDSP_Length(frames))
         }
     }
+
+    /// Zero the IIR delay-line state. No allocation, audio-thread safe; the
+    /// loudness cascade uses this when transitioning to bypass so residual
+    /// state can't bleed into the next activation.
+    func reset() {
+        for i in delayLine.indices {
+            delayLine[i] = 0
+        }
+    }
 }
 
 // MARK: - RBJ Audio EQ Cookbook coefficients
