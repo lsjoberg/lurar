@@ -41,6 +41,16 @@ struct KlangApp: App {
         }
         .windowResizability(.contentSize)
         .commandsRemoved()
+
+        Window("Compare Presets", id: "ab") {
+            ABComparisonView(
+                engine: engine,
+                presetStore: presetStore,
+                presetCatalog: presetCatalog
+            )
+        }
+        .windowResizability(.contentSize)
+        .commandsRemoved()
     }
 
     init() {

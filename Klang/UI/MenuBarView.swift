@@ -34,23 +34,29 @@ struct MenuBarView: View {
 
             HStack {
                 Button("Open Editor…") {
+                    dismissMenuBarWindow()
                     openWindow(id: "editor")
                     NSApp.activate(ignoringOtherApps: true)
-                    dismissMenuBarWindow()
                 }
                 .keyboardShortcut("e", modifiers: [.command])
 
-                Spacer()
+                Button("Compare A/B…") {
+                    dismissMenuBarWindow()
+                    openWindow(id: "ab")
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+                .help("Sighted or blind A/B comparison of two presets")
 
+                Spacer()
+            }
+
+            HStack {
                 Toggle("Start at login", isOn: $launchAtLogin)
                     .toggleStyle(.switch)
                     .controlSize(.small)
                     .onChange(of: launchAtLogin, initial: false) { _, newValue in
                         toggleLaunchAtLogin(newValue)
                     }
-            }
-
-            HStack {
                 Spacer()
                 Button("Quit Klang") { NSApp.terminate(nil) }
                     .keyboardShortcut("q", modifiers: [.command])
@@ -130,9 +136,9 @@ struct MenuBarView: View {
                 ],
                 onAction: { actionID in
                     if actionID == "library" {
+                        dismissMenuBarWindow()
                         openWindow(id: "library")
                         NSApp.activate(ignoringOtherApps: true)
-                        dismissMenuBarWindow()
                     }
                 }
             )
@@ -209,7 +215,13 @@ struct MenuBarView: View {
 
     /// MenuBarExtra(.window) has no programmatic dismiss API. The popover is the
     /// key window at the moment the user clicks an item inside it, so capture it
-    /// before `openWindow` shifts focus and hide it on the next runloop tick.
+    /// synchronously and hide it on the next runloop tick.
+    ///
+    /// IMPORTANT: call this BEFORE `openWindow(id:)`. SwiftUI sometimes makes the
+    /// newly opened window key synchronously (especially on subsequent opens, after
+    /// the window has been materialized once), which would cause this function to
+    /// capture and order out the new window instead of the popover — manifesting
+    /// as a "flash open then close" on the second open of any window.
     private func dismissMenuBarWindow() {
         let menuBarWindow = NSApp.keyWindow
         DispatchQueue.main.async {

@@ -30,6 +30,13 @@ struct EQEditorView: View {
         presetStore.isBundledFlat(draft) || presetCatalog.isBuiltIn(draft.id)
     }
 
+    /// Band/preamp sliders are disabled when comparison mode is active too —
+    /// the engine is playing one of two pre-loaded slots, not the editor draft,
+    /// so live edits would silently desync from what's audible.
+    private var editsLocked: Bool {
+        isBuiltIn || engine.isInComparisonMode
+    }
+
     private var savedVersion: EQPreset? {
         presetStore.presets.first(where: { $0.id == draft.id })
     }
@@ -45,6 +52,9 @@ struct EQEditorView: View {
             VStack(alignment: .leading, spacing: 12) {
                 editorTopBar
                 header
+                if engine.isInComparisonMode {
+                    comparisonBanner
+                }
                 EQCurveView(bands: draft.bands, preamp: draft.preamp)
                     .frame(minHeight: 220)
                 preampRow
@@ -268,6 +278,23 @@ struct EQEditorView: View {
         }
     }
 
+    private var comparisonBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "arrow.left.arrow.right.circle")
+                .foregroundStyle(.tint)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("A/B comparison in progress")
+                    .font(.callout.weight(.semibold))
+                Text("Band edits paused. Pick a preset above to exit, or close the Compare window.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(8)
+        .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 6))
+    }
+
     private var preampRow: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
@@ -285,7 +312,7 @@ struct EQEditorView: View {
                 ),
                 in: -12...0
             )
-            .disabled(isBuiltIn)
+            .disabled(editsLocked)
         }
     }
 
@@ -310,7 +337,7 @@ struct EQEditorView: View {
                     }
                     .labelsHidden()
                     .frame(width: 130)
-                    .disabled(isBuiltIn)
+                    .disabled(editsLocked)
                 }
 
                 // Frequency (log scale)
@@ -328,7 +355,7 @@ struct EQEditorView: View {
                         ),
                         in: logFreq(20)...logFreq(20_000)
                     )
-                    .disabled(isBuiltIn)
+                    .disabled(editsLocked)
                 }
 
                 // Gain
@@ -344,7 +371,7 @@ struct EQEditorView: View {
                         ),
                         in: -12...12
                     )
-                    .disabled(isBuiltIn)
+                    .disabled(editsLocked)
                 }
 
                 // Q
@@ -360,7 +387,7 @@ struct EQEditorView: View {
                         ),
                         in: 0.1...10
                     )
-                    .disabled(isBuiltIn)
+                    .disabled(editsLocked)
                 }
             }
             .padding(.vertical, 4)
