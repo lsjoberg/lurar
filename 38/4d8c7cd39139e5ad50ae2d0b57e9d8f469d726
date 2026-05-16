@@ -1,0 +1,23 @@
+Klang/KlangApp.swift
+  s_86cce80e3d7403::t_8609d7857a25b6 38-43
+Klang/UI/MenuBarView.swift
+  s_86cce80e3d7403::t_ba2254db21cc1a 126-134
+Klang/UI/PresetPicker.swift
+  s_86cce80e3d7403::t_c12c1496bce224 41-51,55-56,74-80,86-93,111-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "384d8c7cd39139e5ad50ae2d0b57e9d8f469d726",
+  "prompts": {},
+  "sessions": {
+    "s_86cce80e3d7403": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c3b1a06-2222-4f49-aa17-ae195dda19a5",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Linus Sjöberg <linus.sjoberg@tradera.com>"
+    }
+  }
+}
