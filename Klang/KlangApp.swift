@@ -35,6 +35,12 @@ struct KlangApp: App {
         }
         .windowResizability(.contentSize)
         .commandsRemoved()
+
+        Window("Preset Library", id: "library") {
+            PresetLibraryView(catalog: presetCatalog)
+        }
+        .windowResizability(.contentSize)
+        .commandsRemoved()
     }
 
     init() {
