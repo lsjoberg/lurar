@@ -36,6 +36,7 @@ struct MenuBarView: View {
                 Button("Open Editor…") {
                     openWindow(id: "editor")
                     NSApp.activate(ignoringOtherApps: true)
+                    dismissMenuBarWindow()
                 }
                 .keyboardShortcut("e", modifiers: [.command])
 
@@ -131,6 +132,7 @@ struct MenuBarView: View {
                     if actionID == "library" {
                         openWindow(id: "library")
                         NSApp.activate(ignoringOtherApps: true)
+                        dismissMenuBarWindow()
                     }
                 }
             )
@@ -203,6 +205,16 @@ struct MenuBarView: View {
             return
         }
         engine.start(output: output)
+    }
+
+    /// MenuBarExtra(.window) has no programmatic dismiss API. The popover is the
+    /// key window at the moment the user clicks an item inside it, so capture it
+    /// before `openWindow` shifts focus and hide it on the next runloop tick.
+    private func dismissMenuBarWindow() {
+        let menuBarWindow = NSApp.keyWindow
+        DispatchQueue.main.async {
+            menuBarWindow?.orderOut(nil)
+        }
     }
 
     private func toggleLaunchAtLogin(_ on: Bool) {
