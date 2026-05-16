@@ -9,6 +9,7 @@ struct KlangApp: App {
     @StateObject private var presetStore = PresetStore()
     @StateObject private var presetCatalog = PresetCatalog()
     @StateObject private var engine = EQEngine()
+    @StateObject private var crossfeedSettings = CrossfeedSettings()
 
     @Environment(\.openWindow) private var openWindow
 
@@ -18,7 +19,8 @@ struct KlangApp: App {
                 engine: engine,
                 deviceManager: deviceManager,
                 presetStore: presetStore,
-                presetCatalog: presetCatalog
+                presetCatalog: presetCatalog,
+                crossfeedSettings: crossfeedSettings
             )
         } label: {
             Image(systemName: engine.isRunning ? "waveform.circle.fill" : "waveform.circle")
@@ -58,5 +60,9 @@ struct KlangApp: App {
         // Migration is synchronous and one-shot: move any in-file built-ins into the
         // network catalog. The catalog kicks off its own async index refresh in its init.
         presetStore.migrateLegacyBuiltInsIfNeeded(into: presetCatalog)
+        // Seed the engine with the persisted crossfeed settings so the first audio
+        // callback (whenever the engine is started) already has the user's params.
+        engine.setCrossfeedIntensity(crossfeedSettings.intensity)
+        engine.setCrossfeedCutoff(crossfeedSettings.cutoff)
     }
 }

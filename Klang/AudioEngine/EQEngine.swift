@@ -28,6 +28,7 @@ final class EQEngine: ObservableObject {
     // through an input device, so the orange microphone privacy indicator stays off.
     private let tapInput = ProcessTapInput()
     private let eqProcessor = EQProcessor()
+    private let crossfeed = Crossfeed()
     private let ringBuffer = StereoFloatRingBuffer(capacityFrames: 96_000) // ~2 s @ 48k stereo
     private lazy var halOutput = HALOutput(ringBuffer: ringBuffer)
 
@@ -146,15 +147,20 @@ final class EQEngine: ObservableObject {
         log.info("Client format: \(clientFormat)")
 
         // 3. Push current preset into the EQ processor so coefficients are ready before
-        //    the first input callback fires.
+        //    the first input callback fires. Crossfeed is configured against the same
+        //    sample rate so its ITD delay is correct.
         if let preset = currentPreset {
             eqProcessor.configure(preset: preset, sampleRate: sampleRate)
         }
+        crossfeed.reset()
+        crossfeed.configure(sampleRate: sampleRate)
 
-        // 4. Start the tap IOProc. Its callback runs on the audio thread: EQ in-place
-        //    on scratch buffers, then write to the ring buffer.
+        // 4. Start the tap IOProc. Its callback runs on the audio thread: crossfeed
+        //    first (so EQ shapes the summed signal), EQ in-place on scratch buffers,
+        //    then write to the ring buffer.
         do {
-            try tapInput.start { [eqProcessor, ringBuffer] left, right, frames in
+            try tapInput.start { [eqProcessor, crossfeed, ringBuffer] left, right, frames in
+                crossfeed.process(left: left, right: right, frames: frames)
                 eqProcessor.process(left: left, right: right, frames: frames)
                 ringBuffer.write(left: left, right: right, frames: frames)
             }
@@ -282,6 +288,16 @@ final class EQEngine: ObservableObject {
             p.preamp = dB
             currentPreset = p
         }
+    }
+
+    // MARK: - Crossfeed
+
+    func setCrossfeedIntensity(_ value: Float) {
+        crossfeed.setIntensity(value)
+    }
+
+    func setCrossfeedCutoff(_ hz: Float) {
+        crossfeed.setCutoff(hz)
     }
 
     // MARK: - A/B comparison

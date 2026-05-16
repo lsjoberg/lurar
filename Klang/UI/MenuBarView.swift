@@ -9,11 +9,13 @@ struct MenuBarView: View {
     @ObservedObject var deviceManager: DeviceManager
     @ObservedObject var presetStore: PresetStore
     @ObservedObject var presetCatalog: PresetCatalog
+    @ObservedObject var crossfeedSettings: CrossfeedSettings
 
     @Environment(\.openWindow) private var openWindow
 
     @State private var selectedPresetID: UUID?
     @State private var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled
+    @State private var showCrossfeedHelp: Bool = false
 
     private var visiblePresets: [EQPreset] {
         Klang.visiblePresets(catalog: presetCatalog, store: presetStore)
@@ -29,6 +31,10 @@ struct MenuBarView: View {
             presetPicker
             outputPicker
             statusRow
+
+            Divider()
+
+            crossfeedRow
 
             Divider()
 
@@ -174,6 +180,74 @@ struct MenuBarView: View {
                 .lineLimit(3)
         }
         .font(.callout)
+    }
+
+    /// Global crossfeed amount. Sits in the menu bar rather than the EQ editor
+    /// because it applies on top of every preset, not as part of one.
+    private var crossfeedRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                Text("Crossfeed").bold()
+                Button {
+                    showCrossfeedHelp.toggle()
+                } label: {
+                    Image(systemName: "questionmark.circle")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("What is crossfeed?")
+                .popover(isPresented: $showCrossfeedHelp, arrowEdge: .top) {
+                    crossfeedHelp
+                }
+                Spacer()
+                Text(crossfeedSettings.intensity <= 0
+                     ? "Off"
+                     : String(format: "%.0f%%", crossfeedSettings.intensity * 100))
+                    .monospacedDigit()
+                    .font(.callout)
+            }
+            Slider(
+                value: Binding(
+                    get: { Double(crossfeedSettings.intensity) },
+                    set: { newValue in
+                        let v = Float(newValue)
+                        crossfeedSettings.intensity = v
+                        engine.setCrossfeedIntensity(v)
+                    }
+                ),
+                in: 0...1
+            )
+        }
+    }
+
+    private var crossfeedHelp: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Crossfeed").font(.headline)
+            Text("Mixes a delayed, lowpassed copy of each channel into the opposite ear, simulating the acoustic path that exists on speakers but is missing on headphones. Pulls hard-panned stereo content out of \u{201C}inside your head\u{201D} toward a more in-front soundstage.")
+                .fixedSize(horizontal: false, vertical: true)
+            Divider()
+            Text("Typical settings").font(.subheadline.bold())
+            VStack(alignment: .leading, spacing: 4) {
+                helpRow("0%", "Off. Modern music mixed for headphones (most pop, electronic, orchestral) doesn\u{2019}t need it.")
+                helpRow("20–30%", "Safe always-on default. Barely noticeable on most material; subtly opens the image.")
+                helpRow("40–60%", "For old hard-panned stereo: early Beatles, \u{2019}50s/\u{2019}60s jazz, early stereo orchestral. The point of crossfeed.")
+                helpRow("70%+", "Audibly boxy and air-deficient. Diminishing returns.")
+            }
+        }
+        .font(.callout)
+        .padding(14)
+        .frame(width: 320)
+    }
+
+    private func helpRow(_ amount: String, _ description: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(amount)
+                .monospacedDigit()
+                .bold()
+                .frame(width: 56, alignment: .leading)
+            Text(description)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     // MARK: - Actions
