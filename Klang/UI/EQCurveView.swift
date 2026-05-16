@@ -6,6 +6,11 @@ import SwiftUI
 struct EQCurveView: View {
     let bands: [EQBand]
     let preamp: Float
+    /// Optional parent-preset curve to draw as a dashed reference behind the
+    /// live curve. Used by the editor to show "what you forked from" when the
+    /// current preset has a `parentRef`.
+    var referenceBands: [EQBand]? = nil
+    var referencePreamp: Float? = nil
 
     private let minDB: Double = -15
     private let maxDB: Double = 15
@@ -14,7 +19,13 @@ struct EQCurveView: View {
     var body: some View {
         Canvas { ctx, size in
             drawGrid(ctx: &ctx, size: size)
-            drawCurve(ctx: &ctx, size: size)
+            drawCurveFill(ctx: &ctx, size: size)
+            if let refBands = referenceBands {
+                drawReferenceCurve(ctx: &ctx, size: size,
+                                   bands: refBands,
+                                   preamp: referencePreamp ?? 0)
+            }
+            drawCurveStroke(ctx: &ctx, size: size)
         }
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 8))
         .overlay(
@@ -64,7 +75,19 @@ struct EQCurveView: View {
         }
     }
 
-    private func drawCurve(ctx: inout GraphicsContext, size: CGSize) {
+    private func drawCurveFill(ctx: inout GraphicsContext, size: CGSize) {
+        let (_, fill) = curvePaths(in: size, bands: bands, preamp: preamp)
+        ctx.fill(fill, with: .color(Color.accentColor.opacity(0.18)))
+    }
+
+    private func drawCurveStroke(ctx: inout GraphicsContext, size: CGSize) {
+        let (path, _) = curvePaths(in: size, bands: bands, preamp: preamp)
+        ctx.stroke(path, with: .color(Color.accentColor), lineWidth: 2)
+    }
+
+    /// Build both the stroke and filled paths for a given band set. Two passes
+    /// (fill, then stroke) let us insert the dashed reference between them.
+    private func curvePaths(in size: CGSize, bands: [EQBand], preamp: Float) -> (Path, Path) {
         var path = Path()
         var fill = Path()
         let yZero = EQCurveGeometry.yPos(forDB: 0, minDB: minDB, maxDB: maxDB, in: size)
@@ -90,8 +113,15 @@ struct EQCurveView: View {
                 fill.closeSubpath()
             }
         }
+        return (path, fill)
+    }
 
-        ctx.fill(fill, with: .color(Color.accentColor.opacity(0.18)))
-        ctx.stroke(path, with: .color(Color.accentColor), lineWidth: 2)
+    /// Dashed line, no fill — drawn between the live fill and the live stroke
+    /// so the active response stays the most prominent element while the
+    /// parent reference remains visible everywhere the curves overlap.
+    private func drawReferenceCurve(ctx: inout GraphicsContext, size: CGSize, bands: [EQBand], preamp: Float) {
+        let (path, _) = curvePaths(in: size, bands: bands, preamp: preamp)
+        let style = StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [4, 4])
+        ctx.stroke(path, with: .color(.secondary.opacity(0.65)), style: style)
     }
 }

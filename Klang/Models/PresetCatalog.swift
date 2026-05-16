@@ -87,7 +87,8 @@ final class PresetCatalog: ObservableObject {
     func isEnabled(_ id: UUID) -> Bool { enabledIDs.contains(id) }
 
     /// Catalog presets are always read-only; user copies happen via the editor's
-    /// existing "Save As New…" flow.
+    /// Tweak… flow, which forks a copy into the user's presets and stamps a
+    /// `parentRef` so the original can still be shown as a dashed reference.
     func isBuiltIn(_ id: UUID) -> Bool {
         entries.contains(where: { $0.id == id })
     }
