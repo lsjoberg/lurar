@@ -34,7 +34,7 @@ In a second terminal, tail OSLog output:
 4. Toggle the engine **ON** and accept the audio-capture prompt the first time.
 5. Play audio in any app — it flows: app → process tap → Klang DSP → HALOutput → DAC → headphones.
 
-Tap *Open Editor…* for live band tweaking. Edits apply to the running engine instantly. Built-in presets are read-only — use **Save As New…** to keep your changes. **Save** persists edits to your own presets; **Delete** removes them.
+Tap *Open Editor…* for live band tweaking. Edits apply to the running engine instantly. Built-in presets are read-only — use **Tweak…** to fork one into your library; the original stays visible as a dashed reference curve, and **Reset to Original** beside the "Derived from …" chip undoes your divergence. **New preset…** in the preset dropdown creates a fully custom preset from scratch (10 log-spaced bands at unity gain). **Save** persists edits, **Discard Changes** throws away unsaved edits, and **Delete** removes a preset.
 
 ### Known limitations
 
