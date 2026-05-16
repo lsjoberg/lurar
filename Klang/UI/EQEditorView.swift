@@ -19,6 +19,10 @@ struct EQEditorView: View {
     @State private var pendingSwitchTargetID: UUID? = nil
     @StateObject private var closeCoordinator = EditorCloseCoordinator()
     @State private var hostWindow: NSWindow?
+    /// Spectrum overlay is opt-in: the 30 Hz redraw is fine on modern Macs but can
+    /// feel laggy on slower hardware or when many other apps are pulling on the
+    /// main runloop. Persists across launches.
+    @AppStorage("spectrum.enabled") private var spectrumEnabled: Bool = false
 
     private var visiblePresets: [EQPreset] {
         Klang.visiblePresets(catalog: presetCatalog, store: presetStore)
@@ -57,6 +61,19 @@ struct EQEditorView: View {
                 }
                 EQCurveView(bands: draft.bands, preamp: draft.preamp)
                     .frame(minHeight: 220)
+                    .overlay {
+                        // Stacked separately so the spectrum's 30 Hz redraw doesn't
+                        // invalidate the EQ curve (which has expensive per-band trig
+                        // math). Kept present whenever the toggle is on regardless of
+                        // engine state — an empty audio ring just renders as no fill.
+                        if spectrumEnabled {
+                            SpectrumOverlayView(analyzer: engine.spectrumAnalyzer)
+                        }
+                    }
+                    .overlay(alignment: .topTrailing) {
+                        spectrumToggleButton
+                            .padding(8)
+                    }
                 preampRow
             }
             .padding(16)
@@ -293,6 +310,38 @@ struct EQEditorView: View {
         }
         .padding(8)
         .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 6))
+    }
+
+    /// Toggle for the live FFT overlay. Sits in the top-right corner of the EQ curve
+    /// because that's the thing it controls — a toolbar slot was both too far away
+    /// and visually adjacent to destructive actions.
+    private var spectrumToggleButton: some View {
+        Button {
+            spectrumEnabled.toggle()
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: spectrumEnabled ? "waveform" : "waveform.slash")
+                    .font(.system(size: 13, weight: .semibold))
+                Text("Spectrum")
+                    .font(.system(size: 11, weight: .medium))
+            }
+            .foregroundStyle(spectrumEnabled ? Color.accentColor : .primary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(
+                Capsule()
+                    .fill(.regularMaterial)
+            )
+            .overlay(
+                Capsule()
+                    .strokeBorder(spectrumEnabled ? Color.accentColor.opacity(0.6) : .secondary.opacity(0.5),
+                                  lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .help(spectrumEnabled
+              ? "Hide the live FFT overlay"
+              : "Show a live FFT of the post-EQ signal")
     }
 
     private var preampRow: some View {

@@ -29,6 +29,7 @@ final class EQEngine: ObservableObject {
     private let tapInput = ProcessTapInput()
     private let eqProcessor = EQProcessor()
     private let crossfeed = Crossfeed()
+    let spectrumAnalyzer = SpectrumAnalyzer()
     private let ringBuffer = StereoFloatRingBuffer(capacityFrames: 96_000) // ~2 s @ 48k stereo
     private lazy var halOutput = HALOutput(ringBuffer: ringBuffer)
 
@@ -147,21 +148,26 @@ final class EQEngine: ObservableObject {
         log.info("Client format: \(clientFormat)")
 
         // 3. Push current preset into the EQ processor so coefficients are ready before
-        //    the first input callback fires. Crossfeed is configured against the same
-        //    sample rate so its ITD delay is correct.
+        //    the first input callback fires. Crossfeed and the spectrum analyzer are
+        //    configured against the same sample rate so their per-sample math (ITD
+        //    delay, FFT bin → Hz mapping) is correct.
         if let preset = currentPreset {
             eqProcessor.configure(preset: preset, sampleRate: sampleRate)
         }
         crossfeed.reset()
         crossfeed.configure(sampleRate: sampleRate)
+        spectrumAnalyzer.reset()
+        spectrumAnalyzer.configure(sampleRate: sampleRate)
 
         // 4. Start the tap IOProc. Its callback runs on the audio thread: crossfeed
         //    first (so EQ shapes the summed signal), EQ in-place on scratch buffers,
+        //    hand the post-EQ samples to the spectrum analyzer for visualization,
         //    then write to the ring buffer.
         do {
-            try tapInput.start { [eqProcessor, crossfeed, ringBuffer] left, right, frames in
+            try tapInput.start { [eqProcessor, crossfeed, spectrumAnalyzer, ringBuffer] left, right, frames in
                 crossfeed.process(left: left, right: right, frames: frames)
                 eqProcessor.process(left: left, right: right, frames: frames)
+                spectrumAnalyzer.submit(left: left, right: right, frames: frames)
                 ringBuffer.write(left: left, right: right, frames: frames)
             }
 
