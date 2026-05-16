@@ -12,9 +12,15 @@ import os
 /// of latency on a slider drag, which is below the threshold of perception.
 final class EQProcessor {
     static let sectionCount = 10
+    /// Sections in the loudness-compensation cascade applied after the main EQ.
+    static let loudnessSectionCount = LoudnessContour.sectionCount
 
     private let cascadeL: BiquadCascade
     private let cascadeR: BiquadCascade
+    /// Loudness-compensation cascade applied AFTER the main EQ. Skipped
+    /// structurally (cascade.process never called) when loudnessActive == false.
+    private let cascadeLoudL: BiquadCascade
+    private let cascadeLoudR: BiquadCascade
 
     private var lock = os_unfair_lock()
     /// Flat coefficient buffer: 5 doubles per section, contiguous (b0,b1,b2,a1,a2 × N).
@@ -23,6 +29,24 @@ final class EQProcessor {
     private var pendingPreampLinear: Float = 1.0
     /// Snapshot of preamp the audio thread is currently using; mutated only there.
     private var preampLinear: Float = 1.0
+
+    /// Loudness compensation. Same trylock/dirty-flag publishing discipline as
+    /// the main EQ — main thread mutates `pending*` under the lock; audio
+    /// thread snapshots them inside `trylock`. The `loudnessActive` flag
+    /// gates `process` calls on the audio thread so an offset of 0 means a
+    /// STRUCTURAL bypass (the cascade doesn't run), not just flat numerics.
+    private var pendingLoudnessCoefficients: [Double]
+    private var loudnessCoefficientsDirty: Bool = false
+    private var pendingLoudnessActive: Bool = false
+    private var loudnessActive: Bool = false
+    /// Headroom attenuation (linear, ≤ 1.0) applied alongside `preampLinear`
+    /// so the boosted bass/treble can't push the signal above 0 dBFS. 1.0
+    /// when loudness is off — multiplied unconditionally on the audio thread
+    /// so slot mode picks it up for free.
+    private var pendingLoudnessHeadroomLinear: Float = 1.0
+    private var loudnessHeadroomLinear: Float = 1.0
+    /// Cached so configure() can re-fit at a new sample rate. Main thread only.
+    private var currentLoudnessOffsetDB: Float = 0
 
     /// A/B slot mode: when non-empty, the audio thread reads coefficients and
     /// preamp from these per-slot buffers instead of the regular `pendingCoefficients`
@@ -57,6 +81,11 @@ final class EQProcessor {
         self.cascadeL = BiquadCascade(sectionCount: EQProcessor.sectionCount, initialCoefficients: identityFlat)
         self.cascadeR = BiquadCascade(sectionCount: EQProcessor.sectionCount, initialCoefficients: identityFlat)
         self.pendingCoefficients = identityFlat
+
+        let identityLoud = LoudnessContour.identityCoefficients
+        self.cascadeLoudL = BiquadCascade(sectionCount: EQProcessor.loudnessSectionCount, initialCoefficients: identityLoud)
+        self.cascadeLoudR = BiquadCascade(sectionCount: EQProcessor.loudnessSectionCount, initialCoefficients: identityLoud)
+        self.pendingLoudnessCoefficients = identityLoud
     }
 
     // MARK: - Main-thread API
@@ -67,6 +96,11 @@ final class EQProcessor {
         self.sampleRate = sampleRate
         let flat = Self.flatCoefficients(for: preset, sampleRate: sampleRate)
         publish(coefficients: flat, preampDB: preset.preamp)
+        // Sample rate may have changed; re-fit the loudness cascade so its
+        // biquad centre frequencies stay correct relative to the new Nyquist.
+        if abs(currentLoudnessOffsetDB) >= 0.01 {
+            publishLoudness(offsetDB: currentLoudnessOffsetDB)
+        }
     }
 
     /// Recompute a single band's coefficients and republish. Cheap; called on slider drag.
@@ -88,6 +122,38 @@ final class EQProcessor {
         let linear = pow(10.0, dB / 20.0)
         os_unfair_lock_lock(&lock)
         pendingPreampLinear = linear
+        os_unfair_lock_unlock(&lock)
+    }
+
+    /// Recompute the loudness cascade for the given offset (≤ 0 dB, expected
+    /// in [−40, 0]) and publish coefficients + active flag + headroom
+    /// attenuation in a single lock acquisition. Audio thread picks the new
+    /// state up on its next `trylock`-successful callback.
+    ///
+    /// When |offsetDB| < 0.01 this publishes an inactive state — the audio
+    /// thread will reset the loudness cascades' delay lines and then skip
+    /// `process` calls entirely, so an offset of 0 is bit-identical to the
+    /// pre-loudness signal path (modulo whatever was in the delay lines for
+    /// one callback after deactivation, hence the reset).
+    func publishLoudness(offsetDB: Float) {
+        currentLoudnessOffsetDB = offsetDB
+        let active = abs(Double(offsetDB)) >= 0.01
+        let coeffs: [Double]
+        let headroomLinear: Float
+        if active {
+            let fit = LoudnessContour.fitBiquads(offsetDB: Double(offsetDB), sampleRate: sampleRate)
+            coeffs = fit.coefficients
+            headroomLinear = Float(pow(10.0, -fit.headroomDB / 20.0))
+        } else {
+            coeffs = LoudnessContour.identityCoefficients
+            headroomLinear = 1.0
+        }
+
+        os_unfair_lock_lock(&lock)
+        pendingLoudnessCoefficients = coeffs
+        loudnessCoefficientsDirty = true
+        pendingLoudnessActive = active
+        pendingLoudnessHeadroomLinear = headroomLinear
         os_unfair_lock_unlock(&lock)
     }
 
@@ -119,17 +185,44 @@ final class EQProcessor {
                 }
                 preampLinear = pendingPreampLinear
             }
+            // Loudness cascade pickup. Coefficient swap first (delay line is
+            // preserved across the swap, same property the main cascade
+            // relies on); then the active flag transition. Deactivation
+            // resets delay-line state so the next activation can't replay
+            // stale IIR history.
+            if loudnessCoefficientsDirty {
+                cascadeLoudL.setCoefficients(pendingLoudnessCoefficients)
+                cascadeLoudR.setCoefficients(pendingLoudnessCoefficients)
+                loudnessCoefficientsDirty = false
+            }
+            if pendingLoudnessActive != loudnessActive {
+                if !pendingLoudnessActive {
+                    cascadeLoudL.reset()
+                    cascadeLoudR.reset()
+                }
+                loudnessActive = pendingLoudnessActive
+            }
+            loudnessHeadroomLinear = pendingLoudnessHeadroomLinear
             muteLinear = pendingMuteLinear
             os_unfair_lock_unlock(&lock)
         }
 
-        var gain = preampLinear
+        var gain = preampLinear * loudnessHeadroomLinear
         if gain != 1.0 {
             vDSP_vsmul(left, 1, &gain, left, 1, vDSP_Length(frames))
             vDSP_vsmul(right, 1, &gain, right, 1, vDSP_Length(frames))
         }
         cascadeL.process(left, frames: frames)
         cascadeR.process(right, frames: frames)
+
+        // Loudness compensation runs after the main EQ so the user's preset
+        // EQs the headphone, and the loudness curve EQs the listener's ear
+        // response — two independent corrections in series. Gated structurally
+        // by `loudnessActive`: at offset 0 the cascade doesn't run at all.
+        if loudnessActive {
+            cascadeLoudL.process(left, frames: frames)
+            cascadeLoudR.process(right, frames: frames)
+        }
 
         // Post-cascade mute. Scaling here (rather than zeroing the pre-cascade
         // gain) means the IIR delay lines keep running on real audio, so unmute
