@@ -123,9 +123,17 @@ struct MenuBarView: View {
                 ),
                 items: visiblePresets.map { preset in
                     .init(id: preset.id.uuidString, title: preset.menuLabel)
+                },
+                actions: [
+                    .init(id: "library", title: "Add more presets…")
+                ],
+                onAction: { actionID in
+                    if actionID == "library" {
+                        openWindow(id: "library")
+                        NSApp.activate(ignoringOtherApps: true)
+                    }
                 }
             )
-            .disabled(visiblePresets.isEmpty)
         }
     }
 
