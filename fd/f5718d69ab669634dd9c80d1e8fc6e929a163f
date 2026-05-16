@@ -1,0 +1,19 @@
+Klang/UI/EQEditorView.swift
+  s_46c9c0b04afc03::t_4debb304875286 255-256,262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "fdf5718d69ab669634dd9c80d1e8fc6e929a163f",
+  "prompts": {},
+  "sessions": {
+    "s_46c9c0b04afc03": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db4cc97f-64a1-496d-a3f7-57195fda61d4",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Linus Sjöberg <linus.sjoberg@tradera.com>"
+    }
+  }
+}
