@@ -17,6 +17,14 @@ final class EQEngine: ObservableObject {
     /// per-band edits — those calls no-op against the processor while slot
     /// mode is active, but the UI shouldn't pretend the slider is live.
     @Published private(set) var isInComparisonMode: Bool = false
+    /// Loudness-compensation slider value in dB phon offset below the 83-phon
+    /// mastering reference. 0 = off, more negative = quieter listening,
+    /// more lift. Clamped to `loudnessOffsetRange`. Global setting persisted
+    /// in UserDefaults — independent of the active preset.
+    @Published private(set) var loudnessOffsetDB: Float = 0
+
+    static let loudnessOffsetRange: ClosedRange<Float> = -40...0
+    private static let loudnessOffsetDefaultsKey = "klang.loudnessOffsetDB"
 
     // Signal flow:
     //   ProcessTap (system audio, excl. own process) → aggregate device
@@ -42,6 +50,15 @@ final class EQEngine: ObservableObject {
     private var outputRateListener: AudioDevicePropertyListener?
     private var pendingRestart: DispatchWorkItem?
     private var restartCooldownUntil: Date = .distantPast
+
+    init() {
+        let stored = UserDefaults.standard.object(forKey: Self.loudnessOffsetDefaultsKey) as? Double
+        self.loudnessOffsetDB = Self.clampLoudness(Float(stored ?? 0))
+        // Prime the processor so its `loudnessActive` snapshot matches the
+        // persisted value before the first audio callback. Idempotent at
+        // offset 0 (publishes an inactive identity).
+        eqProcessor.publishLoudness(offsetDB: loudnessOffsetDB)
+    }
 
     // MARK: - Lifecycle
 
@@ -304,6 +321,24 @@ final class EQEngine: ObservableObject {
 
     func setCrossfeedCutoff(_ hz: Float) {
         crossfeed.setCutoff(hz)
+    }
+
+    // MARK: - Loudness compensation
+
+    /// Update the loudness offset (dB, clamped to [−40, 0]) and persist. The
+    /// processor recomputes the six-biquad cascade, the active flag, and a
+    /// headroom attenuation in a single lock acquisition; the audio thread
+    /// picks the new state up on its next callback.
+    func setLoudnessOffset(_ dB: Float) {
+        let clamped = Self.clampLoudness(dB)
+        if clamped == loudnessOffsetDB { return }
+        loudnessOffsetDB = clamped
+        UserDefaults.standard.set(Double(clamped), forKey: Self.loudnessOffsetDefaultsKey)
+        eqProcessor.publishLoudness(offsetDB: clamped)
+    }
+
+    private static func clampLoudness(_ dB: Float) -> Float {
+        min(max(dB, loudnessOffsetRange.lowerBound), loudnessOffsetRange.upperBound)
     }
 
     // MARK: - A/B comparison
