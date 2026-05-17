@@ -47,10 +47,13 @@ struct MenuBarView: View {
                 noMatchesBanner(deviceName: deviceName)
             }
 
+            statusRow
+
+            Divider()
+
             outputPicker
             presetPicker
             presetActionsRow
-            statusRow
 
             Divider()
 
