@@ -57,6 +57,8 @@ struct MenuBarView: View {
                 }
                 .help("Sighted or blind A/B comparison of two presets")
 
+                bypassButton
+
                 Spacer()
             }
 
@@ -132,6 +134,34 @@ struct MenuBarView: View {
             Text("Engine")
         }
         .toggleStyle(.switch)
+    }
+
+    /// Press-and-hold "Bypass" / "Bypassing…" button. Wraps a real
+    /// `NSButton` via `NSViewRepresentable` so the bezel matches the
+    /// surrounding default-style SwiftUI `Button`s exactly. Press/release
+    /// edges come from overriding `mouseDown(with:)` on the NSButton
+    /// subclass — NSButton's internal tracking loop blocks until the user
+    /// releases the mouse, so `super.mouseDown` returning is the mouse-up
+    /// signal.
+    private var bypassButton: some View {
+        let canBypass = engine.isRunning && !engine.isInComparisonMode
+        return BypassNativeButton(
+            title: engine.isBypassed ? "Bypassing\u{2026}" : "Bypass",
+            isActive: engine.isBypassed,
+            isEnabled: canBypass,
+            onPressChange: { pressed in
+                if pressed {
+                    if canBypass { engine.setBypassed(true) }
+                } else {
+                    // Always release on press-up so the button can't get
+                    // wedged on if state changed (e.g. comparison started)
+                    // mid-press.
+                    engine.setBypassed(false)
+                }
+            }
+        )
+        .fixedSize()
+        .help("Hold to swap to Flat. Global shortcut: \u{2325}B (hold).")
     }
 
     /// Label column width shared by Preset/Output/Status rows so the right-hand
@@ -453,6 +483,57 @@ struct MenuBarView: View {
             log.error("Launch-at-login toggle failed: \(String(describing: error))")
             launchAtLogin = SMAppService.mainApp.status == .enabled
         }
+    }
+}
+
+/// SwiftUI bridge around an `NSButton` subclass that emits press-down and
+/// press-up callbacks. Using a real NSButton (rather than a SwiftUI
+/// `Button` + custom `ButtonStyle`) guarantees the bezel matches the
+/// surrounding default `Button`s exactly. Press tracking comes from
+/// overriding `mouseDown(with:)` — NSButton's internal tracking loop
+/// blocks until the mouse is released, so emitting `pressed=true` before
+/// the super call and `pressed=false` after gives reliable down/up edges
+/// without fighting SwiftUI's gesture priority.
+private struct BypassNativeButton: NSViewRepresentable {
+    let title: String
+    let isActive: Bool
+    let isEnabled: Bool
+    let onPressChange: (Bool) -> Void
+
+    func makeNSView(context: Context) -> HoldNSButton {
+        let button = HoldNSButton()
+        button.bezelStyle = .rounded
+        button.setButtonType(.momentaryPushIn)
+        button.title = title
+        // Empty target/action: mouseDown/Up overrides do the work.
+        button.target = nil
+        button.action = nil
+        return button
+    }
+
+    func updateNSView(_ button: HoldNSButton, context: Context) {
+        if button.title != title { button.title = title }
+        if button.isEnabled != isEnabled { button.isEnabled = isEnabled }
+        button.onPressChange = onPressChange
+        // `bezelColor` tints a `.rounded` NSButton bezel; combined with a
+        // white content tint this gives a clearly "engaged" look while
+        // staying within native NSButton chrome.
+        button.bezelColor = isActive ? NSColor.systemBlue : nil
+        button.contentTintColor = isActive ? NSColor.white : nil
+    }
+}
+
+private final class HoldNSButton: NSButton {
+    var onPressChange: ((Bool) -> Void)?
+
+    override func mouseDown(with event: NSEvent) {
+        guard isEnabled else { return }
+        onPressChange?(true)
+        super.mouseDown(with: event)
+        // super.mouseDown blocks inside NSButton's internal tracking loop
+        // until the user releases; by the time control returns here, the
+        // mouse is up.
+        onPressChange?(false)
     }
 }
 
