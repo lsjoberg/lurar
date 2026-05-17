@@ -91,16 +91,6 @@ struct MenuBarView: View {
                 .keyboardShortcut(",", modifiers: [.command])
                 .help("Settings (⌘,)")
 
-                Toggle("Engine", isOn: Binding(
-                    get: { engine.isRunning },
-                    set: { newValue in
-                        if newValue { startEngine() } else { engine.stop() }
-                    }
-                ))
-                .toggleStyle(.switch)
-                .controlSize(.small)
-                .help("Tear down the audio tap entirely. To compare with the EQ flat, hold Bypass instead.")
-
                 Spacer()
 
                 Button("Quit Klang") { NSApp.terminate(nil) }
@@ -467,7 +457,7 @@ struct MenuBarView: View {
     }
 
     private var statusRow: some View {
-        HStack(alignment: .top) {
+        HStack(alignment: .center, spacing: 6) {
             Text("Status")
                 .foregroundStyle(.secondary)
                 .frame(width: labelColumnWidth, alignment: .leading)
@@ -475,6 +465,15 @@ struct MenuBarView: View {
                 .frame(maxWidth: .infinity, alignment: .trailing)
                 .multilineTextAlignment(.trailing)
                 .lineLimit(3)
+            Button {
+                if engine.isRunning { engine.stop() } else { startEngine() }
+            } label: {
+                Image(systemName: engine.isRunning ? "power.circle.fill" : "power.circle")
+                    .foregroundStyle(engine.isRunning ? Color.green : Color.secondary)
+                    .imageScale(.large)
+            }
+            .buttonStyle(.plain)
+            .help(engine.isRunning ? "Turn engine off" : "Turn engine on")
         }
         .font(.callout)
     }
