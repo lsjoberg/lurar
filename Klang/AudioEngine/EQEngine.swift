@@ -44,6 +44,12 @@ final class EQEngine: ObservableObject {
     private var activeSampleRate: Double?
     private var activeOutput: AudioDevice?
 
+    /// User's per-app exclusion list. Read at tap-creation time in `fullStart`
+    /// and after every change via `reEnumerateTapTargets`. Weak because the
+    /// store is owned by the App (same lifetime as the engine, so this is just
+    /// to avoid a retain cycle, not to handle real teardown).
+    weak var excludedAppsStore: ExcludedAppsStore?
+
     // Per-device sample-rate listeners. When the system output rate changes on a track
     // change, the aggregate device wrapping the tap follows; we re-reconcile and restart.
     private var inputRateListener: AudioDevicePropertyListener?
@@ -131,7 +137,8 @@ final class EQEngine: ObservableObject {
         let inputDeviceID: AudioDeviceID
         let sampleRate: Double
         do {
-            let prepared = try tapInput.prepare()
+            let excludedBundleIDs = excludedAppsStore?.excludedBundleIDs ?? []
+            let prepared = try tapInput.prepare(excludedBundleIDs: excludedBundleIDs)
             inputDeviceID = prepared.deviceID
             sampleRate = prepared.sampleRate
             if try CoreAudioSampleRate.nominal(for: output.id) != sampleRate {
@@ -251,9 +258,9 @@ final class EQEngine: ObservableObject {
         outputRateListener = nil
     }
 
-    private func scheduleRestart(reason: String) {
+    private func scheduleRestart(reason: String, force: Bool = false) {
         guard isRunning, activeOutput != nil else { return }
-        if Date() < restartCooldownUntil {
+        if !force, Date() < restartCooldownUntil {
             log.info("Ignoring \(reason) during cooldown")
             return
         }
@@ -270,6 +277,17 @@ final class EQEngine: ObservableObject {
         }
         pendingRestart = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: work)
+    }
+
+    /// Rebuild the process tap so a changed exclusion list takes effect.
+    /// Tap targets are fixed at tap-creation time — there's no way to add or
+    /// remove a target on a live tap, so we tear down and rebuild via the
+    /// existing debounced restart path. No-op when the engine is stopped.
+    /// Bypasses `restartCooldownUntil` because this is user-initiated; the
+    /// cooldown exists to suppress restart loops from system events.
+    func reEnumerateTapTargets() {
+        guard isRunning else { return }
+        scheduleRestart(reason: "excluded apps changed", force: true)
     }
 
     func reportStartFailure(_ message: String) {

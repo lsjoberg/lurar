@@ -10,6 +10,7 @@ struct MenuBarView: View {
     @ObservedObject var presetStore: PresetStore
     @ObservedObject var presetCatalog: PresetCatalog
     @ObservedObject var crossfeedSettings: CrossfeedSettings
+    @ObservedObject var excludedAppsStore: ExcludedAppsStore
 
     @Environment(\.openWindow) private var openWindow
 
@@ -54,6 +55,17 @@ struct MenuBarView: View {
                     NSApp.activate(ignoringOtherApps: true)
                 }
                 .help("Sighted or blind A/B comparison of two presets")
+
+                Spacer()
+            }
+
+            HStack {
+                Button(excludedAppsButtonLabel) {
+                    dismissMenuBarWindow()
+                    openWindow(id: "excluded-apps")
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+                .help("Pick apps whose audio should bypass Klang entirely")
 
                 Spacer()
             }
@@ -311,6 +323,12 @@ struct MenuBarView: View {
             Text(description)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private var excludedAppsButtonLabel: String {
+        let n = excludedAppsStore.excludedBundleIDs.count
+        if n == 0 { return "Excluded Apps\u{2026}" }
+        return "Excluded Apps (\(n))\u{2026}"
     }
 
     // MARK: - Actions

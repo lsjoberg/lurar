@@ -10,6 +10,7 @@ struct KlangApp: App {
     @StateObject private var presetCatalog = PresetCatalog()
     @StateObject private var engine = EQEngine()
     @StateObject private var crossfeedSettings = CrossfeedSettings()
+    @StateObject private var excludedAppsStore = ExcludedAppsStore()
 
     @Environment(\.openWindow) private var openWindow
 
@@ -20,7 +21,8 @@ struct KlangApp: App {
                 deviceManager: deviceManager,
                 presetStore: presetStore,
                 presetCatalog: presetCatalog,
-                crossfeedSettings: crossfeedSettings
+                crossfeedSettings: crossfeedSettings,
+                excludedAppsStore: excludedAppsStore
             )
         } label: {
             Image(systemName: engine.isRunning ? "waveform.circle.fill" : "waveform.circle")
@@ -53,6 +55,12 @@ struct KlangApp: App {
         }
         .windowResizability(.contentSize)
         .commandsRemoved()
+
+        Window("Excluded Apps", id: "excluded-apps") {
+            ExcludedAppsView(store: excludedAppsStore)
+        }
+        .windowResizability(.contentSize)
+        .commandsRemoved()
     }
 
     init() {
@@ -64,5 +72,12 @@ struct KlangApp: App {
         // callback (whenever the engine is started) already has the user's params.
         engine.setCrossfeedIntensity(crossfeedSettings.intensity)
         engine.setCrossfeedCutoff(crossfeedSettings.cutoff)
+        // Hand the engine a weak handle to the per-app exclusion list and have it
+        // rebuild the tap whenever the user toggles a row. Without the onChange
+        // wire-up, toggles would only take effect on the next manual engine start.
+        engine.excludedAppsStore = excludedAppsStore
+        excludedAppsStore.onChange = { [weak engine] in
+            engine?.reEnumerateTapTargets()
+        }
     }
 }

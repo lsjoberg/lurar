@@ -39,13 +39,18 @@ final class ProcessTapInput {
 
     /// Creates the process tap and a private aggregate device that wraps it. Returns the
     /// aggregate device ID and its nominal sample rate (which follows the tap).
-    func prepare() throws -> (deviceID: AudioDeviceID, sampleRate: Double) {
+    ///
+    /// `excludedBundleIDs` is the user's per-app exclusion list — process objects
+    /// whose `kAudioProcessPropertyBundleID` matches are dropped from the tap
+    /// target list and bypass Klang entirely (their audio flows through the
+    /// system mixer's normal output path).
+    func prepare(excludedBundleIDs: Set<String> = []) throws -> (deviceID: AudioDeviceID, sampleRate: Double) {
         try teardownTapAndAggregate()
 
         // 1. Look up our own audio process object so we can exclude ourselves from the
         //    tap targets — otherwise HALOutput's playback to the DAC would loop back
         //    into the tap.
-        let ownProcessObject = try Self.processObject(for: getpid())
+        let ownProcessObject = try AudioProcessInfo.processObject(for: getpid())
 
         // 2. Enumerate every audio process the system knows about and pass them
         //    explicitly to `stereoMixdownOfProcesses`. The seemingly-equivalent
@@ -54,11 +59,22 @@ final class ProcessTapInput {
         //    in particular) — the explicit-include form works around it.
         //    Note: apps that start producing audio *after* this point won't be tapped
         //    until the engine is restarted.
-        let targets = (try? Self.allProcessObjects())?.filter { $0 != ownProcessObject } ?? []
+        let allProcesses = (try? AudioProcessInfo.allProcessObjects()) ?? []
+        var excludedCount = 0
+        let targets = allProcesses.filter { obj in
+            if obj == ownProcessObject { return false }
+            if !excludedBundleIDs.isEmpty,
+               let bundleID = AudioProcessInfo.bundleID(for: obj),
+               excludedBundleIDs.contains(bundleID) {
+                excludedCount += 1
+                return false
+            }
+            return true
+        }
         guard !targets.isEmpty else {
             throw CoreAudioError.osStatus(-1, "no audio processes available to tap")
         }
-        log.info("Tap targets: count=\(targets.count)")
+        log.info("Tap targets: count=\(targets.count) excludedByUser=\(excludedCount)")
 
         let tapUUID = UUID()
         let description = CATapDescription(stereoMixdownOfProcesses: targets)
@@ -252,49 +268,6 @@ final class ProcessTapInput {
     }
 
     // MARK: - Core Audio object helpers
-
-    private static func processObject(for pid: pid_t) throws -> AudioObjectID {
-        var addr = AudioObjectPropertyAddress(
-            mSelector: kAudioHardwarePropertyTranslatePIDToProcessObject,
-            mScope: kAudioObjectPropertyScopeGlobal,
-            mElement: kAudioObjectPropertyElementMain
-        )
-        var input = pid
-        var output: AudioObjectID = 0
-        var size = UInt32(MemoryLayout<AudioObjectID>.size)
-        let status = AudioObjectGetPropertyData(
-            AudioObjectID(kAudioObjectSystemObject),
-            &addr,
-            UInt32(MemoryLayout<pid_t>.size),
-            &input,
-            &size,
-            &output
-        )
-        if status != noErr {
-            throw CoreAudioError.osStatus(status, "TranslatePIDToProcessObject(pid=\(pid))")
-        }
-        return output
-    }
-
-    private static func allProcessObjects() throws -> [AudioObjectID] {
-        var addr = AudioObjectPropertyAddress(
-            mSelector: kAudioHardwarePropertyProcessObjectList,
-            mScope: kAudioObjectPropertyScopeGlobal,
-            mElement: kAudioObjectPropertyElementMain
-        )
-        var size: UInt32 = 0
-        let s1 = AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &size)
-        if s1 != noErr {
-            throw CoreAudioError.osStatus(s1, "kAudioHardwarePropertyProcessObjectList size")
-        }
-        let count = Int(size) / MemoryLayout<AudioObjectID>.size
-        var ids = [AudioObjectID](repeating: 0, count: count)
-        let s2 = AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &size, &ids)
-        if s2 != noErr {
-            throw CoreAudioError.osStatus(s2, "kAudioHardwarePropertyProcessObjectList data")
-        }
-        return ids
-    }
 
     private static func systemDefaultOutputUID() throws -> String {
         var addr = AudioObjectPropertyAddress(
