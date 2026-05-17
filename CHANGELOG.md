@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/lsjoberg/lurar/compare/v0.2.0...v0.2.1) (2026-05-17)
+
+
+### Features
+
+* **audio:** nudge when macOS default output changes mid-session ([612aca0](https://github.com/lsjoberg/lurar/commit/612aca09a96d5698ee3d7ff2f01cb4d0d05b3ccf))
+
 ## [0.2.0](https://github.com/lsjoberg/lurar/compare/v0.1.4...v0.2.0) (2026-05-17)
 
 
