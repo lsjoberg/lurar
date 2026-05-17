@@ -124,8 +124,7 @@ final class EQEngine: ObservableObject {
             try halOutput.start(deviceID: output.id, clientFormat: clientFormat)
 
             activeOutput = output
-            statusMessage = "Running · System → \(output.name) @ \(Int(sampleRate)) Hz"
-            log.info("Engine output rebound: \(self.statusMessage)")
+            log.info("Engine output rebound: System → \(output.name) @ \(Int(sampleRate)) Hz")
             installOutputRateListener(output: output)
             restartCooldownUntil = Date().addingTimeInterval(0.5)
             return true
@@ -227,8 +226,7 @@ final class EQEngine: ObservableObject {
 
             activeOutput = output
             isRunning = true
-            statusMessage = "Running · System → \(output.name) @ \(Int(sampleRate)) Hz"
-            log.info("Engine started: \(self.statusMessage)")
+            log.info("Engine started: System → \(output.name) @ \(Int(sampleRate)) Hz")
 
             restartCooldownUntil = Date().addingTimeInterval(0.5)
 
