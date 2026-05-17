@@ -12,6 +12,7 @@ struct MenuBarView: View {
     @ObservedObject var crossfeedSettings: CrossfeedSettings
     @ObservedObject var excludedAppsStore: ExcludedAppsStore
     @ObservedObject var devicePresetMemory: DevicePresetMemory
+    @ObservedObject var updater: UpdaterController
 
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
@@ -107,6 +108,8 @@ struct MenuBarView: View {
                     NSApp.activate(ignoringOtherApps: true)
                 }
                 .keyboardShortcut(",", modifiers: [.command])
+                Button("Check for Updates…") { updater.checkForUpdates() }
+                    .disabled(!updater.canCheckForUpdates)
                 Button("Quit Klang") { NSApp.terminate(nil) }
                     .keyboardShortcut("q", modifiers: [.command])
             }

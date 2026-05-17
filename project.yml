@@ -5,15 +5,30 @@ options:
     macOS: "14.2"
   createIntermediateGroups: true
   generateEmptyDirectories: true
+configs:
+  Debug: debug
+  Release: release
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.6.0"
 settings:
   base:
-    MARKETING_VERSION: "0.1.0"
+    MARKETING_VERSION: "0.1.0" # x-release-please-version
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "5.9"
     ENABLE_HARDENED_RUNTIME: YES
-    CODE_SIGN_STYLE: Automatic
-    DEVELOPMENT_TEAM: ""
     SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
+    SPARKLE_PUBLIC_ED_KEY: ""
+  configs:
+    Debug:
+      CODE_SIGN_STYLE: Manual
+      CODE_SIGN_IDENTITY: "-"
+      DEVELOPMENT_TEAM: ""
+    Release:
+      CODE_SIGN_STYLE: Manual
+      CODE_SIGN_IDENTITY: "Developer ID Application"
+      OTHER_CODE_SIGN_FLAGS: "--timestamp --options runtime"
 targets:
   Klang:
     type: application
@@ -24,6 +39,8 @@ targets:
         excludes:
           - "Info.plist"
           - "Klang.entitlements"
+    dependencies:
+      - package: Sparkle
     info:
       path: Klang/Info.plist
       properties:
@@ -35,6 +52,7 @@ targets:
         CFBundlePackageType: APPL
         LSUIElement: true
         LSMinimumSystemVersion: "14.2"
+        LSApplicationCategoryType: "public.app-category.music"
         NSAudioCaptureUsageDescription: "Klang captures system audio via a Core Audio process tap so it can apply EQ before routing audio to your output device."
         NSHighResolutionCapable: true
         NSUbiquitousContainers:
@@ -42,6 +60,8 @@ targets:
             NSUbiquitousContainerIsDocumentScopePublic: true
             NSUbiquitousContainerSupportedFolderLevels: Any
             NSUbiquitousContainerName: Klang
+        SUFeedURL: "https://lsjoberg.github.io/klang/appcast.xml"
+        SUPublicEDKey: "$(SPARKLE_PUBLIC_ED_KEY)"
     entitlements:
       path: Klang/Klang.entitlements
       properties:
