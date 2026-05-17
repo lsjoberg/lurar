@@ -28,5 +28,17 @@
 	<true/>
 	<key>NSAudioCaptureUsageDescription</key>
 	<string>Klang captures system audio via a Core Audio process tap so it can apply EQ before routing audio to your output device.</string>
+	<key>NSUbiquitousContainers</key>
+	<dict>
+		<key>iCloud.se.linus.klang</key>
+		<dict>
+			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
+			<true/>
+			<key>NSUbiquitousContainerSupportedFolderLevels</key>
+			<string>Any</string>
+			<key>NSUbiquitousContainerName</key>
+			<string>Klang</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

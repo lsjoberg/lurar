@@ -13,6 +13,7 @@ struct MenuBarView: View {
     @ObservedObject var excludedAppsStore: ExcludedAppsStore
 
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     @State private var selectedPresetID: UUID?
     @State private var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled
@@ -78,6 +79,12 @@ struct MenuBarView: View {
                         toggleLaunchAtLogin(newValue)
                     }
                 Spacer()
+                Button("Settings…") {
+                    dismissMenuBarWindow()
+                    openSettings()
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+                .keyboardShortcut(",", modifiers: [.command])
                 Button("Quit Klang") { NSApp.terminate(nil) }
                     .keyboardShortcut("q", modifiers: [.command])
             }

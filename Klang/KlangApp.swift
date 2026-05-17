@@ -6,7 +6,8 @@ private let bootLog = Logger(subsystem: "se.linus.klang", category: "Boot")
 @main
 struct KlangApp: App {
     @StateObject private var deviceManager = DeviceManager()
-    @StateObject private var presetStore = PresetStore()
+    @StateObject private var syncSettings: PresetSyncSettings
+    @StateObject private var presetStore: PresetStore
     @StateObject private var presetCatalog = PresetCatalog()
     @StateObject private var engine = EQEngine()
     @StateObject private var crossfeedSettings = CrossfeedSettings()
@@ -67,13 +68,24 @@ struct KlangApp: App {
         }
         .windowResizability(.contentSize)
         .commandsRemoved()
+
+        Settings {
+            SettingsView(syncSettings: syncSettings, presetStore: presetStore)
+        }
     }
 
     init() {
         bootLog.info("[klang] Booted: Process Tap + vDSP biquad EQ + HAL output (no AVAudioEngine)")
+        // PresetStore needs the sync settings at init time so it can pick the
+        // right backing location (local vs iCloud) before its first read. We
+        // construct both eagerly here and share the same instance.
+        let settings = PresetSyncSettings()
+        let store = PresetStore(syncSettings: settings)
+        _syncSettings = StateObject(wrappedValue: settings)
+        _presetStore = StateObject(wrappedValue: store)
         // Migration is synchronous and one-shot: move any in-file built-ins into the
         // network catalog. The catalog kicks off its own async index refresh in its init.
-        presetStore.migrateLegacyBuiltInsIfNeeded(into: presetCatalog)
+        store.migrateLegacyBuiltInsIfNeeded(into: _presetCatalog.wrappedValue)
         // Seed the engine with the persisted crossfeed settings so the first audio
         // callback (whenever the engine is started) already has the user's params.
         engine.setCrossfeedIntensity(crossfeedSettings.intensity)

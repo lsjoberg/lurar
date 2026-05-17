@@ -18,6 +18,8 @@ struct EQEditorView: View {
     @State private var pendingSwitchTargetID: UUID? = nil
     @StateObject private var closeCoordinator = EditorCloseCoordinator()
     @State private var hostWindow: NSWindow?
+    @State private var toast: ToastBanner.Content?
+    @State private var toastDismissWorkItem: DispatchWorkItem?
     /// Spectrum overlay is opt-in: the 30 Hz redraw is fine on modern Macs but can
     /// feel laggy on slower hardware or when many other apps are pulling on the
     /// main runloop. Persists across launches.
@@ -133,6 +135,22 @@ struct EQEditorView: View {
                     }
                 }
             }
+            ToolbarItemGroup(placement: .automatic) {
+                Menu {
+                    Button("Export Current Preset…") {
+                        PresetImportExport.exportSingle(draft)
+                    }
+                    .disabled(presetStore.isBundledFlat(draft))
+                    Button("Export Whole Library…") {
+                        PresetImportExport.exportLibrary(presetStore.presets)
+                    }
+                    Divider()
+                    Button("Import…") { runImport() }
+                } label: {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
+                .help("Export or import .klangpreset / .klangpresets files")
+            }
             ToolbarItemGroup(placement: .primaryAction) {
                 if isBuiltIn {
                     Button {
@@ -151,6 +169,14 @@ struct EQEditorView: View {
                 }
             }
         }
+        .overlay(alignment: .top) {
+            if let toast {
+                ToastBanner(content: toast)
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.18), value: toast?.id)
         .sheet(isPresented: $showLibrary) {
             PresetLibraryView(catalog: presetCatalog)
         }
@@ -643,6 +669,52 @@ struct EQEditorView: View {
 
     private func logFreq(_ hz: Double) -> Double { log10(max(hz, 1)) }
     private func expFreq(_ log: Double) -> Double { pow(10, log) }
+
+    private func runImport() {
+        guard let summary = PresetImportExport.importIntoStore(presetStore) else { return }
+        presentToast(.init(message: summary.message, kind: summary.imported > 0 ? .info : .warning))
+    }
+
+    private func presentToast(_ content: ToastBanner.Content) {
+        toast = content
+        toastDismissWorkItem?.cancel()
+        let item = DispatchWorkItem { toast = nil }
+        toastDismissWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.5, execute: item)
+    }
+}
+
+// MARK: - Toast
+
+struct ToastBanner: View {
+    struct Content: Equatable {
+        let id = UUID()
+        let message: String
+        let kind: Kind
+        enum Kind { case info, warning }
+    }
+
+    let content: Content
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: content.kind == .info ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                .foregroundStyle(content.kind == .info ? Color.accentColor : .orange)
+            Text(content.message)
+                .font(.callout)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(.regularMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(.secondary.opacity(0.25), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.18), radius: 8, y: 2)
+    }
 }
 
 // MARK: - Window close interception

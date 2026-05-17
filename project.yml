@@ -37,11 +37,22 @@ targets:
         LSMinimumSystemVersion: "14.2"
         NSAudioCaptureUsageDescription: "Klang captures system audio via a Core Audio process tap so it can apply EQ before routing audio to your output device."
         NSHighResolutionCapable: true
+        NSUbiquitousContainers:
+          iCloud.se.linus.klang:
+            NSUbiquitousContainerIsDocumentScopePublic: true
+            NSUbiquitousContainerSupportedFolderLevels: Any
+            NSUbiquitousContainerName: Klang
     entitlements:
       path: Klang/Klang.entitlements
       properties:
         com.apple.security.app-sandbox: false
         com.apple.security.device.audio-input: true
+        com.apple.developer.icloud-services:
+          - CloudDocuments
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.se.linus.klang
+        com.apple.developer.ubiquity-container-identifiers:
+          - iCloud.se.linus.klang
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: se.linus.klang
