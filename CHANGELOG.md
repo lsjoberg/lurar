@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/lsjoberg/klang/compare/v0.1.2...v0.1.3) (2026-05-17)
+
+
+### Bug Fixes
+
+* **ci:** use PAT in release-please so downstream workflows fire ([6415703](https://github.com/lsjoberg/klang/commit/6415703318ff8d44b2190805f99b44cfec151366))
+
 ## [0.1.2](https://github.com/lsjoberg/klang/compare/v0.1.1...v0.1.2) (2026-05-17)
 
 
