@@ -63,6 +63,8 @@ Klang persists state in three places. Each is independently resettable; pick wha
 | --- | --- |
 | `klang.loudnessOffsetDB` | Loudness slider position |
 | `klang.presets.migratedBuiltIns_v1` | One-shot migration done |
+| `klang.lastPresetByDevice` | `[deviceUID: presetUUID]` map for per-device auto-recall |
+| `klang.suggestionsDismissedDevices` | Device UIDs you said *Not now* to in the auto-detect banner |
 | `crossfeed.intensity`, `crossfeed.cutoff` | Crossfeed settings |
 | `spectrum.enabled` | Spectrum overlay toggle in the editor |
 
@@ -96,6 +98,14 @@ Force a fresh catalog fetch from AutoEq (keeps user presets):
 # Quit Klang first
 rm -rf ~/Library/Application\ Support/Klang/Catalog
 rm ~/Library/Application\ Support/Klang/enabledBuiltIns.json
+```
+
+Forget per-device preset memory and re-enable the auto-detect banner on devices you previously dismissed:
+
+```bash
+# Quit Klang first
+defaults delete se.linus.klang klang.lastPresetByDevice
+defaults delete se.linus.klang klang.suggestionsDismissedDevices
 ```
 
 Reset all preferences but keep presets and catalog:

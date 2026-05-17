@@ -11,6 +11,7 @@ struct MenuBarView: View {
     @ObservedObject var presetCatalog: PresetCatalog
     @ObservedObject var crossfeedSettings: CrossfeedSettings
     @ObservedObject var excludedAppsStore: ExcludedAppsStore
+    @ObservedObject var devicePresetMemory: DevicePresetMemory
 
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
@@ -19,6 +20,19 @@ struct MenuBarView: View {
     @State private var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled
     @State private var showCrossfeedHelp: Bool = false
     @State private var showLoudnessHelp: Bool = false
+    /// Top-ranked suggestion for the current output, or nil if none matches
+    /// confidently / the user has dismissed it / it's already enabled.
+    @State private var suggestion: PresetSuggester.Match?
+    /// All ranked suggestions for the current output. Used by the "Choose
+    /// another" popover; never includes entries the user already has enabled.
+    @State private var suggestionAlternatives: [PresetSuggester.Match] = []
+    @State private var showingAlternatives: Bool = false
+    /// Set transiently when the "Suggest preset for this device…" action is
+    /// invoked but the matcher returned nothing for the current device. The
+    /// banner area shows a one-line "No close matches for X" notice and the
+    /// notice auto-clears after a few seconds so the menu bar doesn't hold
+    /// stale state.
+    @State private var noMatchesNotice: String?
 
     private var visiblePresets: [EQPreset] {
         Klang.visiblePresets(catalog: presetCatalog, store: presetStore)
@@ -29,6 +43,12 @@ struct MenuBarView: View {
             header
 
             Divider()
+
+            if suggestion != nil {
+                suggestionBanner
+            } else if let deviceName = noMatchesNotice {
+                noMatchesBanner(deviceName: deviceName)
+            }
 
             engineRow
             presetPicker
@@ -96,8 +116,20 @@ struct MenuBarView: View {
         .task {
             wireUp()
             applySelectedPreset()
+            reevaluateSuggestion()
         }
-        .onChange(of: selectedPresetID) { _, _ in applySelectedPreset() }
+        .onChange(of: selectedPresetID) { oldValue, newValue in
+            applySelectedPreset()
+            // Per-device memory: only persist a preset choice when the user
+            // changes the picker (oldValue != nil). Skip the nil → first-value
+            // transition in `wireUp()` so the suggestion banner can still tell
+            // a "first time we've seen this device" from "user picked Flat".
+            if oldValue != nil,
+               let id = newValue,
+               let device = deviceManager.selectedOutput {
+                devicePresetMemory.setLastPresetID(id, for: device.uid)
+            }
+        }
         .onChange(of: engine.currentPreset) { _, new in
             // Engine changed preset externally (e.g. editor deleted the current
             // preset and moved to a neighbor). Keep the dropdown in sync.
@@ -105,7 +137,28 @@ struct MenuBarView: View {
                 selectedPresetID = id
             }
         }
-        .onChange(of: deviceManager.selectedOutput) { _, _ in restartIfRunning() }
+        .onChange(of: deviceManager.selectedOutput) { oldDevice, newDevice in
+            // Implicit memory for the OUTGOING device: if we never wrote one
+            // (because the user hadn't explicitly picked a preset while on it
+            // — wireUp's nil→Flat init deliberately skips the write), claim
+            // the currently active preset as its default. Without this, a
+            // user who launches on A, switches to B and picks something
+            // there, then comes back to A, would see B's preset stuck on A
+            // because A's slot was never populated.
+            if let old = oldDevice,
+               let id = selectedPresetID,
+               devicePresetMemory.lastPresetID(for: old.uid) == nil {
+                devicePresetMemory.setLastPresetID(id, for: old.uid)
+            }
+            restartIfRunning()
+            autoRecallPreset(for: newDevice)
+            // Clear any stale "no close matches" notice — it was for the
+            // previous device and would be misleading after the switch.
+            noMatchesNotice = nil
+            reevaluateSuggestion()
+        }
+        .onReceive(presetCatalog.$entries) { _ in reevaluateSuggestion() }
+        .onReceive(presetCatalog.$enabledIDs) { _ in reevaluateSuggestion() }
     }
 
     // MARK: - Sections
@@ -122,6 +175,114 @@ struct MenuBarView: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    // MARK: - Suggestion banner
+
+    private var suggestionBanner: some View {
+        Group {
+            if let match = suggestion {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Detected \(deviceManager.selectedOutput?.name ?? "device")")
+                        .font(.callout.bold())
+                        .lineLimit(1)
+                    Text("Apply the \(match.entry.measurer) measurement?")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 6) {
+                        Button("Apply") { applySuggestion(match) }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                        Button("Choose another") {
+                            showingAlternatives = true
+                        }
+                        .controlSize(.small)
+                        .popover(isPresented: $showingAlternatives, arrowEdge: .bottom) {
+                            alternativesPopover
+                        }
+                        Spacer(minLength: 0)
+                        Button("Not now") { dismissSuggestion() }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.secondary)
+                            .controlSize(.small)
+                    }
+                }
+                .padding(10)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color.accentColor.opacity(0.12))
+                )
+            }
+        }
+    }
+
+    private var alternativesPopover: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Matches for \(deviceManager.selectedOutput?.name ?? "this device")")
+                .font(.callout.bold())
+            if suggestionAlternatives.isEmpty {
+                Text("No other close matches.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(suggestionAlternatives, id: \.entry.id) { match in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(match.entry.name)
+                                .font(.callout)
+                                .lineLimit(1)
+                            Text(sourceLabel(for: match.entry))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        Spacer(minLength: 8)
+                        Button("Apply") {
+                            showingAlternatives = false
+                            applySuggestion(match)
+                        }
+                        .controlSize(.small)
+                    }
+                }
+            }
+            Divider()
+            Button("Browse all presets…") {
+                showingAlternatives = false
+                dismissMenuBarWindow()
+                openWindow(id: "library")
+                NSApp.activate(ignoringOtherApps: true)
+            }
+            .buttonStyle(.link)
+            .controlSize(.small)
+        }
+        .padding(12)
+        .frame(width: 280)
+    }
+
+    private func sourceLabel(for entry: CatalogEntry) -> String {
+        if let rig = entry.rig { return "\(entry.measurer) · \(rig)" }
+        return entry.measurer
+    }
+
+    /// Single-line "no matches" feedback shown when the user manually invokes
+    /// "Suggest preset for this device…" but the matcher finds nothing.
+    /// Without this the action would be silently no-op.
+    private func noMatchesBanner(deviceName: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "info.circle")
+                .foregroundStyle(.secondary)
+            Text("No close matches for \(deviceName)")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.secondary.opacity(0.08))
+        )
     }
 
     private var engineRow: some View {
@@ -182,7 +343,13 @@ struct MenuBarView: View {
                 selection: Binding(
                     get: { selectedPresetID?.uuidString ?? "" },
                     set: { uuidString in
-                        selectedPresetID = UUID(uuidString: uuidString)
+                        // Route through userPickedPreset so an explicit
+                        // dropdown selection is recorded as a real
+                        // interaction — that's what marks the suggestion
+                        // banner as handled for this device.
+                        if let id = UUID(uuidString: uuidString) {
+                            userPickedPreset(id)
+                        }
                     }
                 ),
                 items: Klang.sortedPresetItems(
@@ -190,10 +357,7 @@ struct MenuBarView: View {
                     catalog: presetCatalog,
                     store: presetStore
                 ),
-                actions: [
-                    .init(id: "new", title: "New preset…"),
-                    .init(id: "library", title: "Add more presets…")
-                ],
+                actions: presetPickerActions(),
                 onAction: { actionID in
                     switch actionID {
                     case "new":
@@ -202,12 +366,28 @@ struct MenuBarView: View {
                         dismissMenuBarWindow()
                         openWindow(id: "library")
                         NSApp.activate(ignoringOtherApps: true)
+                    case "suggest":
+                        triggerManualSuggestion()
                     default:
                         break
                     }
                 }
             )
         }
+    }
+
+    /// Dropdown action list. "Suggest preset for this device…" is only
+    /// offered when a device is selected — the matcher needs a device name
+    /// to run against.
+    private func presetPickerActions() -> [FixedWidthPopUp.Action] {
+        var result: [FixedWidthPopUp.Action] = [
+            .init(id: "new", title: "New preset…")
+        ]
+        if deviceManager.selectedOutput != nil {
+            result.append(.init(id: "suggest", title: "Suggest preset for this device…"))
+        }
+        result.append(.init(id: "library", title: "Add more presets…"))
+        return result
     }
 
     /// Create a fully custom preset, select it, and open the editor on it.
@@ -393,13 +573,145 @@ struct MenuBarView: View {
 
     private func wireUp() {
         if selectedPresetID == nil {
-            selectedPresetID = visiblePresets.first?.id
+            // Prefer the preset the user last used with this output device, if
+            // we have one and it's currently visible. Otherwise fall back to
+            // whatever's first in the picker.
+            if let device = deviceManager.selectedOutput,
+               let lastID = devicePresetMemory.lastPresetID(for: device.uid),
+               visiblePresets.contains(where: { $0.id == lastID }) {
+                selectedPresetID = lastID
+            } else {
+                selectedPresetID = visiblePresets.first?.id
+            }
         }
         deviceManager.onTopologyChange = {
             // If currently running, try to restart with the current selection.
             // If selection went nil (device removed and no fallback), stop.
             restartIfRunning()
         }
+    }
+
+    /// Switch to the preset the user previously selected with `device`, if any
+    /// and it's currently visible. No-op when we'd just be re-asserting the
+    /// current selection.
+    private func autoRecallPreset(for device: AudioDevice?) {
+        guard let device,
+              let lastID = devicePresetMemory.lastPresetID(for: device.uid),
+              visiblePresets.contains(where: { $0.id == lastID }),
+              selectedPresetID != lastID
+        else { return }
+        selectedPresetID = lastID
+    }
+
+    /// Recompute the suggestion banner for the current output. Suppressed when
+    /// the user has explicitly dismissed it for this device (Not now / Apply /
+    /// picked a preset from the dropdown), or when a confident match is
+    /// already enabled in their library. NOTE: we deliberately do NOT gate on
+    /// `lastPresetID != nil` — the implicit memory claim on output toggle
+    /// would otherwise dismiss the banner after a single A→B→A round-trip.
+    /// "Has memory" is for recall; "has dismissed" is for the banner.
+    private func reevaluateSuggestion() {
+        guard let device = deviceManager.selectedOutput else {
+            suggestion = nil
+            suggestionAlternatives = []
+            return
+        }
+        if devicePresetMemory.isSuggestionDismissed(for: device.uid) {
+            suggestion = nil
+            suggestionAlternatives = []
+            return
+        }
+        let matches = PresetSuggester.suggestions(
+            forDevice: device.name,
+            in: presetCatalog.entries
+        )
+        let enabled = presetCatalog.enabledIDs
+        // If ANY confident match is already enabled, treat this as a device the
+        // user has already curated and stay quiet — don't second-guess them.
+        if matches.contains(where: { enabled.contains($0.entry.id) }) {
+            suggestion = nil
+            suggestionAlternatives = []
+            return
+        }
+        suggestion = matches.first
+        suggestionAlternatives = Array(matches.dropFirst())
+    }
+
+    /// Called from the preset dropdown's Binding.set when the USER explicitly
+    /// picks a preset. Distinct from the .onChange observer because that
+    /// observer also fires for auto-recall and engine-driven syncs, and we
+    /// only want to mark the suggestion banner as "handled" on real user
+    /// intent. The .onChange path still writes per-device memory.
+    private func userPickedPreset(_ id: UUID) {
+        selectedPresetID = id
+        if let device = deviceManager.selectedOutput {
+            devicePresetMemory.dismissSuggestion(for: device.uid)
+        }
+    }
+
+    /// Magic button: clears the dismissed flag for the current device and
+    /// re-runs the matcher. If matches exist, the banner reappears via the
+    /// normal `reevaluateSuggestion` path. If not, we surface a brief
+    /// "No close matches" notice so the click isn't silent — auto-clears
+    /// after a few seconds.
+    private func triggerManualSuggestion() {
+        guard let device = deviceManager.selectedOutput else { return }
+        devicePresetMemory.clearDismissedSuggestion(for: device.uid)
+        noMatchesNotice = nil
+        reevaluateSuggestion()
+        if suggestion == nil {
+            let name = device.name
+            noMatchesNotice = name
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                if noMatchesNotice == name {
+                    noMatchesNotice = nil
+                }
+            }
+        }
+    }
+
+    /// Enable the catalog entry, wait for the network fetch to land, then
+    /// select it. Pinning the device UID up-front guards against the user
+    /// switching outputs while the fetch is in flight — in that case we leave
+    /// the preset enabled in the library but don't activate it.
+    ///
+    /// Memory is written EAGERLY (before enable) so the reevaluation triggered
+    /// by enable()'s @Published change sees a populated slot and doesn't
+    /// resurface the banner. The catalog persists enabledIDs and retries on
+    /// next launch, so a stale memory pointer (fetch failed, never hydrated)
+    /// is fine — autoRecallPreset's `visiblePresets.contains` guard prevents
+    /// us from acting on it.
+    private func applySuggestion(_ match: PresetSuggester.Match) {
+        let entryID = match.entry.id
+        let pinnedDeviceUID = deviceManager.selectedOutput?.uid
+        if let uid = pinnedDeviceUID {
+            devicePresetMemory.setLastPresetID(entryID, for: uid)
+            // Apply counts as "handled" alongside Not now and explicit picks
+            // so the banner doesn't bounce back on next open.
+            devicePresetMemory.dismissSuggestion(for: uid)
+        }
+        suggestion = nil
+        suggestionAlternatives = []
+        Task { @MainActor in
+            presetCatalog.enable(entryID)
+            if let task = presetCatalog.ensureHydrated(id: entryID) {
+                _ = try? await task.value
+            }
+            guard presetCatalog.hydratedPresets[entryID] != nil else { return }
+            guard deviceManager.selectedOutput?.uid == pinnedDeviceUID else { return }
+            selectedPresetID = entryID
+        }
+    }
+
+    private func dismissSuggestion() {
+        guard let device = deviceManager.selectedOutput else {
+            suggestion = nil
+            return
+        }
+        devicePresetMemory.dismissSuggestion(for: device.uid)
+        suggestion = nil
+        suggestionAlternatives = []
     }
 
     private func applySelectedPreset() {

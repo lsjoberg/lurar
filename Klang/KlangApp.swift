@@ -12,6 +12,7 @@ struct KlangApp: App {
     @StateObject private var engine = EQEngine()
     @StateObject private var crossfeedSettings = CrossfeedSettings()
     @StateObject private var excludedAppsStore = ExcludedAppsStore()
+    @StateObject private var devicePresetMemory = DevicePresetMemory()
 
     @Environment(\.openWindow) private var openWindow
 
@@ -23,7 +24,8 @@ struct KlangApp: App {
                 presetStore: presetStore,
                 presetCatalog: presetCatalog,
                 crossfeedSettings: crossfeedSettings,
-                excludedAppsStore: excludedAppsStore
+                excludedAppsStore: excludedAppsStore,
+                devicePresetMemory: devicePresetMemory
             )
         } label: {
             Image(systemName: engine.isRunning ? "waveform.circle.fill" : "waveform.circle")
