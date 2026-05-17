@@ -178,7 +178,8 @@ final class PresetStore: ObservableObject {
         let fm = FileManager.default
         if fm.fileExists(atPath: url.path) {
             if let values = try? url.resourceValues(forKeys: [.ubiquitousItemDownloadingStatusKey]),
-               values.ubiquitousItemDownloadingStatus == .notDownloaded {
+               let status = values.ubiquitousItemDownloadingStatus,
+               status == URLUbiquitousItemDownloadingStatus.notDownloaded {
                 return .pendingDownload
             }
             return .materialized
@@ -219,6 +220,21 @@ final class PresetStore: ObservableObject {
         }
     }
 
+    private func coordinatedRead(_ url: URL) -> Data? {
+        let coordinator = NSFileCoordinator(filePresenter: nil)
+        var coordError: NSError?
+        var data: Data?
+        coordinator.coordinate(
+            readingItemAt: url, options: .withoutChanges, error: &coordError
+        ) { readURL in
+            data = try? Data(contentsOf: readURL)
+        }
+        if let coordError {
+            log.error("Coordinated read of \(url.lastPathComponent) failed: \(String(describing: coordError))")
+        }
+        return data
+    }
+
     /// Union-by-ID merge of the local presets file into iCloud's. iCloud wins
     /// on ID collisions (treated as the canonical shared library), local-only
     /// presets are appended. Name collisions on the local side get a " 2",
@@ -226,22 +242,12 @@ final class PresetStore: ObservableObject {
     /// named a preset "Bass Boost" end up as "Bass Boost" + "Bass Boost 2".
     /// Flat is never copied — it's regenerated locally by `ensureFlatPresent`.
     private func mergeLocalIntoICloud(local: URL, iCloud: URL) {
-        let coordinator = NSFileCoordinator(filePresenter: nil)
-        var coordError: NSError?
-        var localData: Data?
-        var cloudData: Data?
-        coordinator.coordinate(
-            readingItemAt: local, options: .withoutChanges,
-            readingItemAt: iCloud, options: .withoutChanges,
-            error: &coordError
-        ) { localURL, cloudURL in
-            localData = try? Data(contentsOf: localURL)
-            cloudData = try? Data(contentsOf: cloudURL)
-        }
-        if let coordError {
-            log.error("Merge coordinator (read) failed: \(String(describing: coordError))")
-            return
-        }
+        // NSFileCoordinator has no two-reads-in-one-call API (only
+        // reading+writing or writing+writing pairs), and we don't need
+        // atomic coupling across the reads — we re-coordinate the write
+        // afterwards. Two sequential coordinated reads are sufficient.
+        let localData = coordinatedRead(local)
+        let cloudData = coordinatedRead(iCloud)
         let decoder = JSONDecoder()
         // If iCloud's bytes are unreadable, don't risk replacing them with
         // local-only content — bail out and leave both files as they are.
@@ -259,9 +265,10 @@ final class PresetStore: ObservableObject {
         var added = 0
         var renamed = 0
 
-        for var preset in localPresets {
-            if preset.id == EQPreset.flatID { continue }
-            if existingIDs.contains(preset.id) { continue }
+        for original in localPresets {
+            if original.id == EQPreset.flatID { continue }
+            if existingIDs.contains(original.id) { continue }
+            var preset = original
             if existingNames.contains(preset.name) {
                 let base = preset.name
                 var n = 2
@@ -284,9 +291,10 @@ final class PresetStore: ObservableObject {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             let data = try encoder.encode(merged)
+            let writeCoordinator = NSFileCoordinator(filePresenter: nil)
             var writeCoordError: NSError?
             var writeError: Error?
-            coordinator.coordinate(
+            writeCoordinator.coordinate(
                 writingItemAt: iCloud, options: .forReplacing, error: &writeCoordError
             ) { url in
                 do { try data.write(to: url, options: .atomic) }
