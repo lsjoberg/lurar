@@ -1,0 +1,20 @@
+Klang/UI/MenuBarView.swift
+  s_92d184d2a9a57a::t_c294cd485b54c4 460
+  s_92d184d2a9a57a::t_9ce2c480d37665 468-476
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "d444acb45d4f8136021cc8e0044ea9123e9abcd9",
+  "prompts": {},
+  "sessions": {
+    "s_92d184d2a9a57a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ccec7daa-1d13-476b-8102-9b2185501303",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Linus Sjöberg <linus.sjoberg@tradera.com>"
+    }
+  }
+}
