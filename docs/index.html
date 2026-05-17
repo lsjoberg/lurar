@@ -49,7 +49,6 @@
         Download for macOS
       </a>
       <p class="requirements">
-        <span id="version-pill" class="pill">Latest release</span>
         <span>Requires macOS 14.2 or later · Apple Silicon &amp; Intel</span>
         <span>Signed &amp; notarized</span>
       </p>
@@ -329,21 +328,5 @@
       <a href="https://github.com/lsjoberg/lurar/issues">Report an issue</a>
     </p>
   </footer>
-
-  <script>
-    // Pull the latest version out of appcast.xml and surface it in the hero
-    // pill. Same-origin, so no CORS issue; on failure the pill keeps its
-    // default text.
-    fetch('appcast.xml', { cache: 'no-cache' })
-      .then(r => r.ok ? r.text() : Promise.reject(r.status))
-      .then(xml => {
-        const m = xml.match(/<sparkle:shortVersionString>([^<]+)</);
-        if (m) {
-          const pill = document.getElementById('version-pill');
-          if (pill) pill.textContent = 'v' + m[1];
-        }
-      })
-      .catch(() => {});
-  </script>
 </body>
 </html>

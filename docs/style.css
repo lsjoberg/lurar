@@ -188,18 +188,6 @@ h2 {
   gap: 8px 14px;
 }
 
-.pill {
-  display: inline-block;
-  padding: 3px 10px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  font-weight: 600;
-  color: var(--fg);
-  background: var(--card);
-  font-size: 12px;
-  letter-spacing: 0.01em;
-}
-
 /* ---------- screenshots ----------
  *
  * Screenshots are PNGs captured with `screencapture -o -w`, which means the
