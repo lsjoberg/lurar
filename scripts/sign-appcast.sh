@@ -17,11 +17,11 @@ if [[ -z "${SPARKLE_ED_PRIVATE_KEY:-}" ]]; then
     exit 0
 fi
 
-APP=build/export/Klang.app
+APP=build/export/Lurar.app
 VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP/Contents/Info.plist")
 BUILD=$(/usr/libexec/PlistBuddy -c "Print CFBundleVersion" "$APP/Contents/Info.plist")
 MIN_OS=$(/usr/libexec/PlistBuddy -c "Print LSMinimumSystemVersion" "$APP/Contents/Info.plist")
-DMG="build/Klang-${VERSION}.dmg"
+DMG="build/Lurar-${VERSION}.dmg"
 
 if [[ ! -f "$DMG" ]]; then
     echo "Missing $DMG. Run scripts/make-dmg.sh first." >&2
@@ -63,8 +63,8 @@ if [[ -z "$ED_SIG" || -z "$LENGTH" ]]; then
     exit 1
 fi
 
-REPO_SLUG="${GITHUB_REPOSITORY:-lsjoberg/klang}"
-URL="https://github.com/${REPO_SLUG}/releases/download/v${VERSION}/Klang-${VERSION}.dmg"
+REPO_SLUG="${GITHUB_REPOSITORY:-lsjoberg/lurar}"
+URL="https://github.com/${REPO_SLUG}/releases/download/v${VERSION}/Lurar-${VERSION}.dmg"
 RELEASE_NOTES_URL="${RELEASE_NOTES_URL:-https://github.com/${REPO_SLUG}/releases/tag/v${VERSION}}"
 PUBDATE=$(date -u "+%a, %d %b %Y %H:%M:%S +0000")
 

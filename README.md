@@ -1,8 +1,8 @@
-# Klang
+# Lurar
 
 A macOS menu bar parametric EQ for headphone listening. Captures every app's audio via a Core Audio Process Tap, runs it through a 10-band vDSP biquad EQ, and plays the result through your DAC via a raw HAL Audio Unit (no AVAudioEngine, no BlackHole, no virtual loopback driver).
 
-**[Download for macOS →](https://lsjoberg.github.io/klang/)**
+**[Download for macOS →](https://lurar.app/)**
 
 ## Prerequisites (development)
 
@@ -18,9 +18,9 @@ That's it — no audio driver to install. Requires macOS 14.2 or later (Core Aud
 ./scripts/dev.sh
 ```
 
-That regenerates the Xcode project, builds with ad-hoc signing, kills any running instance, and launches the fresh `Klang.app`. No Xcode UI required — no signing team to configure.
+That regenerates the Xcode project, builds with ad-hoc signing, kills any running instance, and launches the fresh `Lurar.app`. No Xcode UI required — no signing team to configure.
 
-On first engine-on, macOS prompts for **Audio Capture** permission. Grant it. Klang also declares the `com.apple.security.device.audio-input` entitlement, which is required by Core Audio to deliver tap samples even with TCC granted — but it does **not** bring up the orange microphone indicator, because the tap is read via `AudioDeviceIOProc` on a private aggregate device, not a HAL input AU.
+On first engine-on, macOS prompts for **Audio Capture** permission. Grant it. Lurar also declares the `com.apple.security.device.audio-input` entitlement, which is required by Core Audio to deliver tap samples even with TCC granted — but it does **not** bring up the orange microphone indicator, because the tap is read via `AudioDeviceIOProc` on a private aggregate device, not a HAL input AU.
 
 In a second terminal, tail OSLog output:
 
@@ -30,10 +30,10 @@ In a second terminal, tail OSLog output:
 
 ## Use
 
-1. Klang menu bar → set **Output** to the device you actually want to listen on (e.g. **HIFIMAN-EF500**). Klang takes care of routing — you don't need to change anything in System Settings → Sound.
-2. Pick a preset. Klang ships with a **Flat** preset; choose **Add more presets…** in the picker to browse the AutoEq catalog (Oratory1990 measurements for HiFiMan Arya Stealth et al.) and add ones for your headphones.
+1. Lurar menu bar → set **Output** to the device you actually want to listen on (e.g. **HIFIMAN-EF500**). Lurar takes care of routing — you don't need to change anything in System Settings → Sound.
+2. Pick a preset. Lurar ships with a **Flat** preset; choose **Add more presets…** in the picker to browse the AutoEq catalog (Oratory1990 measurements for HiFiMan Arya Stealth et al.) and add ones for your headphones.
 3. Toggle the engine **ON** and accept the audio-capture prompt the first time.
-4. Play audio in any app — it flows: app → process tap → Klang DSP → HALOutput → DAC → headphones.
+4. Play audio in any app — it flows: app → process tap → Lurar DSP → HALOutput → DAC → headphones.
 
 Tap *Open Editor…* for live band tweaking. Edits apply to the running engine instantly. Built-in presets are read-only — use **Tweak…** to fork one into your library; the original stays visible as a dashed reference curve, and **Reset to Original** beside the "Derived from …" chip undoes your divergence. **New preset…** in the preset dropdown creates a fully custom preset from scratch (10 log-spaced bands at unity gain). **Save** persists edits, **Discard Changes** throws away unsaved edits, and **Delete** removes a preset.
 
@@ -44,13 +44,13 @@ Tap *Open Editor…* for live band tweaking. Edits apply to the running engine i
 
 ## Presets
 
-User-editable JSON lives at `~/Library/Application Support/Klang/presets.json`. Klang watches the file and reloads on save (debounced ~150 ms). Add new headphones by appending objects to the array — the schema is on `EQPreset.swift`.
+User-editable JSON lives at `~/Library/Application Support/Lurar/presets.json`. Lurar watches the file and reloads on save (debounced ~150 ms). Add new headphones by appending objects to the array — the schema is on `EQPreset.swift`.
 
 ## Reset to scratch
 
-Klang persists state in three places. Each is independently resettable; pick what you need.
+Lurar persists state in three places. Each is independently resettable; pick what you need.
 
-**`~/Library/Application Support/Klang/`** — files Klang owns
+**`~/Library/Application Support/Lurar/`** — files Lurar owns
 
 | Path | What it stores |
 | --- | --- |
@@ -59,20 +59,20 @@ Klang persists state in three places. Each is independently resettable; pick wha
 | `Catalog/index.json` | Cached parse of AutoEq's `INDEX.md` |
 | `Catalog/presets/*.json` | Per-headphone hydrated preset cache |
 
-**`~/Library/Preferences/se.linus.klang.plist`** — UserDefaults
+**`~/Library/Preferences/app.lurar.Lurar.plist`** — UserDefaults
 
 | Key | Meaning |
 | --- | --- |
-| `klang.loudnessOffsetDB` | Loudness slider position |
-| `klang.presets.migratedBuiltIns_v1` | One-shot migration done |
-| `klang.lastPresetByDevice` | `[deviceUID: presetUUID]` map for per-device auto-recall |
-| `klang.suggestionsDismissedDevices` | Device UIDs you said *Not now* to in the auto-detect banner |
+| `lurar.loudnessOffsetDB` | Loudness slider position |
+| `lurar.presets.migratedBuiltIns_v1` | One-shot migration done |
+| `lurar.lastPresetByDevice` | `[deviceUID: presetUUID]` map for per-device auto-recall |
+| `lurar.suggestionsDismissedDevices` | Device UIDs you said *Not now* to in the auto-detect banner |
 | `crossfeed.intensity`, `crossfeed.cutoff` | Crossfeed settings |
 | `spectrum.enabled` | Spectrum overlay toggle in the editor |
 
-**TCC** — system-managed audio-capture grant for `se.linus.klang`.
+**TCC** — system-managed audio-capture grant for `app.lurar.Lurar`.
 
-> ⚠️ Quit Klang before running any of these recipes. `@AppStorage`-backed
+> ⚠️ Quit Lurar before running any of these recipes. `@AppStorage`-backed
 > values are cached in the live process and won't re-read from disk until
 > the app relaunches; TCC state changes are picked up at engine start, so
 > a quit-and-relaunch is the simplest way to get a clean slate.
@@ -82,48 +82,48 @@ Klang persists state in three places. Each is independently resettable; pick wha
 Trigger the first-run onboarding window again:
 
 ```bash
-# Quit Klang first
-tccutil reset AudioCapture se.linus.klang
-# Relaunch Klang → menu bar → toggle Engine ON
+# Quit Lurar first
+tccutil reset AudioCapture app.lurar.Lurar
+# Relaunch Lurar → menu bar → toggle Engine ON
 ```
 
 Wipe just the user preset library (keeps catalog cache and preferences):
 
 ```bash
-# Quit Klang first
-rm ~/Library/Application\ Support/Klang/presets.json
+# Quit Lurar first
+rm ~/Library/Application\ Support/Lurar/presets.json
 ```
 
 Force a fresh catalog fetch from AutoEq (keeps user presets):
 
 ```bash
-# Quit Klang first
-rm -rf ~/Library/Application\ Support/Klang/Catalog
-rm ~/Library/Application\ Support/Klang/enabledBuiltIns.json
+# Quit Lurar first
+rm -rf ~/Library/Application\ Support/Lurar/Catalog
+rm ~/Library/Application\ Support/Lurar/enabledBuiltIns.json
 ```
 
 Forget per-device preset memory and re-enable the auto-detect banner on devices you previously dismissed:
 
 ```bash
-# Quit Klang first
-defaults delete se.linus.klang klang.lastPresetByDevice
-defaults delete se.linus.klang klang.suggestionsDismissedDevices
+# Quit Lurar first
+defaults delete app.lurar.Lurar lurar.lastPresetByDevice
+defaults delete app.lurar.Lurar lurar.suggestionsDismissedDevices
 ```
 
 Reset all preferences but keep presets and catalog:
 
 ```bash
-# Quit Klang first
-defaults delete se.linus.klang
+# Quit Lurar first
+defaults delete app.lurar.Lurar
 ```
 
-Nuke everything — Klang back to the state of a brand-new install:
+Nuke everything — Lurar back to the state of a brand-new install:
 
 ```bash
-# Quit Klang first
-defaults delete se.linus.klang
-tccutil reset AudioCapture se.linus.klang
-rm -rf ~/Library/Application\ Support/Klang
+# Quit Lurar first
+defaults delete app.lurar.Lurar
+tccutil reset AudioCapture app.lurar.Lurar
+rm -rf ~/Library/Application\ Support/Lurar
 ```
 
 ## Regenerating after editing `project.yml`
@@ -134,7 +134,7 @@ rm -rf ~/Library/Application\ Support/Klang
 xcodegen generate
 ```
 
-Keep `project.yml`, `Klang/`, and `scripts/` under git; `Klang.xcodeproj` and `build/` are gitignored.
+Keep `project.yml`, `Lurar/`, and `scripts/` under git; `Lurar.xcodeproj` and `build/` are gitignored.
 
 ## Releasing
 
@@ -180,8 +180,8 @@ Plus one repository variable:
 
 | Secret | Why |
 | --- | --- |
-| `RELEASE_PLEASE_TOKEN` | A fine-grained PAT (account → Settings → Developer settings → Personal access tokens → Fine-grained → scope to `lsjoberg/klang`, permissions `Contents: read & write` + `Pull requests: read & write`). Required because the default `GITHUB_TOKEN` cannot trigger downstream workflows — without this, release-please tags the release but `release.yml` never fires and the DMG never gets built. If the secret is absent, release-please falls back to `GITHUB_TOKEN` and you'll have to manually run `release.yml` against the new tag via *Actions → Release → Run workflow*. |
+| `RELEASE_PLEASE_TOKEN` | A fine-grained PAT (account → Settings → Developer settings → Personal access tokens → Fine-grained → scope to `lsjoberg/lurar`, permissions `Contents: read & write` + `Pull requests: read & write`). Required because the default `GITHUB_TOKEN` cannot trigger downstream workflows — without this, release-please tags the release but `release.yml` never fires and the DMG never gets built. If the secret is absent, release-please falls back to `GITHUB_TOKEN` and you'll have to manually run `release.yml` against the new tag via *Actions → Release → Run workflow*. |
 
 ### Permanence of the Sparkle feed URL
 
-`SUFeedURL` in `Klang/Info.plist` (set to `https://lsjoberg.github.io/klang/appcast.xml`) is baked into every shipped binary. If the project later moves to a custom domain (e.g. `klang.app`) or gets renamed, **this URL must keep serving a current appcast forever** — GitHub Pages does not support real HTTP redirects, so installed clients with old binaries will look for the file at this exact location indefinitely. Either keep the repo + Pages alive at this path, or update both `SUFeedURL` *and* leave the old `appcast.xml` in place under the old domain.
+`SUFeedURL` in `Lurar/Info.plist` (set to `https://lurar.app/appcast.xml`) is baked into every shipped binary. If the project ever gets renamed or moves off this domain, **this URL must keep serving a current appcast forever** — GitHub Pages does not support real HTTP redirects, so installed clients with old binaries will look for the file at this exact location indefinitely. Either keep `lurar.app` pointed at a Pages site serving the appcast, or update `SUFeedURL` *and* keep the old `appcast.xml` reachable at the prior URL.

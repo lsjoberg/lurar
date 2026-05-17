@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
-    <title>Klang</title>
-    <link>https://lsjoberg.github.io/klang/appcast.xml</link>
+    <title>Lurar</title>
+    <link>https://lurar.app/appcast.xml</link>
     <description>System-wide audio EQ for macOS.</description>
     <language>en</language>
     <item>
-      <title>Klang ${VERSION}</title>
+      <title>Lurar ${VERSION}</title>
       <pubDate>${PUBDATE}</pubDate>
       <sparkle:version>${BUILD}</sparkle:version>
       <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>

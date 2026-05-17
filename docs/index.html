@@ -3,26 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Klang — system-wide audio EQ for macOS</title>
+  <title>Lurar — system-wide audio EQ for macOS</title>
   <meta name="description" content="Headphone correction the way Sonarworks does it — without the subscription, without a driver. A 10-band parametric EQ that taps every app's audio via Core Audio and plays the result on your DAC.">
   <meta name="theme-color" content="#0a0a0a">
   <link rel="stylesheet" href="style.css">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <meta property="og:title" content="Klang">
+  <meta property="og:title" content="Lurar">
   <meta property="og:description" content="Headphone correction for macOS. No virtual driver. No subscription.">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://lsjoberg.github.io/klang/">
-  <meta property="og:image" content="https://lsjoberg.github.io/klang/screenshots/og.png">
+  <meta property="og:url" content="https://lurar.app/">
+  <meta property="og:image" content="https://lurar.app/screenshots/og.png">
   <meta name="twitter:card" content="summary_large_image">
 </head>
 <body>
   <header>
-    <div class="wordmark">Klang</div>
+    <div class="wordmark">Lurar</div>
     <nav>
       <a href="#features">Features</a>
       <a href="#compare">Compare</a>
       <a href="#faq">FAQ</a>
-      <a href="https://github.com/lsjoberg/klang">GitHub</a>
+      <a href="https://github.com/lsjoberg/lurar">GitHub</a>
     </nav>
   </header>
 
@@ -30,12 +30,12 @@
     <section class="hero">
       <h1>Headphone EQ for macOS,<br>without the driver.</h1>
       <p class="tagline">
-        Klang taps every app's audio via Apple's Core Audio Process Tap, runs
+        Lurar taps every app's audio via Apple's Core Audio Process Tap, runs
         it through a 10-band parametric EQ, and plays the result on your DAC.
         No virtual audio device. No kernel extension. No subscription.
       </p>
 
-      <a class="download" href="https://github.com/lsjoberg/klang/releases/latest/download/Klang.dmg">
+      <a class="download" href="https://github.com/lsjoberg/lurar/releases/latest/download/Lurar.dmg">
         Download for macOS
       </a>
       <p class="requirements">
@@ -45,17 +45,17 @@
       </p>
     </section>
 
-    <section class="screenshot hero-screenshot" aria-label="Klang menu bar interface">
+    <section class="screenshot hero-screenshot" aria-label="Lurar menu bar interface">
       <!-- TODO: replace placeholder.svg with screenshots/menu-bar.png (light) and add a <source> for screenshots/menu-bar-dark.png. -->
-      <img src="placeholder.svg" alt="Klang menu bar popover with engine on, preset selected, and output device set" loading="eager">
+      <img src="placeholder.svg" alt="Lurar menu bar popover with engine on, preset selected, and output device set" loading="eager">
     </section>
 
     <section class="how" aria-labelledby="how-title">
       <h2 id="how-title">How it works</h2>
       <p class="section-lede">
-        Klang doesn't install a virtual audio device, doesn't load a kernel
+        Lurar doesn't install a virtual audio device, doesn't load a kernel
         extension, and doesn't replace your output. macOS routes the audio
-        through Apple's own Process Tap API — Klang reads it, EQs it, and
+        through Apple's own Process Tap API — Lurar reads it, EQs it, and
         sends it on to whichever DAC you've chosen.
       </p>
       <ol class="pipeline" aria-label="Signal flow">
@@ -125,7 +125,7 @@
       <div class="feature">
         <h3>Per-device memory &amp; auto-suggest</h3>
         <p>
-          Klang remembers the last preset per output device — switch DACs and
+          Lurar remembers the last preset per output device — switch DACs and
           the right curve loads. First time you plug in headphones it knows,
           it offers to enable the matching AutoEq preset.
         </p>
@@ -147,7 +147,7 @@
         <h3>Per-app exclusion</h3>
         <p>
           Some apps manage their own EQ — exclude them by bundle ID and
-          their audio bypasses Klang entirely. Updated live; no engine
+          their audio bypasses Lurar entirely. Updated live; no engine
           restart needed.
         </p>
         <img src="placeholder.svg" alt="Settings panel listing excluded apps" loading="lazy">
@@ -167,7 +167,7 @@
         <h3>iCloud preset sync</h3>
         <p>
           Flip a switch in Settings and your preset library follows you to
-          every Mac you sign into. Klang watches the file, debounces echo
+          every Mac you sign into. Lurar watches the file, debounces echo
           writes, and reloads cleanly on save.
         </p>
         <img src="placeholder.svg" alt="Settings sync tab" loading="lazy">
@@ -177,7 +177,7 @@
     <section id="compare" class="compare" aria-labelledby="compare-title">
       <h2 id="compare-title">How it compares</h2>
       <p class="section-lede">
-        Klang's niche is corrective headphone EQ. Here's how it stacks up
+        Lurar's niche is corrective headphone EQ. Here's how it stacks up
         against the apps people usually look at first.
       </p>
       <div class="compare-scroll">
@@ -185,7 +185,7 @@
           <thead>
             <tr>
               <th scope="col"><span class="sr-only">Capability</span></th>
-              <th scope="col">Klang</th>
+              <th scope="col">Lurar</th>
               <th scope="col">eqMac</th>
               <th scope="col">SoundSource</th>
               <th scope="col">SoundID Reference</th>
@@ -215,19 +215,19 @@
       <ul>
         <li>
           <strong>One network destination:</strong> AutoEq's GitHub raw URL,
-          and only when you browse the catalog or refresh it. Klang itself
+          and only when you browse the catalog or refresh it. Lurar itself
           phones nothing home — no analytics, no telemetry, no accounts.
         </li>
         <li>
           <strong>Audio Capture (TCC) permission, granted once.</strong>
-          Klang reads the system mixer via the Process Tap API — it does
+          Lurar reads the system mixer via the Process Tap API — it does
           <em>not</em> light up the orange mic indicator, because the tap
           isn't a HAL input AU.
         </li>
         <li>
           <strong>Three local locations:</strong>
-          <code>~/Library/Application&nbsp;Support/Klang</code> for presets
-          and the AutoEq cache, <code>~/Library/Preferences/se.linus.klang.plist</code>
+          <code>~/Library/Application&nbsp;Support/Lurar</code> for presets
+          and the AutoEq cache, <code>~/Library/Preferences/app.lurar.Lurar.plist</code>
           for settings, and the system-managed TCC grant. Each is independently
           resettable — recipes in the README.
         </li>
@@ -238,9 +238,9 @@
       <h2 id="faq-title">FAQ</h2>
 
       <details>
-        <summary>Does Klang raise the orange microphone indicator?</summary>
+        <summary>Does Lurar raise the orange microphone indicator?</summary>
         <p>
-          No. Klang reads tap samples via an <code>AudioDeviceIOProc</code> on
+          No. Lurar reads tap samples via an <code>AudioDeviceIOProc</code> on
           a private aggregate device — not via a HAL input AU — so the
           orange indicator stays off. The <code>device.audio-input</code>
           entitlement is required by Core Audio to deliver tap data once
@@ -254,7 +254,7 @@
         <p>
           Apps that use HAL hog mode bypass Core Audio's mixer entirely and
           can't be tapped — by anyone. Switch the app out of exclusive mode
-          if you want Klang to EQ it. This isn't a Klang limit; it's how
+          if you want Lurar to EQ it. This isn't a Lurar limit; it's how
           exclusive mode is supposed to work.
         </p>
       </details>
@@ -262,10 +262,10 @@
       <details>
         <summary>Will the next macOS update break it?</summary>
         <p>
-          Klang uses Apple's own Process Tap API (added in macOS 14.2). There
+          Lurar uses Apple's own Process Tap API (added in macOS 14.2). There
           is no third-party driver, no kernel extension, no system audio
           device that an OS update can invalidate. If Apple ever changes the
-          API, Klang gets updated; you don't have to uninstall anything.
+          API, Lurar gets updated; you don't have to uninstall anything.
         </p>
       </details>
 
@@ -283,17 +283,17 @@
         <summary>Why not <code>AVAudioEngine</code>?</summary>
         <p>
           Direct HAL Audio Unit means lower latency, no involuntary AGC,
-          and no opaque mixer behavior between us and the DAC. Klang is the
+          and no opaque mixer behavior between us and the DAC. Lurar is the
           last DSP stage before your hardware.
         </p>
       </details>
 
       <details>
-        <summary>What conflicts with Klang?</summary>
+        <summary>What conflicts with Lurar?</summary>
         <p>
           Other tap-based or HAL-intercepting tools — most commonly Rogue
           Amoeba's ARK driver (SoundSource, Audio Hijack, Loopback) — can
-          intercept tap data before Klang sees it. If the EQ path is silent
+          intercept tap data before Lurar sees it. If the EQ path is silent
           and ARK is loaded, quit the offending app and run
           <code>launchctl bootout gui/$(id -u)/com.rogueamoeba.arkaudiod</code>.
         </p>
@@ -303,9 +303,9 @@
 
   <footer>
     <p>
-      <a href="https://github.com/lsjoberg/klang">GitHub</a> ·
-      <a href="https://github.com/lsjoberg/klang/blob/main/CHANGELOG.md">Changelog</a> ·
-      <a href="https://github.com/lsjoberg/klang/issues">Report an issue</a>
+      <a href="https://github.com/lsjoberg/lurar">GitHub</a> ·
+      <a href="https://github.com/lsjoberg/lurar/blob/main/CHANGELOG.md">Changelog</a> ·
+      <a href="https://github.com/lsjoberg/lurar/issues">Report an issue</a>
     </p>
   </footer>
 

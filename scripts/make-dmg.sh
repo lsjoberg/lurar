@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Build a DMG from build/export/Klang.app. Writes:
-#   build/Klang.dmg           — stable name, what the landing page links to
-#   build/Klang-$VERSION.dmg  — versioned, what Sparkle appcast enclosures point at
+# Build a DMG from build/export/Lurar.app. Writes:
+#   build/Lurar.dmg           — stable name, what the landing page links to
+#   build/Lurar-$VERSION.dmg  — versioned, what Sparkle appcast enclosures point at
 #
 # Requires: brew install create-dmg
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-APP=build/export/Klang.app
+APP=build/export/Lurar.app
 if [[ ! -d "$APP" ]]; then
     echo "Missing $APP. Run scripts/build-release.sh first." >&2
     exit 1
@@ -21,19 +21,19 @@ fi
 
 VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP/Contents/Info.plist")
 
-rm -f build/Klang.dmg "build/Klang-${VERSION}.dmg"
+rm -f build/Lurar.dmg "build/Lurar-${VERSION}.dmg"
 
 echo "==> creating DMG (version $VERSION)"
 create-dmg \
-    --volname "Klang $VERSION" \
+    --volname "Lurar $VERSION" \
     --window-size 540 380 \
     --icon-size 96 \
-    --icon "Klang.app" 140 180 \
+    --icon "Lurar.app" 140 180 \
     --app-drop-link 400 180 \
     --no-internet-enable \
-    "build/Klang.dmg" \
+    "build/Lurar.dmg" \
     "$APP"
 
-cp "build/Klang.dmg" "build/Klang-${VERSION}.dmg"
+cp "build/Lurar.dmg" "build/Lurar-${VERSION}.dmg"
 
-echo "==> wrote build/Klang.dmg and build/Klang-${VERSION}.dmg"
+echo "==> wrote build/Lurar.dmg and build/Lurar-${VERSION}.dmg"

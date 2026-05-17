@@ -1,6 +1,6 @@
-name: Klang
+name: Lurar
 options:
-  bundleIdPrefix: se.linus
+  bundleIdPrefix: app.lurar
   deploymentTarget:
     macOS: "14.2"
   createIntermediateGroups: true
@@ -30,40 +30,40 @@ settings:
       CODE_SIGN_IDENTITY: "Developer ID Application"
       OTHER_CODE_SIGN_FLAGS: "--timestamp --options runtime"
 targets:
-  Klang:
+  Lurar:
     type: application
     platform: macOS
     deploymentTarget: "14.2"
     sources:
-      - path: Klang
+      - path: Lurar
         excludes:
           - "Info.plist"
-          - "Klang.entitlements"
+          - "Lurar.entitlements"
     dependencies:
       - package: Sparkle
     info:
-      path: Klang/Info.plist
+      path: Lurar/Info.plist
       properties:
-        CFBundleName: Klang
-        CFBundleDisplayName: Klang
-        CFBundleIdentifier: se.linus.klang
+        CFBundleName: Lurar
+        CFBundleDisplayName: Lurar
+        CFBundleIdentifier: app.lurar.Lurar
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundlePackageType: APPL
         LSUIElement: true
         LSMinimumSystemVersion: "14.2"
         LSApplicationCategoryType: "public.app-category.music"
-        NSAudioCaptureUsageDescription: "Klang captures system audio via a Core Audio process tap so it can apply EQ before routing audio to your output device."
+        NSAudioCaptureUsageDescription: "Lurar captures system audio via a Core Audio process tap so it can apply EQ before routing audio to your output device."
         NSHighResolutionCapable: true
         NSUbiquitousContainers:
-          iCloud.se.linus.klang:
+          iCloud.app.lurar.Lurar:
             NSUbiquitousContainerIsDocumentScopePublic: true
             NSUbiquitousContainerSupportedFolderLevels: Any
-            NSUbiquitousContainerName: Klang
-        SUFeedURL: "https://lsjoberg.github.io/klang/appcast.xml"
+            NSUbiquitousContainerName: Lurar
+        SUFeedURL: "https://lurar.app/appcast.xml"
         SUPublicEDKey: "$(SPARKLE_PUBLIC_ED_KEY)"
     entitlements:
-      path: Klang/Klang.entitlements
+      path: Lurar/Lurar.entitlements
       properties:
         com.apple.security.app-sandbox: false
         com.apple.security.device.audio-input: true
@@ -71,21 +71,21 @@ targets:
         # commented out so ad-hoc dev builds (./scripts/dev.sh with no
         # DEVELOPMENT_TEAM) succeed — codesign rejects iCloud entitlements
         # without a development certificate. Uncomment once you've set a
-        # DEVELOPMENT_TEAM and registered the iCloud.se.linus.klang container
+        # DEVELOPMENT_TEAM and registered the iCloud.app.lurar.Lurar container
         # in developer.apple.com. With them off, the Settings → Sync toggle
         # shows "iCloud Drive isn't available" and presets stay local.
         # com.apple.developer.icloud-services:
         #   - CloudDocuments
         # com.apple.developer.icloud-container-identifiers:
-        #   - iCloud.se.linus.klang
+        #   - iCloud.app.lurar.Lurar
         # com.apple.developer.ubiquity-container-identifiers:
-        #   - iCloud.se.linus.klang
+        #   - iCloud.app.lurar.Lurar
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: se.linus.klang
-        PRODUCT_NAME: Klang
+        PRODUCT_BUNDLE_IDENTIFIER: app.lurar.Lurar
+        PRODUCT_NAME: Lurar
         GENERATE_INFOPLIST_FILE: NO
-        INFOPLIST_FILE: Klang/Info.plist
-        CODE_SIGN_ENTITLEMENTS: Klang/Klang.entitlements
+        INFOPLIST_FILE: Lurar/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Lurar/Lurar.entitlements
         COMBINE_HIDPI_IMAGES: YES
         ENABLE_HARDENED_RUNTIME: YES

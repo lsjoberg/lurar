@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Submit build/Klang-$VERSION.dmg to Apple's notary service, wait for the
+# Submit build/Lurar-$VERSION.dmg to Apple's notary service, wait for the
 # verdict, and staple the ticket. Skips with exit 0 if APPLE_ID is unset
 # (dry-run mode).
 #
@@ -17,9 +17,9 @@ fi
 : "${APPLE_TEAM_ID:?APPLE_TEAM_ID is required when APPLE_ID is set}"
 : "${APPLE_APP_SPECIFIC_PASSWORD:?APPLE_APP_SPECIFIC_PASSWORD is required when APPLE_ID is set}"
 
-APP=build/export/Klang.app
+APP=build/export/Lurar.app
 VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP/Contents/Info.plist")
-DMG="build/Klang-${VERSION}.dmg"
+DMG="build/Lurar-${VERSION}.dmg"
 
 if [[ ! -f "$DMG" ]]; then
     echo "Missing $DMG. Run scripts/make-dmg.sh first." >&2
@@ -40,6 +40,6 @@ xcrun stapler validate "$DMG"
 
 # Re-copy the stapled DMG over the stable-named one so the landing-page
 # download is also notarization-ratified.
-cp "$DMG" build/Klang.dmg
+cp "$DMG" build/Lurar.dmg
 
 echo "==> notarized + stapled $DMG"

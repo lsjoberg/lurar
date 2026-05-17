@@ -92,17 +92,17 @@ jobs:
         id: version
         run: |
           V=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" \
-              build/export/Klang.app/Contents/Info.plist)
+              build/export/Lurar.app/Contents/Info.plist)
           echo "version=$V" >> "$GITHUB_OUTPUT"
 
       - name: Upload artifacts (workflow_dispatch dry run)
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
-          name: klang-dmg-${{ steps.version.outputs.version }}
+          name: lurar-dmg-${{ steps.version.outputs.version }}
           path: |
-            build/Klang.dmg
-            build/Klang-*.dmg
+            build/Lurar.dmg
+            build/Lurar-*.dmg
           retention-days: 14
 
       - name: Create GitHub Release
@@ -110,8 +110,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            build/Klang.dmg
-            build/Klang-${{ steps.version.outputs.version }}.dmg
+            build/Lurar.dmg
+            build/Lurar-${{ steps.version.outputs.version }}.dmg
           generate_release_notes: true
           fail_on_unmatched_files: true
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Generate the Xcode project and produce a Release build of Klang.app at
-# build/export/Klang.app. Runs in two modes:
+# Generate the Xcode project and produce a Release build of Lurar.app at
+# build/export/Lurar.app. Runs in two modes:
 #
 #   SIGNED   : DEVELOPMENT_TEAM env var set, certificate present in the
 #              login keychain. Archives + exports a Developer ID signed app.
@@ -16,17 +16,17 @@ cd "$(dirname "$0")/.."
 echo "==> xcodegen generate"
 xcodegen generate
 
-rm -rf build/Klang.xcarchive build/export
+rm -rf build/Lurar.xcarchive build/export
 
-ARCHIVE_PATH="build/Klang.xcarchive"
+ARCHIVE_PATH="build/Lurar.xcarchive"
 
 if [[ -n "${DEVELOPMENT_TEAM:-}" ]]; then
     echo "==> archiving (Developer ID, team $DEVELOPMENT_TEAM)"
     BUILD_NUMBER="${CURRENT_PROJECT_VERSION:-$(date +%s)}"
 
     xcodebuild \
-        -project Klang.xcodeproj \
-        -scheme Klang \
+        -project Lurar.xcodeproj \
+        -scheme Lurar \
         -configuration Release \
         -destination "generic/platform=macOS" \
         -archivePath "$ARCHIVE_PATH" \
@@ -49,8 +49,8 @@ else
     BUILD_NUMBER="${CURRENT_PROJECT_VERSION:-$(date +%s)}"
 
     xcodebuild \
-        -project Klang.xcodeproj \
-        -scheme Klang \
+        -project Lurar.xcodeproj \
+        -scheme Lurar \
         -configuration Release \
         -destination "generic/platform=macOS" \
         -archivePath "$ARCHIVE_PATH" \
@@ -62,10 +62,10 @@ else
         archive
 
     mkdir -p build/export
-    cp -R "$ARCHIVE_PATH/Products/Applications/Klang.app" build/export/Klang.app
+    cp -R "$ARCHIVE_PATH/Products/Applications/Lurar.app" build/export/Lurar.app
 fi
 
-APP=build/export/Klang.app
+APP=build/export/Lurar.app
 if [[ ! -d "$APP" ]]; then
     echo "Build succeeded but $APP not found" >&2
     exit 1

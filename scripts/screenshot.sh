@@ -23,7 +23,7 @@
 # `filter: drop-shadow(...)`, which respects the alpha channel.
 #
 # `-w` enters interactive window-pick mode. Move the cursor over the
-# Klang window you want to capture and click. For popovers (menu bar
+# Lurar window you want to capture and click. For popovers (menu bar
 # preset picker, etc.), click directly on the popover surface.
 #
 # `-i` (interactive region) is used by `region` and `bar` modes — drag
@@ -69,9 +69,9 @@ ensure_macos() {
   fi
 }
 
-ensure_klang_running() {
-  if ! pgrep -x Klang >/dev/null; then
-    echo "warning: Klang doesn't seem to be running. Launch it first:"
+ensure_lurar_running() {
+  if ! pgrep -x Lurar >/dev/null; then
+    echo "warning: Lurar doesn't seem to be running. Launch it first:"
     echo "  ./scripts/dev.sh"
     echo
   fi
@@ -79,7 +79,7 @@ ensure_klang_running() {
 
 capture_window() {
   local out="$1"
-  echo "Click the Klang window or popover you want to capture..."
+  echo "Click the Lurar window or popover you want to capture..."
   screencapture -o -w "$out"
 }
 
@@ -140,7 +140,7 @@ One-time setup tips (do these once, then capture freely):
 
   4. Hide noisy menu bar extras (Wi-Fi, Battery, Bluetooth, Control Center)
      via System Settings → Control Center, so the menu bar shot is just
-     Klang and the system clock.
+     Lurar and the system clock.
 
   5. Capture on a Retina display — `screencapture` records the native 2x
      pixel buffer automatically. Don't downscale before committing.
@@ -192,7 +192,7 @@ main() {
   mkdir -p "$OUT_DIR"
   local out="$OUT_DIR/$name.png"
 
-  ensure_klang_running
+  ensure_lurar_running
 
   case "$mode" in
     window) capture_window "$out" ;;
