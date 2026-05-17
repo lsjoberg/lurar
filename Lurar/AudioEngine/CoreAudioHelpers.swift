@@ -52,11 +52,6 @@ struct AudioDevice: Identifiable, Hashable {
     let manufacturer: String
     let hasInput: Bool
     let hasOutput: Bool
-
-    var isHiFiMan: Bool {
-        name.localizedCaseInsensitiveContains("HIFIMAN")
-            || manufacturer.localizedCaseInsensitiveContains("HIFIMAN")
-    }
 }
 
 // MARK: - Device enumeration
@@ -284,6 +279,52 @@ final class DeviceChangeListener {
         )
         if status != noErr {
             log.error("Failed to register device change listener: \(status)")
+        }
+    }
+
+    deinit {
+        guard let block else { return }
+        AudioObjectRemovePropertyListenerBlock(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address,
+            DispatchQueue.main,
+            block
+        )
+    }
+}
+
+// MARK: - Default output device listener
+
+/// Listens for changes to the system's default output device
+/// (`kAudioHardwarePropertyDefaultOutputDevice`). Parallels
+/// `DeviceChangeListener`, which only fires on topology changes.
+/// Needed so Lurar can react when macOS auto-switches output (e.g. AirPods
+/// connecting) without the device list itself changing.
+final class DefaultOutputDeviceListener {
+    typealias Handler = () -> Void
+
+    private let handler: Handler
+    private var address = AudioObjectPropertyAddress(
+        mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: kAudioObjectPropertyElementMain
+    )
+    private var block: AudioObjectPropertyListenerBlock?
+
+    init(handler: @escaping Handler) {
+        self.handler = handler
+        let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
+            self?.handler()
+        }
+        self.block = block
+        let status = AudioObjectAddPropertyListenerBlock(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address,
+            DispatchQueue.main,
+            block
+        )
+        if status != noErr {
+            log.error("Failed to register default-output device listener: \(status)")
         }
     }
 
