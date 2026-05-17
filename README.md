@@ -2,7 +2,9 @@
 
 A macOS menu bar parametric EQ for headphone listening. Captures every app's audio via a Core Audio Process Tap, runs it through a 10-band vDSP biquad EQ, and plays the result through your DAC via a raw HAL Audio Unit (no AVAudioEngine, no BlackHole, no virtual loopback driver).
 
-## Prerequisites
+**[Download for macOS →](https://lsjoberg.github.io/klang/)**
+
+## Prerequisites (development)
 
 ```bash
 brew install xcodegen
@@ -133,3 +135,47 @@ xcodegen generate
 ```
 
 Keep `project.yml`, `Klang/`, and `scripts/` under git; `Klang.xcodeproj` and `build/` are gitignored.
+
+## Releasing
+
+Releases are fully automated by [release-please](https://github.com/googleapis/release-please) and a `macos-14` GitHub Actions runner.
+
+**Commit convention:** the version bump is derived from [Conventional Commits](https://www.conventionalcommits.org/) on `main`:
+
+| Prefix | Effect |
+| --- | --- |
+| `feat: …` | minor bump (`0.1.0 → 0.2.0`) |
+| `fix: …` | patch bump (`0.1.0 → 0.1.1`) |
+| `feat!: …` or `BREAKING CHANGE:` footer | major bump (`0.x.y → 1.0.0`) |
+| `chore: … / docs: … / refactor: … / test: …` | no release |
+
+**Cutting a release:**
+
+1. Push conventional commits to `main`.
+2. The release-please workflow opens (or updates) a `chore(main): release X.Y.Z` PR with the bumped `MARKETING_VERSION` in `project.yml`, an updated `CHANGELOG.md`, and a touched `.release-please-manifest.json`.
+3. Merge that PR. release-please pushes a `vX.Y.Z` tag, which fires `release.yml`: archive → Developer ID sign → notarize → staple → DMG → GitHub Release → updated `docs/appcast.xml`.
+4. The Pages workflow re-deploys the site (download button + appcast) within ~1 minute.
+
+**Dry runs** (no signing certificate needed): run `release.yml` via *Actions → Release → Run workflow*. The build uses ad-hoc signing, skips notarization, and uploads the unsigned DMG as a workflow artifact. Useful for sanity-checking the pipeline before the Apple Developer Program enrollment goes through.
+
+### Required GitHub secrets (signed mode)
+
+| Secret | Where it comes from |
+| --- | --- |
+| `BUILD_CERTIFICATE_BASE64` | `base64 -i cert.p12` of the Developer ID Application cert + private key exported from Keychain Access. |
+| `P12_PASSWORD` | The password chosen at `.p12` export time. |
+| `KEYCHAIN_PASSWORD` | `openssl rand -base64 24` — used only inside the temporary CI keychain. |
+| `APPLE_ID` | Apple ID email address. |
+| `APPLE_TEAM_ID` | 10-char Team ID from developer.apple.com → Membership. |
+| `APPLE_APP_SPECIFIC_PASSWORD` | App-specific password from appleid.apple.com → Sign-In and Security. |
+| `SPARKLE_ED_PRIVATE_KEY` | Base64 EdDSA private key from running Sparkle's `generate_keys` **once**. **Back up to a password manager immediately** — losing it orphans every existing install. |
+
+Plus one repository variable:
+
+| Variable | Contents |
+| --- | --- |
+| `SPARKLE_PUBLIC_ED_KEY` | The matching public key (printed by `generate_keys` alongside the private one; not secret). |
+
+### Permanence of the Sparkle feed URL
+
+`SUFeedURL` in `Klang/Info.plist` (set to `https://lsjoberg.github.io/klang/appcast.xml`) is baked into every shipped binary. If the project later moves to a custom domain (e.g. `klang.app`) or gets renamed, **this URL must keep serving a current appcast forever** — GitHub Pages does not support real HTTP redirects, so installed clients with old binaries will look for the file at this exact location indefinitely. Either keep the repo + Pages alive at this path, or update both `SUFeedURL` *and* leave the old `appcast.xml` in place under the old domain.

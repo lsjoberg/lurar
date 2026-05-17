@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Klang</title>
+    <link>https://lsjoberg.github.io/klang/appcast.xml</link>
+    <description>System-wide audio EQ for macOS.</description>
+    <language>en</language>
+    <item>
+      <title>Klang ${VERSION}</title>
+      <pubDate>${PUBDATE}</pubDate>
+      <sparkle:version>${BUILD}</sparkle:version>
+      <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>${MIN_OS}</sparkle:minimumSystemVersion>
+      <sparkle:releaseNotesLink>${RELEASE_NOTES_URL}</sparkle:releaseNotesLink>
+      <enclosure
+        url="${URL}"
+        length="${LENGTH}"
+        type="application/octet-stream"
+        sparkle:edSignature="${ED_SIG}" />
+    </item>
+  </channel>
+</rss>

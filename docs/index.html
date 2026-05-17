@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Klang — system-wide audio EQ for macOS</title>
+  <meta name="description" content="A macOS menu bar parametric EQ for headphone listening. Captures every app's audio via a Core Audio Process Tap and applies a 10-band biquad EQ before sending it to your DAC.">
+  <meta name="theme-color" content="#0a0a0a">
+  <link rel="stylesheet" href="style.css">
+  <meta property="og:title" content="Klang">
+  <meta property="og:description" content="System-wide audio EQ for macOS. No virtual driver. No subscription.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://lsjoberg.github.io/klang/">
+</head>
+<body>
+  <header>
+    <div class="wordmark">Klang</div>
+    <nav>
+      <a href="https://github.com/lsjoberg/klang">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>System-wide audio EQ<br>for macOS.</h1>
+      <p class="tagline">
+        A menu bar parametric EQ that taps every app's audio via Core Audio,
+        runs it through a 10-band biquad chain, and plays the result on your DAC.
+        No virtual driver, no kernel extension, no subscription.
+      </p>
+
+      <a class="download" href="https://github.com/lsjoberg/klang/releases/latest/download/Klang.dmg">
+        Download for macOS
+      </a>
+      <p class="requirements">Requires macOS 14.2 or later · Apple Silicon &amp; Intel</p>
+    </section>
+
+    <section class="screenshot">
+      <!-- Replace with <img src="screenshot.png" alt="Klang menu bar interface" loading="lazy"> once a screenshot is captured. -->
+      <svg class="screenshot-placeholder" viewBox="0 0 800 480" xmlns="http://www.w3.org/2000/svg" aria-label="Screenshot placeholder">
+        <rect width="800" height="480" rx="16" fill="currentColor" opacity="0.04"/>
+        <text x="400" y="245" text-anchor="middle" font-family="-apple-system, system-ui, sans-serif" font-size="14" fill="currentColor" opacity="0.4">Screenshot coming soon</text>
+      </svg>
+    </section>
+
+    <section class="features">
+      <div class="feature">
+        <h3>Per-headphone presets</h3>
+        <p>Ships with a Flat preset. Browse the AutoEq catalog (Oratory1990
+          measurements) and add curves for your headphones in seconds.</p>
+      </div>
+      <div class="feature">
+        <h3>A/B compare</h3>
+        <p>Sighted or blind switching between two presets. Find out which
+          curve you actually prefer, not the one that looks right on paper.</p>
+      </div>
+      <div class="feature">
+        <h3>Crossfeed &amp; loudness</h3>
+        <p>Built-in crossfeed for binaural-friendly imaging. ISO 226:2003
+          loudness contour compensates for low-volume listening.</p>
+      </div>
+      <div class="feature">
+        <h3>No virtual driver</h3>
+        <p>Uses Apple's Core Audio Process Tap API directly (macOS 14.2+).
+          Nothing to install, nothing to uninstall, nothing to break on the
+          next macOS update.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>
+      Open source on
+      <a href="https://github.com/lsjoberg/klang">GitHub</a> ·
+      Updates powered by
+      <a href="https://sparkle-project.org">Sparkle</a>
+    </p>
+  </footer>
+</body>
+</html>
