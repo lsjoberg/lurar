@@ -55,15 +55,18 @@ struct ExcludedAppsView: View {
         }
     }
 
+    /// Set to true when embedded as a Settings tab — suppresses the standalone
+    /// window's min/ideal frame so the TabView gets to size us.
+    var embedded: Bool = false
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        let content = VStack(alignment: .leading, spacing: 0) {
             header
             Divider()
             list
             Divider()
             footer
         }
-        .frame(minWidth: 460, idealWidth: 520, minHeight: 380, idealHeight: 500)
         .onAppear {
             refreshRunningApps()
             processListListener = AudioProcessListChangeListener {
@@ -72,6 +75,13 @@ struct ExcludedAppsView: View {
         }
         .onDisappear {
             processListListener = nil
+        }
+
+        if embedded {
+            content
+        } else {
+            content
+                .frame(minWidth: 460, idealWidth: 520, minHeight: 380, idealHeight: 500)
         }
     }
 

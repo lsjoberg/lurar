@@ -1,5 +1,4 @@
 import SwiftUI
-import ServiceManagement
 import OSLog
 
 private let log = Logger(subsystem: "se.linus.klang", category: "MenuBarView")
@@ -10,15 +9,12 @@ struct MenuBarView: View {
     @ObservedObject var presetStore: PresetStore
     @ObservedObject var presetCatalog: PresetCatalog
     @ObservedObject var crossfeedSettings: CrossfeedSettings
-    @ObservedObject var excludedAppsStore: ExcludedAppsStore
     @ObservedObject var devicePresetMemory: DevicePresetMemory
-    @ObservedObject var updater: UpdaterController
 
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
 
     @State private var selectedPresetID: UUID?
-    @State private var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled
     @State private var showCrossfeedHelp: Bool = false
     @State private var showLoudnessHelp: Bool = false
     /// Top-ranked suggestion for the current output, or nil if none matches
@@ -84,32 +80,20 @@ struct MenuBarView: View {
             }
 
             HStack {
-                Button(excludedAppsButtonLabel) {
-                    dismissMenuBarWindow()
-                    openWindow(id: "excluded-apps")
-                    NSApp.activate(ignoringOtherApps: true)
-                }
-                .help("Pick apps whose audio should bypass Klang entirely")
-
-                Spacer()
-            }
-
-            HStack {
-                Toggle("Start at login", isOn: $launchAtLogin)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .onChange(of: launchAtLogin, initial: false) { _, newValue in
-                        toggleLaunchAtLogin(newValue)
-                    }
-                Spacer()
-                Button("Settings…") {
+                Button {
                     dismissMenuBarWindow()
                     openSettings()
                     NSApp.activate(ignoringOtherApps: true)
+                } label: {
+                    Image(systemName: "gearshape")
+                        .imageScale(.medium)
                 }
+                .buttonStyle(.borderless)
                 .keyboardShortcut(",", modifiers: [.command])
-                Button("Check for Updates…") { updater.checkForUpdates() }
-                    .disabled(!updater.canCheckForUpdates)
+                .help("Settings (⌘,)")
+
+                Spacer()
+
                 Button("Quit Klang") { NSApp.terminate(nil) }
                     .keyboardShortcut("q", modifiers: [.command])
             }
@@ -566,12 +550,6 @@ struct MenuBarView: View {
         }
     }
 
-    private var excludedAppsButtonLabel: String {
-        let n = excludedAppsStore.excludedBundleIDs.count
-        if n == 0 { return "Excluded Apps\u{2026}" }
-        return "Excluded Apps (\(n))\u{2026}"
-    }
-
     // MARK: - Actions
 
     private func wireUp() {
@@ -786,19 +764,6 @@ struct MenuBarView: View {
         }
     }
 
-    private func toggleLaunchAtLogin(_ on: Bool) {
-        do {
-            if on {
-                if SMAppService.mainApp.status == .enabled { return }
-                try SMAppService.mainApp.register()
-            } else {
-                try SMAppService.mainApp.unregister()
-            }
-        } catch {
-            log.error("Launch-at-login toggle failed: \(String(describing: error))")
-            launchAtLogin = SMAppService.mainApp.status == .enabled
-        }
-    }
 }
 
 /// SwiftUI bridge around an `NSButton` subclass that emits press-down and

@@ -1,6 +1,95 @@
 import SwiftUI
+import ServiceManagement
+import OSLog
+
+private let settingsLog = Logger(subsystem: "se.linus.klang", category: "Settings")
 
 struct SettingsView: View {
+    @ObservedObject var syncSettings: PresetSyncSettings
+    @ObservedObject var presetStore: PresetStore
+    @ObservedObject var excludedAppsStore: ExcludedAppsStore
+    @ObservedObject var updater: UpdaterController
+
+    var body: some View {
+        TabView {
+            GeneralSettingsTab(updater: updater)
+                .tabItem { Label("General", systemImage: "gearshape") }
+                .padding(20)
+                .frame(width: 460)
+
+            ExcludedAppsView(store: excludedAppsStore, embedded: true)
+                .tabItem { Label("Excluded Apps", systemImage: "square.slash") }
+                .frame(width: 520, height: 460)
+
+            SyncSettingsTab(syncSettings: syncSettings, presetStore: presetStore)
+                .tabItem { Label("Sync", systemImage: "icloud") }
+                .padding(20)
+                .frame(width: 460)
+        }
+        .frame(width: 520)
+    }
+}
+
+// MARK: - General
+
+private struct GeneralSettingsTab: View {
+    @ObservedObject var updater: UpdaterController
+
+    @State private var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Start at login", isOn: $launchAtLogin)
+                    .toggleStyle(.switch)
+                    .onChange(of: launchAtLogin, initial: false) { _, newValue in
+                        toggleLaunchAtLogin(newValue)
+                    }
+                Text("Klang launches automatically when you sign in.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("Updates").font(.callout.weight(.semibold))
+                    Spacer()
+                    Button("Check for Updates\u{2026}") { updater.checkForUpdates() }
+                        .disabled(!updater.canCheckForUpdates)
+                }
+                Text("Klang checks for new releases automatically. You can also check manually.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .onAppear {
+            // Re-sync in case the user toggled the login item from System Settings.
+            launchAtLogin = SMAppService.mainApp.status == .enabled
+        }
+    }
+
+    private func toggleLaunchAtLogin(_ on: Bool) {
+        do {
+            if on {
+                if SMAppService.mainApp.status == .enabled { return }
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+        } catch {
+            settingsLog.error("Launch-at-login toggle failed: \(String(describing: error))")
+            launchAtLogin = SMAppService.mainApp.status == .enabled
+        }
+    }
+}
+
+// MARK: - Sync
+
+private struct SyncSettingsTab: View {
     @ObservedObject var syncSettings: PresetSyncSettings
     @ObservedObject var presetStore: PresetStore
 
@@ -9,18 +98,6 @@ struct SettingsView: View {
     @State private var pendingToggleValue: Bool = false
 
     var body: some View {
-        TabView {
-            syncSection
-                .tabItem { Label("Sync", systemImage: "icloud") }
-                .padding(20)
-                .frame(width: 460)
-        }
-        .frame(width: 480)
-    }
-
-    // MARK: - Sync
-
-    private var syncSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Preset sync").font(.title3.weight(.semibold))
 
