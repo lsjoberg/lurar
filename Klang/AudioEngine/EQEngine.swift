@@ -38,6 +38,7 @@ final class EQEngine: ObservableObject {
     private let eqProcessor = EQProcessor()
     private let crossfeed = Crossfeed()
     let spectrumAnalyzer = SpectrumAnalyzer()
+    let clipMeter = ClipMeter()
     private let ringBuffer = StereoFloatRingBuffer(capacityFrames: 96_000) // ~2 s @ 48k stereo
     private lazy var halOutput = HALOutput(ringBuffer: ringBuffer)
 
@@ -182,16 +183,22 @@ final class EQEngine: ObservableObject {
         crossfeed.configure(sampleRate: sampleRate)
         spectrumAnalyzer.reset()
         spectrumAnalyzer.configure(sampleRate: sampleRate)
+        clipMeter.reset()
+        clipMeter.configure(sampleRate: sampleRate)
 
         // 4. Start the tap IOProc. Its callback runs on the audio thread: crossfeed
         //    first (so EQ shapes the summed signal), EQ in-place on scratch buffers,
         //    hand the post-EQ samples to the spectrum analyzer for visualization,
         //    then write to the ring buffer.
         do {
-            try tapInput.start { [eqProcessor, crossfeed, spectrumAnalyzer, ringBuffer] left, right, frames in
+            try tapInput.start { [eqProcessor, crossfeed, spectrumAnalyzer, clipMeter, ringBuffer] left, right, frames in
                 crossfeed.process(left: left, right: right, frames: frames)
                 eqProcessor.process(left: left, right: right, frames: frames)
                 spectrumAnalyzer.submit(left: left, right: right, frames: frames)
+                // Post-loudness, pre-output: this is the last point at which we
+                // can measure what the user actually hears before the ring
+                // buffer hands it to the output device.
+                clipMeter.submit(left: left, right: right, frames: frames)
                 ringBuffer.write(left: left, right: right, frames: frames)
             }
 
