@@ -120,10 +120,16 @@ final class PresetStore: ObservableObject {
     // MARK: - Sync mode switching
 
     /// Toggle between the local Application Support copy and the iCloud
-    /// container copy. When migrating *into* iCloud, the current local file is
-    /// copied over (unless iCloud already has its own copy). When migrating
-    /// *out*, we just point back at the local file — iCloud's copy is left
-    /// alone so the user can flip back without losing data.
+    /// container copy. When migrating *into* iCloud:
+    ///   - if iCloud has nothing, the local file is copied up;
+    ///   - if iCloud already has a library (typically because another Mac has
+    ///     enabled sync first), the two are unioned by ID so neither side's
+    ///     work is lost — see `mergeLocalIntoICloud`;
+    ///   - if iCloud has the file as an undownloaded placeholder, the merge
+    ///     is deferred until the bytes land (we never copy local over a
+    ///     placeholder — that would clobber the other Mac's library).
+    /// When migrating *out*, we just point back at the local file — iCloud's
+    /// copy is left alone so the user can flip back without losing data.
     func setSyncEnabled(_ enabled: Bool, migrate: Bool) {
         if enabled {
             guard let target = Self.iCloudFileURL() else {
@@ -131,8 +137,17 @@ final class PresetStore: ObservableObject {
                 return
             }
             Self.ensureParentDirectoryExists(for: target)
-            if migrate, !FileManager.default.fileExists(atPath: target.path) {
-                copyForMigration(from: fileURL, to: target)
+            let localSource = Self.localFileURL
+            if migrate {
+                switch iCloudPresence(at: target) {
+                case .absent:
+                    copyForMigration(from: localSource, to: target)
+                case .materialized:
+                    mergeLocalIntoICloud(local: localSource, iCloud: target)
+                case .pendingDownload:
+                    try? FileManager.default.startDownloadingUbiquitousItem(at: target)
+                    scheduleDeferredMerge(local: localSource, iCloud: target, attemptsRemaining: 20)
+                }
             }
             // Tell iCloud to download the file if it's currently a stub on disk
             // (file present as `.presets.json.icloud` placeholder).
@@ -140,6 +155,154 @@ final class PresetStore: ObservableObject {
             relocate(to: target, kind: .iCloud)
         } else {
             relocate(to: Self.localFileURL, kind: .local)
+        }
+    }
+
+    private enum ICloudPresence {
+        /// No file and no placeholder — safe to copy local up.
+        case absent
+        /// File is materialized locally and ready to read.
+        case materialized
+        /// iCloud knows about the file but the bytes haven't been downloaded
+        /// to this Mac yet. Never copy local over this state.
+        case pendingDownload
+    }
+
+    /// Classify the iCloud copy. The `.icloud` placeholder lives at the same
+    /// directory with a leading dot and a `.icloud` suffix (e.g.
+    /// `.presets.json.icloud`); when only the placeholder is present,
+    /// `fileExists(atPath:)` for the real path returns false, so we have to
+    /// check both. We also consult `ubiquitousItemDownloadingStatus` for the
+    /// edge case where the placeholder and the real path share the same URL.
+    private func iCloudPresence(at url: URL) -> ICloudPresence {
+        let fm = FileManager.default
+        if fm.fileExists(atPath: url.path) {
+            if let values = try? url.resourceValues(forKeys: [.ubiquitousItemDownloadingStatusKey]),
+               values.ubiquitousItemDownloadingStatus == .notDownloaded {
+                return .pendingDownload
+            }
+            return .materialized
+        }
+        let placeholder = url.deletingLastPathComponent()
+            .appendingPathComponent("." + url.lastPathComponent + ".icloud")
+        if fm.fileExists(atPath: placeholder.path) {
+            return .pendingDownload
+        }
+        return .absent
+    }
+
+    /// Re-poll for the iCloud bytes; once they land, run the merge. Gives up
+    /// after `attemptsRemaining` tries (≈20s at the 1s interval below) — at
+    /// that point the user has presumably gone offline, and we leave the
+    /// local file untouched so they can disable + re-enable to retry.
+    private func scheduleDeferredMerge(local: URL, iCloud: URL, attemptsRemaining: Int) {
+        guard attemptsRemaining > 0 else {
+            log.info("Deferred merge gave up — iCloud copy never materialized")
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            guard let self else { return }
+            switch self.iCloudPresence(at: iCloud) {
+            case .materialized:
+                self.mergeLocalIntoICloud(local: local, iCloud: iCloud)
+                // Republish so the UI shows the merged set without waiting
+                // for the file watcher's debounce to fire.
+                self.load()
+            case .pendingDownload:
+                self.scheduleDeferredMerge(local: local, iCloud: iCloud, attemptsRemaining: attemptsRemaining - 1)
+            case .absent:
+                // Surprise: iCloud lost the file between the initial check
+                // and now. Fall back to plain migration.
+                self.copyForMigration(from: local, to: iCloud)
+                self.load()
+            }
+        }
+    }
+
+    /// Union-by-ID merge of the local presets file into iCloud's. iCloud wins
+    /// on ID collisions (treated as the canonical shared library), local-only
+    /// presets are appended. Name collisions on the local side get a " 2",
+    /// " 3", … suffix matching `uniqueName(based:)` so two Macs that both
+    /// named a preset "Bass Boost" end up as "Bass Boost" + "Bass Boost 2".
+    /// Flat is never copied — it's regenerated locally by `ensureFlatPresent`.
+    private func mergeLocalIntoICloud(local: URL, iCloud: URL) {
+        let coordinator = NSFileCoordinator(filePresenter: nil)
+        var coordError: NSError?
+        var localData: Data?
+        var cloudData: Data?
+        coordinator.coordinate(
+            readingItemAt: local, options: .withoutChanges,
+            readingItemAt: iCloud, options: .withoutChanges,
+            error: &coordError
+        ) { localURL, cloudURL in
+            localData = try? Data(contentsOf: localURL)
+            cloudData = try? Data(contentsOf: cloudURL)
+        }
+        if let coordError {
+            log.error("Merge coordinator (read) failed: \(String(describing: coordError))")
+            return
+        }
+        let decoder = JSONDecoder()
+        // If iCloud's bytes are unreadable, don't risk replacing them with
+        // local-only content — bail out and leave both files as they are.
+        guard let cloudData,
+              let cloudPresets = try? decoder.decode([EQPreset].self, from: cloudData) else {
+            log.error("Merge: iCloud presets.json unreadable; skipping merge")
+            return
+        }
+        let localPresets: [EQPreset] = localData
+            .flatMap { try? decoder.decode([EQPreset].self, from: $0) } ?? []
+
+        var merged = cloudPresets
+        var existingIDs = Set(merged.map(\.id))
+        var existingNames = Set(merged.map(\.name))
+        var added = 0
+        var renamed = 0
+
+        for var preset in localPresets {
+            if preset.id == EQPreset.flatID { continue }
+            if existingIDs.contains(preset.id) { continue }
+            if existingNames.contains(preset.name) {
+                let base = preset.name
+                var n = 2
+                while existingNames.contains("\(base) \(n)") { n += 1 }
+                preset.name = "\(base) \(n)"
+                renamed += 1
+            }
+            existingIDs.insert(preset.id)
+            existingNames.insert(preset.name)
+            merged.append(preset)
+            added += 1
+        }
+
+        guard added > 0 else {
+            log.info("Initial sync merge: nothing local to add to iCloud")
+            return
+        }
+
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let data = try encoder.encode(merged)
+            var writeCoordError: NSError?
+            var writeError: Error?
+            coordinator.coordinate(
+                writingItemAt: iCloud, options: .forReplacing, error: &writeCoordError
+            ) { url in
+                do { try data.write(to: url, options: .atomic) }
+                catch { writeError = error }
+            }
+            if let writeCoordError {
+                log.error("Merge coordinator (write) failed: \(String(describing: writeCoordError))")
+                return
+            }
+            if let writeError {
+                log.error("Merge write failed: \(String(describing: writeError))")
+                return
+            }
+            log.info("Initial sync merge: added \(added) local preset(s) to iCloud (\(renamed) renamed for name collision)")
+        } catch {
+            log.error("Failed to encode merged presets: \(String(describing: error))")
         }
     }
 
