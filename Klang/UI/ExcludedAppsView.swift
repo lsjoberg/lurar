@@ -14,6 +14,7 @@ struct ExcludedAppsView: View {
     /// is open, so newly launched apps appear without a manual reload.
     @State private var runningApps: [AudioProcessInfo.App] = []
     @State private var processListListener: AudioProcessListChangeListener?
+    @State private var filter: String = ""
 
     /// Union of running apps and apps that are excluded but not currently
     /// running — the latter still need to be visible so the user can remove
@@ -40,7 +41,18 @@ struct ExcludedAppsView: View {
             }
             .sorted { $0.displayName.localizedCompare($1.displayName) == .orderedAscending }
         result.append(contentsOf: orphans)
-        return result
+        return applyFilter(result)
+    }
+
+    /// Free-text filter over both display name and bundle ID — so `chrome`
+    /// matches Google Chrome and `com.spotify` matches Spotify.
+    private func applyFilter(_ all: [Row]) -> [Row] {
+        let needle = filter.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !needle.isEmpty else { return all }
+        return all.filter { row in
+            row.displayName.localizedCaseInsensitiveContains(needle)
+                || row.bundleID.localizedCaseInsensitiveContains(needle)
+        }
     }
 
     var body: some View {
@@ -66,39 +78,67 @@ struct ExcludedAppsView: View {
     // MARK: - Sections
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 10) {
             Text("Excluded Apps").font(.title2.weight(.semibold))
             Text("Audio from these apps bypasses Klang and plays directly through your output device. Useful for voice/video calls and apps that ship their own audio processing.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            searchField
         }
         .padding(16)
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField("Filter by app name or bundle ID", text: $filter)
+                .textFieldStyle(.roundedBorder)
+            if !filter.isEmpty {
+                Button {
+                    filter = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Clear filter")
+            }
+        }
     }
 
     private var list: some View {
         ScrollView {
             LazyVStack(spacing: 0) {
-                if rows.isEmpty {
-                    Text("No audio-producing apps detected. Start playback in an app, or use \u{201C}Add app\u{2026}\u{201D} below.")
+                let visibleRows = rows
+                if visibleRows.isEmpty {
+                    Text(emptyStateMessage)
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(16)
                 } else {
-                    ForEach(Array(rows.enumerated()), id: \.element.bundleID) { index, row in
+                    ForEach(Array(visibleRows.enumerated()), id: \.element.bundleID) { index, row in
                         AppRow(
                             row: row,
                             isExcluded: store.contains(row.bundleID),
                             onToggle: { store.toggle(row.bundleID) }
                         )
-                        if index < rows.count - 1 {
+                        if index < visibleRows.count - 1 {
                             Divider().padding(.leading, 56)
                         }
                     }
                 }
             }
         }
+    }
+
+    private var emptyStateMessage: String {
+        if !filter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "No apps match \u{201C}\(filter)\u{201D}."
+        }
+        return "No audio-producing apps detected. Start playback in an app, or use \u{201C}Add app\u{2026}\u{201D} below."
     }
 
     private var footer: some View {
