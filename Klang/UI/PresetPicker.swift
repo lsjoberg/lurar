@@ -62,6 +62,12 @@ struct FixedWidthPopUp: NSViewRepresentable {
         button.controlSize = .regular
         button.target = context.coordinator
         button.action = #selector(Coordinator.selectionChanged(_:))
+        // NSPopUpButton.addItem(withTitle:) silently drops items whose title
+        // already exists in the menu (documented dedup). We populate via
+        // menu.addItem directly to keep duplicate-name presets clickable, which
+        // also means we own item enablement instead of leaning on the
+        // autoenables-via-validateMenuItem heuristic.
+        button.autoenablesItems = false
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setContentHuggingPriority(.defaultLow, for: .horizontal)
         button.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
@@ -80,14 +86,17 @@ struct FixedWidthPopUp: NSViewRepresentable {
         if signature != existing {
             button.removeAllItems()
             for item in items {
-                button.addItem(withTitle: item.title)
-                button.lastItem?.representedObject = item.id
+                let menuItem = NSMenuItem(title: item.title, action: nil, keyEquivalent: "")
+                menuItem.representedObject = item.id
+                menuItem.isEnabled = true
+                button.menu?.addItem(menuItem)
             }
             if !actions.isEmpty {
                 button.menu?.addItem(.separator())
                 for action in actions {
                     let menuItem = NSMenuItem(title: action.title, action: nil, keyEquivalent: "")
                     menuItem.representedObject = action
+                    menuItem.isEnabled = true
                     button.menu?.addItem(menuItem)
                 }
             }
