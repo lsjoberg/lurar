@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.1.5](https://github.com/lsjoberg/klang/compare/v0.1.4...v0.1.5) (2026-05-17)
+
+
+### Features
+
+* auto-check permission and start engine on launch ([cc662b5](https://github.com/lsjoberg/klang/commit/cc662b575b36bef2cbcaa3959a86ff93c1e9f83c))
+* **docs:** add waveform-in-circle favicon ([542b693](https://github.com/lsjoberg/klang/commit/542b69349122010c198b46fe4c136b8709125e5e))
+* **docs:** restructure landing page to sell current features ([964980d](https://github.com/lsjoberg/klang/commit/964980d0017214d229fae53f5f923691cfb1fa95))
+* **menu:** group preset actions under the picker; icon-only bypass ([f22525c](https://github.com/lsjoberg/klang/commit/f22525c33348a192ca35f54ba66a41dadc88fff1))
+
+
+### Bug Fixes
+
+* **audio:** hide Klang's own aggregate from the output picker ([3a37d95](https://github.com/lsjoberg/klang/commit/3a37d95fb03ac10d20e34097efbfe8d1480722f5))
+* **docs:** stop hero &lt;picture&gt; from 404-ing in dark mode ([502554a](https://github.com/lsjoberg/klang/commit/502554ac76c0273741c04576b1d543fe795d4a5d))
+* **menu:** surface remaining matches and clarify suggestion banner ([ba98011](https://github.com/lsjoberg/klang/commit/ba980110237da26f73c2a5763d79218350096e74))
+* **updater:** skip Sparkle auto-start when SUPublicEDKey is empty ([093db92](https://github.com/lsjoberg/klang/commit/093db9234b86a1773dde4489a0e6facbe803bfe4))
+
 ## [0.1.4](https://github.com/lsjoberg/klang/compare/v0.1.3...v0.1.4) (2026-05-17)
 
 
