@@ -37,6 +37,8 @@ private struct GeneralSettingsTab: View {
 
     @State private var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled
 
+    @AppStorage("startEngineOnLaunch") private var startEngineOnLaunch: Bool = true
+
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 6) {
@@ -48,6 +50,17 @@ private struct GeneralSettingsTab: View {
                 Text("Klang launches automatically when you sign in.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Start engine when Klang launches", isOn: $startEngineOnLaunch)
+                    .toggleStyle(.switch)
+                Text("When Klang has audio-capture permission, the engine starts automatically on launch. Turn this off if you'd rather start it manually from the menu bar.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Divider()

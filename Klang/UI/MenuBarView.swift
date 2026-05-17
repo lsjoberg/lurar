@@ -47,7 +47,6 @@ struct MenuBarView: View {
                 noMatchesBanner(deviceName: deviceName)
             }
 
-            engineRow
             presetPicker
             outputPicker
             statusRow
@@ -91,6 +90,16 @@ struct MenuBarView: View {
                 .buttonStyle(.borderless)
                 .keyboardShortcut(",", modifiers: [.command])
                 .help("Settings (⌘,)")
+
+                Toggle("Engine", isOn: Binding(
+                    get: { engine.isRunning },
+                    set: { newValue in
+                        if newValue { startEngine() } else { engine.stop() }
+                    }
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .help("Tear down the audio tap entirely. To compare with the EQ flat, hold Bypass instead.")
 
                 Spacer()
 
@@ -270,18 +279,6 @@ struct MenuBarView: View {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(Color.secondary.opacity(0.08))
         )
-    }
-
-    private var engineRow: some View {
-        Toggle(isOn: Binding(
-            get: { engine.isRunning },
-            set: { newValue in
-                if newValue { startEngine() } else { engine.stop() }
-            }
-        )) {
-            Text("Engine")
-        }
-        .toggleStyle(.switch)
     }
 
     /// Press-and-hold "Bypass" / "Bypassing…" button. Wraps a real

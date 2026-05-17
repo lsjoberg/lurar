@@ -24,6 +24,7 @@ struct OnboardingPermissionView: View {
     enum Mode {
         case initial
         case denied
+        case success
     }
 
     @ObservedObject var engine: EQEngine
@@ -54,6 +55,9 @@ struct OnboardingPermissionView: View {
                 deniedExplanation
                 reassurance
                 deniedInstruction
+            case .success:
+                successExplanation
+                reassurance
             }
             Spacer(minLength: 0)
             buttons
@@ -61,30 +65,68 @@ struct OnboardingPermissionView: View {
         .padding(28)
         .frame(width: 480)
         .onAppear {
+            // Flip to a regular dock app while this window is on screen so
+            // Cmd+Tab can switch back to Klang after the user has bounced to
+            // System Settings. We restore the menu-bar-only accessory policy
+            // in onDisappear — LSUIElement in Info.plist is the static
+            // default; setActivationPolicy is the runtime override.
+            NSApp.setActivationPolicy(.regular)
+            NSApp.activate(ignoringOtherApps: true)
             // Pick the mode that matches the actual TCC state right now.
             // .authorized shouldn't reach this window (MenuBarView only
             // opens it when not authorized) but treat it like initial for
             // safety — no UI harm done.
             mode = AudioCapturePermission.preflight() == .denied ? .denied : .initial
         }
+        .onDisappear {
+            NSApp.setActivationPolicy(.accessory)
+        }
     }
 
     private var header: some View {
         HStack(spacing: 12) {
-            Image(systemName: mode == .denied ? "exclamationmark.shield" : "waveform.path.ecg")
+            Image(systemName: headerIcon)
                 .font(.system(size: 32))
-                .foregroundStyle(mode == .denied ? Color.orange : Color.accentColor)
+                .foregroundStyle(headerTint)
             VStack(alignment: .leading, spacing: 2) {
-                Text(mode == .denied
-                     ? "Audio capture is blocked"
-                     : "Welcome to Klang")
+                Text(headerTitle)
                     .font(.title2.weight(.semibold))
-                Text(mode == .denied
-                     ? "macOS won't re-prompt — here's how to re-enable it."
-                     : "One quick permission and you're set.")
+                Text(headerSubtitle)
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
+        }
+    }
+
+    private var headerIcon: String {
+        switch mode {
+        case .initial: return "waveform.path.ecg"
+        case .denied: return "exclamationmark.shield"
+        case .success: return "checkmark.seal.fill"
+        }
+    }
+
+    private var headerTint: Color {
+        switch mode {
+        case .initial: return .accentColor
+        case .denied: return .orange
+        case .success: return .green
+        }
+    }
+
+    private var headerTitle: String {
+        switch mode {
+        case .initial: return "Welcome to Klang"
+        case .denied: return "Audio capture is blocked"
+        case .success: return "You're all set"
+        }
+    }
+
+    private var headerSubtitle: String {
+        switch mode {
+        case .initial: return "One quick permission and you're set."
+        case .denied: return "macOS won't re-prompt — here's how to re-enable it."
+        case .success: return "Klang is processing your audio now."
         }
     }
 
@@ -100,6 +142,14 @@ struct OnboardingPermissionView: View {
         Text("When you click Continue, macOS will show a permission dialog. Choose **Allow**.")
             .font(.callout)
             .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    // MARK: - Success mode
+
+    private var successExplanation: some View {
+        Text("Permission granted. Klang is now applying your selected preset to system audio. You can close this window — Klang lives in the menu bar and will start automatically next time.")
+            .font(.callout)
             .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -201,13 +251,21 @@ struct OnboardingPermissionView: View {
                 }
                 .keyboardShortcut(.defaultAction)
             }
+        case .success:
+            HStack {
+                Spacer()
+                Button("Done") { dismiss() }
+                    .keyboardShortcut(.defaultAction)
+            }
         }
     }
 
     /// Trigger the real OS prompt via ensureAuthorized(). If the user allows,
-    /// start the engine and dismiss. If the OS denies, flip the window into
-    /// denied mode in place rather than dismissing — otherwise the user is
-    /// stranded with the engine still off and no on-screen guidance.
+    /// start the engine and swap to the success state — the user gets a
+    /// moment to confirm visually that audio is flowing before they close.
+    /// If the OS denies, flip the window into denied mode in place rather
+    /// than dismissing — otherwise the user is stranded with the engine
+    /// still off and no on-screen guidance.
     private func continueFromInitial() {
         if AudioCapturePermission.ensureAuthorized() {
             if let output = deviceManager.selectedOutput {
@@ -215,7 +273,7 @@ struct OnboardingPermissionView: View {
             } else {
                 engine.reportStartFailure("Pick an output device first")
             }
-            dismiss()
+            mode = .success
         } else {
             mode = .denied
         }
@@ -234,7 +292,7 @@ struct OnboardingPermissionView: View {
             } else {
                 engine.reportStartFailure("Pick an output device first")
             }
-            dismiss()
+            mode = .success
         } else {
             retryFailed = true
         }

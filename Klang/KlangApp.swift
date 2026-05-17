@@ -2,6 +2,7 @@ import SwiftUI
 import OSLog
 
 private let bootLog = Logger(subsystem: "se.linus.klang", category: "Boot")
+private let launchLog = Logger(subsystem: "se.linus.klang", category: "Launch")
 
 @main
 struct KlangApp: App {
@@ -29,7 +30,7 @@ struct KlangApp: App {
                 devicePresetMemory: devicePresetMemory
             )
         } label: {
-            Image(systemName: engine.isRunning ? "waveform.circle.fill" : "waveform.circle")
+            MenuBarLabel(engine: engine, deviceManager: deviceManager)
         }
         .menuBarExtraStyle(.window)
         // Global ⌘, command so Settings opens regardless of which window is
@@ -115,5 +116,67 @@ struct KlangApp: App {
         // can hit a transient instance that SwiftUI discards before binding the
         // persistent storage, so anything we'd schedule from this scope would
         // run against a dead engine.
+    }
+}
+
+/// Always-rendered menu bar status icon. Doubles as the launch coordinator:
+/// the `.task` modifier fires once when the status item materializes at app
+/// launch (well before the user opens the popover), which is the earliest
+/// safe point to touch the persistent `@StateObject` storage — see the note
+/// in `KlangApp.init()` about transient wrappedValue accesses during init.
+private struct MenuBarLabel: View {
+    @ObservedObject var engine: EQEngine
+    @ObservedObject var deviceManager: DeviceManager
+
+    @Environment(\.openWindow) private var openWindow
+
+    /// `true` by default — the new flow assumes Klang "just runs" once it has
+    /// permission. Settings exposes a toggle for users who'd rather start it
+    /// manually from the menu bar.
+    @AppStorage("startEngineOnLaunch") private var startEngineOnLaunch: Bool = true
+
+    /// Set when the launch coordinator wanted to autostart but no output
+    /// device was selected yet (rare — DeviceManager.init picks one
+    /// synchronously, but the "no audio devices at all" case is real). Cleared
+    /// when a device shows up and we successfully start the engine.
+    @State private var pendingAutostart: Bool = false
+
+    /// One-shot gate for the launch coordinator. The label can rebuild when
+    /// `engine.isRunning` flips, so without this we'd rerun the coordinator
+    /// every toggle.
+    @State private var didRunLaunchCoordinator: Bool = false
+
+    var body: some View {
+        Image(systemName: engine.isRunning ? "waveform.circle.fill" : "waveform.circle")
+            .task {
+                guard !didRunLaunchCoordinator else { return }
+                didRunLaunchCoordinator = true
+                runLaunchCoordinator()
+            }
+            .onChange(of: deviceManager.selectedOutput) { _, newOut in
+                guard pendingAutostart, let out = newOut else { return }
+                pendingAutostart = false
+                engine.start(output: out)
+            }
+    }
+
+    private func runLaunchCoordinator() {
+        switch AudioCapturePermission.preflight() {
+        case .authorized:
+            guard startEngineOnLaunch else {
+                launchLog.info("Launch: authorized, but startEngineOnLaunch=false — staying idle")
+                return
+            }
+            if let out = deviceManager.selectedOutput {
+                launchLog.info("Launch: authorized + autostart on, starting engine on \(out.name, privacy: .public)")
+                engine.start(output: out)
+            } else {
+                launchLog.info("Launch: authorized + autostart on, but no output device yet — deferring")
+                pendingAutostart = true
+            }
+        case .unknown, .denied:
+            launchLog.info("Launch: permission missing, opening onboarding window")
+            openWindow(id: "onboarding")
+        }
     }
 }
