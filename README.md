@@ -176,6 +176,12 @@ Plus one repository variable:
 | --- | --- |
 | `SPARKLE_PUBLIC_ED_KEY` | The matching public key (printed by `generate_keys` alongside the private one; not secret). |
 
+### Required for release-please → release.yml chaining
+
+| Secret | Why |
+| --- | --- |
+| `RELEASE_PLEASE_TOKEN` | A fine-grained PAT (account → Settings → Developer settings → Personal access tokens → Fine-grained → scope to `lsjoberg/klang`, permissions `Contents: read & write` + `Pull requests: read & write`). Required because the default `GITHUB_TOKEN` cannot trigger downstream workflows — without this, release-please tags the release but `release.yml` never fires and the DMG never gets built. If the secret is absent, release-please falls back to `GITHUB_TOKEN` and you'll have to manually run `release.yml` against the new tag via *Actions → Release → Run workflow*. |
+
 ### Permanence of the Sparkle feed URL
 
 `SUFeedURL` in `Klang/Info.plist` (set to `https://lsjoberg.github.io/klang/appcast.xml`) is baked into every shipped binary. If the project later moves to a custom domain (e.g. `klang.app`) or gets renamed, **this URL must keep serving a current appcast forever** — GitHub Pages does not support real HTTP redirects, so installed clients with old binaries will look for the file at this exact location indefinitely. Either keep the repo + Pages alive at this path, or update both `SUFeedURL` *and* leave the old `appcast.xml` in place under the old domain.
