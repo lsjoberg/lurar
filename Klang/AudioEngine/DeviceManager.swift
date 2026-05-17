@@ -25,7 +25,14 @@ final class DeviceManager: ObservableObject {
 
     func refresh(initial: Bool) {
         let all = CoreAudioDevices.all()
-        let outs = all.filter(\.hasOutput).sorted { $0.name.localizedCompare($1.name) == .orderedAscending }
+        // Klang's own private aggregate (created in ProcessTapInput) is
+        // visible to its creating process even with isPrivate=true. Hide it
+        // from the picker — selecting it as the output would loop the tap
+        // back through itself.
+        let outs = all
+            .filter(\.hasOutput)
+            .filter { !$0.uid.hasPrefix("se.linus.klang.aggregate.") }
+            .sorted { $0.name.localizedCompare($1.name) == .orderedAscending }
         self.outputDevices = outs
 
         // Output policy: keep current selection if still around; otherwise prefer HIFIMAN,
