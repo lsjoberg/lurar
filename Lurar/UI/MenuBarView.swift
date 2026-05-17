@@ -140,9 +140,8 @@ struct MenuBarView: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            Image(systemName: "waveform.path.ecg")
-                .font(.title2)
-                .foregroundStyle(.tint)
+            LurarMark()
+                .frame(width: 26, height: 26)
             VStack(alignment: .leading, spacing: 0) {
                 Text("Lurar").font(.headline)
                 Text("Parametric EQ for headphones")

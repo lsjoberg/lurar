@@ -1,0 +1,22 @@
+<!-- Lurar mark — full color, smirk variant.
+     Primary turquoise switches with prefers-color-scheme; coral accent stays warm. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <style>
+    .primary        { fill: #0d7a6e; }
+    .primary-stroke { stroke: #0d7a6e; fill: none; }
+    .accent         { fill: #ff7a59; }
+    .accent-stroke  { stroke: #ff7a59; fill: none; }
+    @media (prefers-color-scheme: dark) {
+      .primary        { fill: #3dd6c2; }
+      .primary-stroke { stroke: #3dd6c2; fill: none; }
+      .accent         { fill: #ff9272; }
+      .accent-stroke  { stroke: #ff9272; fill: none; }
+    }
+  </style>
+  <path  class="primary-stroke" d="M 16 52 Q 50 10, 84 52" stroke-width="6.5" stroke-linecap="round"/>
+  <circle class="primary" cx="16" cy="60" r="13"/>
+  <circle class="primary" cx="84" cy="60" r="13"/>
+  <circle class="accent"  cx="40" cy="58" r="5"/>
+  <path  class="accent-stroke" d="M 54 60 Q 60 52, 66 60" stroke-width="5" stroke-linecap="round"/>
+  <path  class="accent-stroke" d="M 43 75 Q 50 77, 57 70" stroke-width="5" stroke-linecap="round"/>
+</svg>

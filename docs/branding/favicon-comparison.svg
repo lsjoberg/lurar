@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 720" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+  <rect width="1100" height="720" fill="#fafafa"/>
+
+  <text x="60" y="60" font-size="28" font-weight="700" fill="#0a0a0a" letter-spacing="-0.02em">Favicon — face vs silhouette</text>
+  <text x="60" y="86" font-size="14" fill="#666">Same SVG rendered at typical favicon target sizes. Top row keeps the face; bottom row drops it. The shipped favicon does the top row at ≥ 28 px and the bottom row below — automatically, via a CSS media query inside the SVG.</text>
+  <line x1="60" y1="108" x2="1040" y2="108" stroke="#0a0a0a" stroke-opacity="0.08"/>
+
+  <!-- Size labels -->
+  <g font-size="11" fill="#999" letter-spacing="0.08em" text-anchor="middle">
+    <text x="100" y="148">16 px</text>
+    <text x="190" y="148">24 px</text>
+    <text x="290" y="148">32 px</text>
+    <text x="410" y="148">48 px</text>
+    <text x="550" y="148">64 px</text>
+    <text x="720" y="148">96 px</text>
+    <text x="930" y="148">180 px</text>
+  </g>
+  <g font-size="10" fill="#bbb" letter-spacing="0.04em" text-anchor="middle">
+    <text x="100" y="162">low-DPI tab</text>
+    <text x="190" y="162">windows</text>
+    <text x="290" y="162">retina tab</text>
+    <text x="410" y="162">taskbar</text>
+    <text x="550" y="162">bookmark</text>
+    <text x="720" y="162">tile</text>
+    <text x="930" y="162">apple-touch</text>
+  </g>
+
+  <!-- ============================================================
+       ROW A — full face (what you get at ≥ 28 px viewports)
+       Cells: x-center = label x, y-center varies by size.
+       ============================================================ -->
+  <text x="60" y="200" font-size="11" font-weight="700" fill="#999" letter-spacing="0.16em">WITH FACE</text>
+  <g transform="translate(0, 220)">
+    <!-- 16 -->
+    <g transform="translate(92, 0)">
+      <rect width="16" height="16" rx="3.5" fill="#0d7a6e"/>
+      <path d="M 16 52 Q 50 10, 84 52" fill="none" stroke="#fafafa" stroke-width="6.5" stroke-linecap="round" transform="scale(0.16)"/>
+      <circle cx="2.56" cy="9.6" r="2.08" fill="#fafafa"/>
+      <circle cx="13.44" cy="9.6" r="2.08" fill="#fafafa"/>
+      <circle cx="6.4" cy="9.28" r="0.8" fill="#ff7a59"/>
+      <path d="M 8.64 9.6 Q 9.6 8.32, 10.56 9.6" fill="none" stroke="#ff7a59" stroke-width="0.56" stroke-linecap="round"/>
+      <path d="M 6.88 12 Q 8 12.32, 9.12 11.2" fill="none" stroke="#ff7a59" stroke-width="0.56" stroke-linecap="round"/>
+    </g>
+    <!-- 24 -->
+    <g transform="translate(178, 0)">
+      <rect width="24" height="24" rx="5.3" fill="#0d7a6e"/>
+      <path d="M 16 52 Q 50 10, 84 52" fill="none" stroke="#fafafa" stroke-width="6.5" stroke-linecap="round" transform="scale(0.24)"/>
+      <circle cx="3.84" cy="14.4" r="3.12" fill="#fafafa"/>
+      <circle cx="20.16" cy="14.4" r="3.12" fill="#fafafa"/>
+      <circle cx="9.6" cy="13.92" r="1.2" fill="#ff7a59"/>
+      <path d="M 12.96 14.4 Q 14.4 12.48, 15.84 14.4" fill="none" stroke="#ff7a59" stroke-width="0.84" stroke-linecap="round"/>
+      <path d="M 10.32 18 Q 12 18.48, 13.68 16.8" fill="none" stroke="#ff7a59" stroke-width="0.84" stroke-linecap="round"/>
+    </g>
+    <!-- 32 -->
+    <g transform="translate(274, 0)">
+      <rect width="32" height="32" rx="7" fill="#0d7a6e"/>
+      <g transform="scale(0.32)">
+        <path d="M 16 52 Q 50 10, 84 52" fill="none" stroke="#fafafa" stroke-width="6.5" stroke-linecap="round"/>
+        <circle cx="16" cy="60" r="13" fill="#fafafa"/>
+        <circle cx="84" cy="60" r="13" fill="#fafafa"/>
+        <circle cx="40" cy="58" r="5" fill="#ff7a59"/>
+        <path d="M 54 60 Q 60 52, 66 60" fill="none" stroke="#ff7a59" stroke-width="3.5" stroke-linecap="round"/>
+        <path d="M 43 75 Q 50 77, 57 70" fill="none" stroke="#ff7a59" stroke-width="3.5" stroke-linecap="round"/>
+      </g>
+    </g>
+    <!-- 48 -->
+    <g transform="translate(386, 0)">
+      <rect width="48" height="48" rx="10.5" fill="#0d7a6e"/>
+      <g transform="scale(0.48)">
+        <path d="M 16 52 Q 50 10, 84 52" fill="none" stroke="#fafafa" stroke-width="6.5" stroke-linecap="round"/>
+        <circle cx="16" cy="60" r="13" fill="#fafafa"/>
+        <circle cx="84" cy="60" r="13" fill="#fafafa"/>
+        <circle cx="40" cy="58" r="5" fill="#ff7a59"/>
+        <path d="M 54 60 Q 60 52, 66 60" fill="none" stroke="#ff7a59" stroke-width="3.5" stroke-linecap="round"/>
+        <path d="M 43 75 Q 50 77, 57 70" fill="none" stroke="#ff7a59" stroke-width="3.5" stroke-linecap="round"/>
+      </g>
+    </g>
+    <!-- 64 -->
+    <g transform="translate(518, 0)">
+      <rect width="64" height="64" rx="14" fill="#0d7a6e"/>
+      <g transform="scale(0.64)">
+        <path d="M 16 52 Q 50 10, 84 52" fill="none" stroke="#fafafa" stroke-width="6.5" stroke-linecap="round"/>
+        <circle cx="16" cy="60" r="13" fill="#fafafa"/>
+        <circle cx="84" cy="60" r="13" fill="#fafafa"/>
+        <circle cx="40" cy="58" r="5" fill="#ff7a59"/>
+        <path d="M 54 60 Q 60 52, 66 60" fill="none" stroke="#ff7a59" stroke-width="3.5" stroke-linecap="round"/>
+        <path d="M 43 75 Q 50 77, 57 70" fill="none" stroke="#ff7a59" stroke-width="3.5" stroke-linecap="round"/>
+      </g>
+    </g>
+    <!-- 96 -->
+    <g transform="translate(672, 0)">
+      <rect width="96" height="96" rx="21" fill="#0d7a6e"/>
+      <g transform="scale(0.96)">
+        <path d="M 16 52 Q 50 10, 84 52" fill="none" stroke="#fafafa" stroke-width="6.5" stroke-linecap="round"/>
+        <circle cx="16" cy="60" r="13" fill="#fafafa"/>
+        <circle cx="84" cy="60" r="13" fill="#fafafa"/>
+        <circle cx="40" cy="58" r="5" fill="#ff7a59"/>
+        <path d="M 54 60 Q 60 52, 66 60" fill="none" stroke="#ff7a59" stroke-width="3.5" stroke-linecap="round"/>
+        <path d="M 43 75 Q 50 77, 57 70" fill="none" stroke="#ff7a59" stroke-width="3.5" stroke-linecap="round"/>
+      </g>
+    </g>
+    <!-- 180 -->
+    <g transform="translate(840, 0)">
+      <rect width="180" height="180" rx="40" fill="#0d7a6e"/>
+      <g transform="scale(1.8)">
+        <path d="M 16 52 Q 50 10, 84 52" fill="none" stroke="#fafafa" stroke-width="6.5" stroke-linecap="round"/>
+        <circle cx="16" cy="60" r="13" fill="#fafafa"/>
+        <circle cx="84" cy="60" r="13" fill="#fafafa"/>
+        <circle cx="40" cy="58" r="5" fill="#ff7a59"/>
+        <path d="M 54 60 Q 60 52, 66 60" fill="none" stroke="#ff7a59" stroke-width="3.5" stroke-linecap="round"/>
+        <path d="M 43 75 Q 50 77, 57 70" fill="none" stroke="#ff7a59" stroke-width="3.5" stroke-linecap="round"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- ============================================================
+       ROW B — silhouette only (what gets rendered below 28 px)
+       ============================================================ -->
+  <text x="60" y="450" font-size="11" font-weight="700" fill="#999" letter-spacing="0.16em">SILHOUETTE</text>
+  <g transform="translate(0, 470)">
+    <g transform="translate(92, 0)">
+      <rect width="16" height="16" rx="3.5" fill="#0d7a6e"/>
+      <path d="M 16 52 Q 50 10, 84 52" fill="none" stroke="#fafafa" stroke-width="6.5" stroke-linecap="round" transform="scale(0.16)"/>
+      <circle cx="2.56" cy="9.6" r="2.08" fill="#fafafa"/>
+      <circle cx="13.44" cy="9.6" r="2.08" fill="#fafafa"/>
+    </g>
+    <g transform="translate(178, 0)">
+      <rect width="24" height="24" rx="5.3" fill="#0d7a6e"/>
+      <path d="M 16 52 Q 50 10, 84 52" fill="none" stroke="#fafafa" stroke-width="6.5" stroke-linecap="round" transform="scale(0.24)"/>
+      <circle cx="3.84" cy="14.4" r="3.12" fill="#fafafa"/>
+      <circle cx="20.16" cy="14.4" r="3.12" fill="#fafafa"/>
+    </g>
+    <g transform="translate(274, 0)">
+      <rect width="32" height="32" rx="7" fill="#0d7a6e"/>
+      <g transform="scale(0.32)">
+        <path d="M 16 52 Q 50 10, 84 52" fill="none" stroke="#fafafa" stroke-width="6.5" stroke-linecap="round"/>
+        <circle cx="16" cy="60" r="13" fill="#fafafa"/>
+        <circle cx="84" cy="60" r="13" fill="#fafafa"/>
+      </g>
+    </g>
+    <g transform="translate(386, 0)">
+      <rect width="48" height="48" rx="10.5" fill="#0d7a6e"/>
+      <g transform="scale(0.48)">
+        <path d="M 16 52 Q 50 10, 84 52" fill="none" stroke="#fafafa" stroke-width="6.5" stroke-linecap="round"/>
+        <circle cx="16" cy="60" r="13" fill="#fafafa"/>
+        <circle cx="84" cy="60" r="13" fill="#fafafa"/>
+      </g>
+    </g>
+    <g transform="translate(518, 0)">
+      <rect width="64" height="64" rx="14" fill="#0d7a6e"/>
+      <g transform="scale(0.64)">
+        <path d="M 16 52 Q 50 10, 84 52" fill="none" stroke="#fafafa" stroke-width="6.5" stroke-linecap="round"/>
+        <circle cx="16" cy="60" r="13" fill="#fafafa"/>
+        <circle cx="84" cy="60" r="13" fill="#fafafa"/>
+      </g>
+    </g>
+    <g transform="translate(672, 0)">
+      <rect width="96" height="96" rx="21" fill="#0d7a6e"/>
+      <g transform="scale(0.96)">
+        <path d="M 16 52 Q 50 10, 84 52" fill="none" stroke="#fafafa" stroke-width="6.5" stroke-linecap="round"/>
+        <circle cx="16" cy="60" r="13" fill="#fafafa"/>
+        <circle cx="84" cy="60" r="13" fill="#fafafa"/>
+      </g>
+    </g>
+    <g transform="translate(840, 0)">
+      <rect width="180" height="180" rx="40" fill="#0d7a6e"/>
+      <g transform="scale(1.8)">
+        <path d="M 16 52 Q 50 10, 84 52" fill="none" stroke="#fafafa" stroke-width="6.5" stroke-linecap="round"/>
+        <circle cx="16" cy="60" r="13" fill="#fafafa"/>
+        <circle cx="84" cy="60" r="13" fill="#fafafa"/>
+      </g>
+    </g>
+  </g>
+
+  <text x="60" y="690" font-size="12" fill="#666">The shipped favicon.svg uses the WITH FACE row at ≥ 28 px viewports and the SILHOUETTE row below, automatically, via @media (max-width). One file.</text>
+</svg>

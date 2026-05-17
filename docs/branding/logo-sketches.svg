@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1620" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+  <rect width="1000" height="1620" fill="#fafafa"/>
+
+  <!-- Title -->
+  <text x="60" y="60" font-size="28" font-weight="700" fill="#0a0a0a" letter-spacing="-0.02em">Lurar — logo sketches</text>
+  <text x="60" y="86" font-size="14" fill="#666">Four directions on the headphones + “to fool” wordplay. Turquoise primary kept; coral introduced for the playful side.</text>
+  <line x1="60" y1="108" x2="940" y2="108" stroke="#0a0a0a" stroke-opacity="0.08"/>
+
+  <!-- =========================================================
+       ROW 1 — WINK
+       ========================================================= -->
+  <g transform="translate(0, 150)">
+    <text x="60" y="0" font-size="11" font-weight="700" fill="#999" letter-spacing="0.16em">01 — WINK</text>
+    <text x="60" y="22" font-size="20" font-weight="700" fill="#0a0a0a" letter-spacing="-0.01em">A face peeks through</text>
+
+    <!-- Light stage -->
+    <rect x="60" y="40" width="200" height="200" rx="20" fill="#ffffff" stroke="#0a0a0a" stroke-opacity="0.08"/>
+    <g transform="translate(90, 70) scale(1.4)">
+      <path d="M 20 60 Q 50 14, 80 60" fill="none" stroke="#0d7a6e" stroke-width="6.5" stroke-linecap="round"/>
+      <circle cx="20" cy="66" r="13" fill="#0d7a6e"/>
+      <circle cx="80" cy="66" r="13" fill="#0d7a6e"/>
+      <circle cx="20" cy="66" r="3" fill="#ff7a59"/>
+      <path d="M 74 66 Q 80 62, 86 66" fill="none" stroke="#ff7a59" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+
+    <!-- Dark stage -->
+    <rect x="280" y="40" width="200" height="200" rx="20" fill="#0a0a0a"/>
+    <g transform="translate(310, 70) scale(1.4)">
+      <path d="M 20 60 Q 50 14, 80 60" fill="none" stroke="#3dd6c2" stroke-width="6.5" stroke-linecap="round"/>
+      <circle cx="20" cy="66" r="13" fill="#3dd6c2"/>
+      <circle cx="80" cy="66" r="13" fill="#3dd6c2"/>
+      <circle cx="20" cy="66" r="3" fill="#ff9272"/>
+      <path d="M 74 66 Q 80 62, 86 66" fill="none" stroke="#ff9272" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+
+    <!-- Lockup -->
+    <rect x="500" y="40" width="380" height="200" rx="20" fill="#ffffff" stroke="#0a0a0a" stroke-opacity="0.08"/>
+    <g transform="translate(522, 100) scale(0.85)">
+      <path d="M 20 60 Q 50 14, 80 60" fill="none" stroke="#0d7a6e" stroke-width="6.5" stroke-linecap="round"/>
+      <circle cx="20" cy="66" r="13" fill="#0d7a6e"/>
+      <circle cx="80" cy="66" r="13" fill="#0d7a6e"/>
+      <circle cx="20" cy="66" r="3" fill="#ff7a59"/>
+      <path d="M 74 66 Q 80 62, 86 66" fill="none" stroke="#ff7a59" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    <text x="638" y="166" font-size="62" font-weight="700" fill="#0a0a0a" letter-spacing="-0.03em">lurar</text>
+
+    <text x="60" y="270" font-size="13" fill="#666">Front-view headphones where the cones double as eyes — one open, one mid-wink. The trick is in plain sight: looks like cans first, then the face surfaces. Most personality-forward of the four.</text>
+  </g>
+
+  <!-- =========================================================
+       ROW 2 — LURE
+       ========================================================= -->
+  <g transform="translate(0, 490)">
+    <text x="60" y="0" font-size="11" font-weight="700" fill="#999" letter-spacing="0.16em">02 — LURE</text>
+    <text x="60" y="22" font-size="20" font-weight="700" fill="#0a0a0a" letter-spacing="-0.01em">The cable curls into a hook</text>
+
+    <rect x="60" y="40" width="200" height="200" rx="20" fill="#ffffff" stroke="#0a0a0a" stroke-opacity="0.08"/>
+    <g transform="translate(90, 70) scale(1.4)">
+      <circle cx="30" cy="58" r="13" fill="#0d7a6e"/>
+      <circle cx="70" cy="58" r="13" fill="#0d7a6e"/>
+      <path d="M 26 50 Q 50 14, 74 50" fill="none" stroke="#0d7a6e" stroke-width="6.5" stroke-linecap="round"/>
+      <path d="M 30 71 Q 30 88, 44 90 Q 56 90, 56 78 Q 56 68, 46 70" fill="none" stroke="#ff7a59" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <rect x="280" y="40" width="200" height="200" rx="20" fill="#0a0a0a"/>
+    <g transform="translate(310, 70) scale(1.4)">
+      <circle cx="30" cy="58" r="13" fill="#3dd6c2"/>
+      <circle cx="70" cy="58" r="13" fill="#3dd6c2"/>
+      <path d="M 26 50 Q 50 14, 74 50" fill="none" stroke="#3dd6c2" stroke-width="6.5" stroke-linecap="round"/>
+      <path d="M 30 71 Q 30 88, 44 90 Q 56 90, 56 78 Q 56 68, 46 70" fill="none" stroke="#ff9272" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <rect x="500" y="40" width="380" height="200" rx="20" fill="#ffffff" stroke="#0a0a0a" stroke-opacity="0.08"/>
+    <g transform="translate(522, 95) scale(0.85)">
+      <circle cx="30" cy="58" r="13" fill="#0d7a6e"/>
+      <circle cx="70" cy="58" r="13" fill="#0d7a6e"/>
+      <path d="M 26 50 Q 50 14, 74 50" fill="none" stroke="#0d7a6e" stroke-width="6.5" stroke-linecap="round"/>
+      <path d="M 30 71 Q 30 88, 44 90 Q 56 90, 56 78 Q 56 68, 46 70" fill="none" stroke="#ff7a59" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="638" y="166" font-size="62" font-weight="700" fill="#0a0a0a" letter-spacing="-0.03em">lurar</text>
+
+    <text x="60" y="270" font-size="13" fill="#666">A standard pair of cans, but the cable trails into a fishing-hook curl — “lurar” = to lure. Quiet wordplay; the meaning lives in the cable, not the cans. Reads as headphones first, joke second.</text>
+  </g>
+
+  <!-- =========================================================
+       ROW 3 — MASK
+       ========================================================= -->
+  <g transform="translate(0, 830)">
+    <text x="60" y="0" font-size="11" font-weight="700" fill="#999" letter-spacing="0.16em">03 — MASK</text>
+    <text x="60" y="22" font-size="20" font-weight="700" fill="#0a0a0a" letter-spacing="-0.01em">Bandit under the band</text>
+
+    <rect x="60" y="40" width="200" height="200" rx="20" fill="#ffffff" stroke="#0a0a0a" stroke-opacity="0.08"/>
+    <g transform="translate(90, 80) scale(1.4)">
+      <path d="M 18 35 Q 50 5, 82 35" fill="none" stroke="#0d7a6e" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="18" cy="40" r="9" fill="#0d7a6e"/>
+      <circle cx="82" cy="40" r="9" fill="#0d7a6e"/>
+      <path d="M 14 56 Q 14 46, 28 46 L 72 46 Q 86 46, 86 56 Q 86 74, 70 74 Q 58 70, 50 70 Q 42 70, 30 74 Q 14 74, 14 56 Z" fill="#0d7a6e"/>
+      <ellipse cx="32" cy="58" rx="7" ry="5" fill="#ffffff"/>
+      <ellipse cx="68" cy="58" rx="7" ry="5" fill="#ffffff"/>
+    </g>
+
+    <rect x="280" y="40" width="200" height="200" rx="20" fill="#0a0a0a"/>
+    <g transform="translate(310, 80) scale(1.4)">
+      <path d="M 18 35 Q 50 5, 82 35" fill="none" stroke="#3dd6c2" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="18" cy="40" r="9" fill="#3dd6c2"/>
+      <circle cx="82" cy="40" r="9" fill="#3dd6c2"/>
+      <path d="M 14 56 Q 14 46, 28 46 L 72 46 Q 86 46, 86 56 Q 86 74, 70 74 Q 58 70, 50 70 Q 42 70, 30 74 Q 14 74, 14 56 Z" fill="#3dd6c2"/>
+      <ellipse cx="32" cy="58" rx="7" ry="5" fill="#0a0a0a"/>
+      <ellipse cx="68" cy="58" rx="7" ry="5" fill="#0a0a0a"/>
+    </g>
+
+    <rect x="500" y="40" width="380" height="200" rx="20" fill="#ffffff" stroke="#0a0a0a" stroke-opacity="0.08"/>
+    <g transform="translate(522, 110) scale(0.85)">
+      <path d="M 18 35 Q 50 5, 82 35" fill="none" stroke="#0d7a6e" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="18" cy="40" r="9" fill="#0d7a6e"/>
+      <circle cx="82" cy="40" r="9" fill="#0d7a6e"/>
+      <path d="M 14 56 Q 14 46, 28 46 L 72 46 Q 86 46, 86 56 Q 86 74, 70 74 Q 58 70, 50 70 Q 42 70, 30 74 Q 14 74, 14 56 Z" fill="#0d7a6e"/>
+      <ellipse cx="32" cy="58" rx="7" ry="5" fill="#ffffff"/>
+      <ellipse cx="68" cy="58" rx="7" ry="5" fill="#ffffff"/>
+    </g>
+    <text x="638" y="166" font-size="62" font-weight="700" fill="#0a0a0a" letter-spacing="-0.03em">lurar</text>
+
+    <text x="60" y="270" font-size="13" fill="#666">A small domino mask sits under a headband. Most “trickster” of the set — leans hardest on the deception meaning. Risk: more bandit than audio, and could read corporate-spy if dropped on its own without the band.</text>
+  </g>
+
+  <!-- =========================================================
+       ROW 4 — UMLAUT
+       ========================================================= -->
+  <g transform="translate(0, 1170)">
+    <text x="60" y="0" font-size="11" font-weight="700" fill="#999" letter-spacing="0.16em">04 — UMLAUT</text>
+    <text x="60" y="22" font-size="20" font-weight="700" fill="#0a0a0a" letter-spacing="-0.01em">Wordmark does the work</text>
+
+    <rect x="60" y="40" width="200" height="200" rx="20" fill="#ffffff" stroke="#0a0a0a" stroke-opacity="0.08"/>
+    <!-- Icon: two stout earcups + slim arched bridge, deliberately umlaut-shaped -->
+    <g transform="translate(90, 70) scale(1.4)">
+      <path d="M 24 48 Q 50 28, 76 48" fill="none" stroke="#0d7a6e" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="24" cy="58" r="14" fill="#0d7a6e"/>
+      <circle cx="76" cy="58" r="14" fill="#0d7a6e"/>
+    </g>
+
+    <rect x="280" y="40" width="200" height="200" rx="20" fill="#0a0a0a"/>
+    <g transform="translate(310, 70) scale(1.4)">
+      <path d="M 24 48 Q 50 28, 76 48" fill="none" stroke="#3dd6c2" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="24" cy="58" r="14" fill="#3dd6c2"/>
+      <circle cx="76" cy="58" r="14" fill="#3dd6c2"/>
+    </g>
+
+    <!-- Lockup: wordmark with mini headphones sitting over the 'u' like an umlaut -->
+    <rect x="500" y="40" width="380" height="200" rx="20" fill="#ffffff" stroke="#0a0a0a" stroke-opacity="0.08"/>
+    <text x="540" y="166" font-size="62" font-weight="700" fill="#0a0a0a" letter-spacing="-0.03em">l</text>
+    <text x="563" y="166" font-size="62" font-weight="700" fill="#0a0a0a" letter-spacing="-0.03em">u</text>
+    <text x="601" y="166" font-size="62" font-weight="700" fill="#0a0a0a" letter-spacing="-0.03em">rar</text>
+    <!-- mini headphone above the u, centered ~x=581 -->
+    <g transform="translate(564, 95) scale(0.34)">
+      <path d="M 24 48 Q 50 28, 76 48" fill="none" stroke="#0d7a6e" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="24" cy="58" r="14" fill="#0d7a6e"/>
+      <circle cx="76" cy="58" r="14" fill="#0d7a6e"/>
+    </g>
+
+    <text x="60" y="270" font-size="13" fill="#666">Cleanest icon — a minimal headphone glyph shaped like an umlaut — with the wordplay living in the wordmark, where the icon perches over the “u” as a Swedish ö-style mark. Most flexible at small sizes (favicon, dock icon) and most overtly Nordic.</text>
+  </g>
+
+  <!-- Footer / palette -->
+  <g transform="translate(60, 1530)">
+    <text x="0" y="0" font-size="11" font-weight="700" fill="#999" letter-spacing="0.16em">PALETTE</text>
+    <rect x="0" y="12" width="22" height="22" rx="4" fill="#0d7a6e"/>
+    <text x="30" y="28" font-size="12" fill="#0a0a0a">#0d7a6e &#160;primary (light)</text>
+    <rect x="200" y="12" width="22" height="22" rx="4" fill="#3dd6c2"/>
+    <text x="230" y="28" font-size="12" fill="#0a0a0a">#3dd6c2 &#160;primary (dark)</text>
+    <rect x="400" y="12" width="22" height="22" rx="4" fill="#ff7a59"/>
+    <text x="430" y="28" font-size="12" fill="#0a0a0a">#ff7a59 &#160;accent (new)</text>
+    <rect x="600" y="12" width="22" height="22" rx="4" fill="#0a0a0a"/>
+    <text x="630" y="28" font-size="12" fill="#0a0a0a">#0a0a0a &#160;ink</text>
+  </g>
+</svg>

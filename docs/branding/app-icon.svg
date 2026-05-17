@@ -1,0 +1,25 @@
+<!-- Lurar app icon — macOS-style rounded square master.
+     1024×1024 master; export to .icns / @1x..@3x as needed.
+     Rounded-rect approximation of Apple's squircle (rx ≈ 22.4%). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="gloss" cx="50%" cy="0%" r="75%">
+      <stop offset="0%"  stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="70%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1024" height="1024" rx="230" fill="#0d7a6e"/>
+  <rect width="1024" height="1024" rx="230" fill="url(#gloss)"/>
+
+  <!-- Mark — knockout white headphones + coral face features.
+       Scaled ×7 from the 100×100 master, centered. -->
+  <g transform="translate(162, 158) scale(7)">
+    <path d="M 16 52 Q 50 10, 84 52" fill="none" stroke="#fafafa" stroke-width="6.5" stroke-linecap="round"/>
+    <circle cx="16" cy="60" r="13" fill="#fafafa"/>
+    <circle cx="84" cy="60" r="13" fill="#fafafa"/>
+    <circle cx="40" cy="58" r="5" fill="#ff7a59"/>
+    <path d="M 54 60 Q 60 52, 66 60" fill="none" stroke="#ff7a59" stroke-width="5" stroke-linecap="round"/>
+    <path d="M 43 75 Q 50 77, 57 70" fill="none" stroke="#ff7a59" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

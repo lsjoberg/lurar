@@ -85,9 +85,7 @@ struct OnboardingPermissionView: View {
 
     private var header: some View {
         HStack(spacing: 12) {
-            Image(systemName: headerIcon)
-                .font(.system(size: 32))
-                .foregroundStyle(headerTint)
+            headerImage
             VStack(alignment: .leading, spacing: 2) {
                 Text(headerTitle)
                     .font(.title2.weight(.semibold))
@@ -98,19 +96,20 @@ struct OnboardingPermissionView: View {
         }
     }
 
-    private var headerIcon: String {
+    @ViewBuilder
+    private var headerImage: some View {
         switch mode {
-        case .initial: return "waveform.path.ecg"
-        case .denied: return "exclamationmark.shield"
-        case .success: return "checkmark.seal.fill"
-        }
-    }
-
-    private var headerTint: Color {
-        switch mode {
-        case .initial: return .accentColor
-        case .denied: return .orange
-        case .success: return .green
+        case .initial:
+            LurarMark()
+                .frame(width: 36, height: 36)
+        case .denied:
+            Image(systemName: "exclamationmark.shield")
+                .font(.system(size: 32))
+                .foregroundStyle(.orange)
+        case .success:
+            Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 32))
+                .foregroundStyle(.green)
         }
     }
 

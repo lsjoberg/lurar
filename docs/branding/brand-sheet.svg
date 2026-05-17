@@ -1,0 +1,260 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 2380" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+  <defs>
+    <!-- Reusable mark in 100×100 — primary stroke/fill uses currentColor,
+         accent uses a CSS var fallback so wrappers can theme it. -->
+    <symbol id="mark" viewBox="0 0 100 100" overflow="visible">
+      <path d="M 16 52 Q 50 10, 84 52" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round"/>
+      <circle cx="16" cy="60" r="13" fill="currentColor"/>
+      <circle cx="84" cy="60" r="13" fill="currentColor"/>
+    </symbol>
+    <symbol id="mark-face" viewBox="0 0 100 100" overflow="visible">
+      <path d="M 16 52 Q 50 10, 84 52" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round"/>
+      <circle cx="16" cy="60" r="13" fill="currentColor"/>
+      <circle cx="84" cy="60" r="13" fill="currentColor"/>
+      <circle cx="40" cy="58" r="5" class="accent"/>
+      <path d="M 54 60 Q 60 52, 66 60" fill="none" class="accent-stroke" stroke-width="5" stroke-linecap="round"/>
+      <path d="M 43 75 Q 50 77, 57 70" fill="none" class="accent-stroke" stroke-width="5" stroke-linecap="round"/>
+    </symbol>
+    <radialGradient id="appBg" cx="50%" cy="0%" r="75%">
+      <stop offset="0%"  stop-color="#1a8c80" stop-opacity="1"/>
+      <stop offset="70%" stop-color="#0d7a6e" stop-opacity="1"/>
+    </radialGradient>
+    <style>
+      .accent        { fill: #ff7a59; }
+      .accent-stroke { stroke: #ff7a59; }
+      .label-num     { font-size: 11px; font-weight: 700; fill: #999; letter-spacing: 0.16em; }
+      .label-name    { font-size: 20px; font-weight: 700; fill: #0a0a0a; letter-spacing: -0.01em; }
+      .label-note    { font-size: 13px; fill: #666; }
+      .swatch-name   { font-size: 13px; font-weight: 700; fill: #0a0a0a; }
+      .swatch-hex    { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; fill: #0a0a0a; }
+      .swatch-use    { font-size: 11px; fill: #666; }
+    </style>
+  </defs>
+
+  <rect width="1100" height="2380" fill="#fafafa"/>
+
+  <!-- =========================================================
+       TITLE
+       ========================================================= -->
+  <text x="60" y="62" font-size="34" font-weight="700" fill="#0a0a0a" letter-spacing="-0.02em">Lurar — Brand</text>
+  <text x="60" y="90" font-size="14" fill="#666">Sketch-level brand system for the rebrand from Klang. Mark: headphone face, mid-wink, sly smirk. Primary turquoise, coral accent.</text>
+  <line x1="60" y1="118" x2="1040" y2="118" stroke="#0a0a0a" stroke-opacity="0.08"/>
+
+  <!-- =========================================================
+       01 — THE MARK
+       ========================================================= -->
+  <g transform="translate(0, 150)">
+    <text x="60" y="0" class="label-num">01 — THE MARK</text>
+    <text x="60" y="24" class="label-name">Headphone face, winking</text>
+
+    <!-- Light stage -->
+    <rect x="60" y="44" width="300" height="300" rx="24" fill="#ffffff" stroke="#0a0a0a" stroke-opacity="0.08"/>
+    <g color="#0d7a6e">
+      <use href="#mark-face" x="120" y="104" width="180" height="180"/>
+    </g>
+
+    <!-- Dark stage -->
+    <rect x="380" y="44" width="300" height="300" rx="24" fill="#0a0a0a"/>
+    <g color="#3dd6c2" style="--accent-warm:#ff9272">
+      <path d="M 16 52 Q 50 10, 84 52" fill="none" stroke="#3dd6c2" stroke-width="6.5" stroke-linecap="round" transform="translate(440, 104) scale(1.8)"/>
+      <g transform="translate(440, 104) scale(1.8)">
+        <circle cx="16" cy="60" r="13" fill="#3dd6c2"/>
+        <circle cx="84" cy="60" r="13" fill="#3dd6c2"/>
+        <circle cx="40" cy="58" r="5" fill="#ff9272"/>
+        <path d="M 54 60 Q 60 52, 66 60" fill="none" stroke="#ff9272" stroke-width="5" stroke-linecap="round"/>
+        <path d="M 43 75 Q 50 77, 57 70" fill="none" stroke="#ff9272" stroke-width="5" stroke-linecap="round"/>
+      </g>
+    </g>
+
+    <!-- Anatomy -->
+    <g transform="translate(720, 60)">
+      <text x="0" y="0" class="label-num">ANATOMY</text>
+      <g transform="translate(0, 24)">
+        <rect width="14" height="14" fill="#0d7a6e" rx="3"/>
+        <text x="24" y="12" class="label-note">Earcups + headband — turquoise primary</text>
+      </g>
+      <g transform="translate(0, 50)">
+        <rect width="14" height="14" fill="#ff7a59" rx="3"/>
+        <text x="24" y="12" class="label-note">Face features — coral accent</text>
+      </g>
+      <text x="0" y="100" class="label-num">CHARACTER</text>
+      <text x="0" y="124" class="label-note">• Wink reads as a closed-eye arc “︶”</text>
+      <text x="0" y="146" class="label-note">• Smirk lifts on the right — sly, knowing</text>
+      <text x="0" y="168" class="label-note">• Symmetric headband keeps it audio-first</text>
+      <text x="0" y="190" class="label-note">• Coral accents only for personality details</text>
+      <text x="0" y="234" class="label-num">MEANING</text>
+      <text x="0" y="258" class="label-note">“Lurar” = (slang) headphones, (verb) to fool.</text>
+      <text x="0" y="276" class="label-note">The mark holds both: cans on first read,</text>
+      <text x="0" y="294" class="label-note">a knowing face on second.</text>
+    </g>
+  </g>
+
+  <!-- =========================================================
+       02 — VARIANTS
+       ========================================================= -->
+  <g transform="translate(0, 520)">
+    <text x="60" y="0" class="label-num">02 — VARIANTS</text>
+    <text x="60" y="24" class="label-name">Same mark, four contexts</text>
+
+    <!-- Color (primary) -->
+    <rect x="60" y="44" width="220" height="220" rx="20" fill="#ffffff" stroke="#0a0a0a" stroke-opacity="0.08"/>
+    <g color="#0d7a6e">
+      <use href="#mark-face" x="100" y="84" width="140" height="140"/>
+    </g>
+    <text x="60" y="288" class="swatch-name">Color</text>
+    <text x="60" y="306" class="swatch-use">Default. Web, screens, marketing.</text>
+
+    <!-- Mono ink -->
+    <rect x="300" y="44" width="220" height="220" rx="20" fill="#ffffff" stroke="#0a0a0a" stroke-opacity="0.08"/>
+    <g color="#0a0a0a">
+      <use href="#mark" x="340" y="124" width="140" height="140"/>
+    </g>
+    <text x="300" y="288" class="swatch-name">Mono ink</text>
+    <text x="300" y="306" class="swatch-use">Print, embroidery, fax-safe.</text>
+
+    <!-- Knockout on dark -->
+    <rect x="540" y="44" width="220" height="220" rx="20" fill="#0a0a0a"/>
+    <g color="#fafafa">
+      <use href="#mark" x="580" y="124" width="140" height="140"/>
+    </g>
+    <text x="540" y="288" class="swatch-name">Knockout</text>
+    <text x="540" y="306" class="swatch-use">Photography, dark fills, merch.</text>
+
+    <!-- App icon -->
+    <rect x="780" y="44" width="220" height="220" rx="48" fill="url(#appBg)"/>
+    <g transform="translate(810, 100) scale(1.6)">
+      <path d="M 16 52 Q 50 10, 84 52" fill="none" stroke="#fafafa" stroke-width="6.5" stroke-linecap="round"/>
+      <circle cx="16" cy="60" r="13" fill="#fafafa"/>
+      <circle cx="84" cy="60" r="13" fill="#fafafa"/>
+      <circle cx="40" cy="58" r="5" fill="#ff7a59"/>
+      <path d="M 54 60 Q 60 52, 66 60" fill="none" stroke="#ff7a59" stroke-width="5" stroke-linecap="round"/>
+      <path d="M 43 75 Q 50 77, 57 70" fill="none" stroke="#ff7a59" stroke-width="5" stroke-linecap="round"/>
+    </g>
+    <text x="780" y="288" class="swatch-name">App icon</text>
+    <text x="780" y="306" class="swatch-use">macOS squircle, flat bg with soft top glow.</text>
+  </g>
+
+  <!-- =========================================================
+       03 — PALETTE
+       ========================================================= -->
+  <g transform="translate(0, 870)">
+    <text x="60" y="0" class="label-num">03 — PALETTE</text>
+    <text x="60" y="24" class="label-name">Cool primary, warm accent, neutral ink</text>
+
+    <!-- Primary light -->
+    <rect x="60" y="44" width="220" height="120" rx="12" fill="#0d7a6e"/>
+    <text x="60" y="180" class="swatch-name">Turquoise — primary</text>
+    <text x="60" y="198" class="swatch-hex">#0d7a6e</text>
+    <text x="60" y="216" class="swatch-use">Mark, links, accents on light surfaces.</text>
+
+    <!-- Primary dark -->
+    <rect x="300" y="44" width="220" height="120" rx="12" fill="#3dd6c2"/>
+    <text x="300" y="180" class="swatch-name">Turquoise — dark mode</text>
+    <text x="300" y="198" class="swatch-hex">#3dd6c2</text>
+    <text x="300" y="216" class="swatch-use">Same role, lightened for dark surfaces.</text>
+
+    <!-- Accent -->
+    <rect x="540" y="44" width="220" height="120" rx="12" fill="#ff7a59"/>
+    <text x="540" y="180" class="swatch-name">Coral — accent (new)</text>
+    <text x="540" y="198" class="swatch-hex">#ff7a59</text>
+    <text x="540" y="216" class="swatch-use">Personality only — face features, highlights. Never headlines or body text.</text>
+
+    <!-- Ink -->
+    <rect x="780" y="44" width="220" height="120" rx="12" fill="#0a0a0a"/>
+    <text x="780" y="180" class="swatch-name">Ink — neutral</text>
+    <text x="780" y="198" class="swatch-hex">#0a0a0a</text>
+    <text x="780" y="216" class="swatch-use">Body text, dark surfaces. Pair: #fafafa.</text>
+
+    <!-- Pairing rules -->
+    <g transform="translate(60, 244)">
+      <text x="0" y="0" class="label-num">RULES</text>
+      <text x="0" y="22" class="label-note">• Turquoise carries the brand — every surface should reach it within a glance.</text>
+      <text x="0" y="42" class="label-note">• Coral never exceeds ~10% of a composition. It is seasoning, not the dish.</text>
+      <text x="0" y="62" class="label-note">• Body text stays ink. Never coral, never turquoise — color is for the mark and links.</text>
+    </g>
+  </g>
+
+  <!-- =========================================================
+       04 — TYPOGRAPHY
+       ========================================================= -->
+  <g transform="translate(0, 1230)">
+    <text x="60" y="0" class="label-num">04 — TYPOGRAPHY</text>
+    <text x="60" y="24" class="label-name">System stack — SF first, then Helvetica</text>
+
+    <rect x="60" y="44" width="940" height="320" rx="20" fill="#ffffff" stroke="#0a0a0a" stroke-opacity="0.08"/>
+
+    <text x="90" y="110" font-size="56" font-weight="700" fill="#0a0a0a" letter-spacing="-0.03em">Display — bold, tight, lowercase.</text>
+    <text x="90" y="138" font-size="12" fill="#999">Headings, hero. system-ui / SF Pro Display, weight 700, tracking -0.03em.</text>
+
+    <text x="90" y="190" font-size="17" fill="#0a0a0a">Body — readable, 1.55 line-height, no fancy ligatures. Turquoise is reserved for links and the mark.</text>
+    <text x="90" y="214" font-size="12" fill="#999">Paragraphs, UI. system-ui / SF Pro Text, weight 400, no tracking.</text>
+
+    <text x="90" y="266" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="15" fill="#0a0a0a">launchctl bootout gui/$(id -u)/com.example.svc</text>
+    <text x="90" y="288" font-size="12" fill="#999">Code, terminal, technical inline. ui-monospace / SF Mono, weight 400.</text>
+
+    <text x="90" y="334" font-size="11" fill="#666" letter-spacing="0.02em">LABEL TEXT — UPPERCASE WITH WIDE TRACKING (0.16em), MUTED. SECTION HEADERS, EYEBROWS.</text>
+  </g>
+
+  <!-- =========================================================
+       05 — WORDMARK EXPLORATION
+       ========================================================= -->
+  <g transform="translate(0, 1620)">
+    <text x="60" y="0" class="label-num">05 — WORDMARK</text>
+    <text x="60" y="24" class="label-name">Three treatments — pick a primary</text>
+
+    <!-- A: default (700 lowercase, -0.03em) -->
+    <rect x="60" y="44" width="940" height="100" rx="16" fill="#ffffff" stroke="#0a0a0a" stroke-opacity="0.08"/>
+    <text x="90" y="118" font-size="64" font-weight="700" fill="#0a0a0a" letter-spacing="-0.03em">lurar</text>
+    <text x="320" y="92" class="swatch-name">A — Default</text>
+    <text x="320" y="112" class="swatch-use">Lowercase, 700, tracking -0.03em. Sits beside the mark in the header.</text>
+    <text x="320" y="130" class="swatch-use">Use everywhere unless a specific reason not to. Recommended primary.</text>
+
+    <!-- B: black weight -->
+    <rect x="60" y="160" width="940" height="100" rx="16" fill="#ffffff" stroke="#0a0a0a" stroke-opacity="0.08"/>
+    <text x="90" y="234" font-size="64" font-weight="900" fill="#0a0a0a" letter-spacing="-0.04em">lurar</text>
+    <text x="320" y="208" class="swatch-name">B — Black</text>
+    <text x="320" y="228" class="swatch-use">Lowercase, 900, tracking -0.04em. More physical presence; reads younger / louder.</text>
+    <text x="320" y="246" class="swatch-use">Reserve for hero / merch / packaging where the word needs to shout.</text>
+
+    <!-- C: caps tracked -->
+    <rect x="60" y="276" width="940" height="100" rx="16" fill="#ffffff" stroke="#0a0a0a" stroke-opacity="0.08"/>
+    <text x="90" y="344" font-size="38" font-weight="700" fill="#0a0a0a" letter-spacing="0.32em">LURAR</text>
+    <text x="320" y="324" class="swatch-name">C — Caps, tracked</text>
+    <text x="320" y="344" class="swatch-use">All caps, 700, wide tracking 0.32em. Formal, calmer, secondary use.</text>
+    <text x="320" y="362" class="swatch-use">Footers, legal, conference badges. Not for the primary lockup.</text>
+  </g>
+
+  <!-- =========================================================
+       06 — LOCKUPS
+       ========================================================= -->
+  <g transform="translate(0, 2050)">
+    <text x="60" y="0" class="label-num">06 — LOCKUPS</text>
+    <text x="60" y="24" class="label-name">Horizontal (primary) + stacked (square contexts)</text>
+
+    <!-- Horizontal lockup, light -->
+    <rect x="60" y="44" width="460" height="160" rx="16" fill="#ffffff" stroke="#0a0a0a" stroke-opacity="0.08"/>
+    <g color="#0d7a6e">
+      <use href="#mark-face" x="100" y="84" width="80" height="80"/>
+    </g>
+    <text x="210" y="146" font-size="56" font-weight="700" fill="#0a0a0a" letter-spacing="-0.03em">lurar</text>
+
+    <!-- Horizontal lockup, dark -->
+    <rect x="540" y="44" width="460" height="160" rx="16" fill="#0a0a0a"/>
+    <g transform="translate(580, 84) scale(0.8)">
+      <path d="M 16 52 Q 50 10, 84 52" fill="none" stroke="#3dd6c2" stroke-width="6.5" stroke-linecap="round"/>
+      <circle cx="16" cy="60" r="13" fill="#3dd6c2"/>
+      <circle cx="84" cy="60" r="13" fill="#3dd6c2"/>
+      <circle cx="40" cy="58" r="5" fill="#ff9272"/>
+      <path d="M 54 60 Q 60 52, 66 60" fill="none" stroke="#ff9272" stroke-width="5" stroke-linecap="round"/>
+      <path d="M 43 75 Q 50 77, 57 70" fill="none" stroke="#ff9272" stroke-width="5" stroke-linecap="round"/>
+    </g>
+    <text x="690" y="146" font-size="56" font-weight="700" fill="#fafafa" letter-spacing="-0.03em">lurar</text>
+  </g>
+
+  <!-- =========================================================
+       FOOTER
+       ========================================================= -->
+  <g transform="translate(60, 2330)">
+    <text x="0" y="0" font-size="11" fill="#999" letter-spacing="0.08em">LURAR BRAND — v1 SKETCH · docs/branding/ · mark.svg / mark-mono.svg / mark-knockout.svg / app-icon.svg / favicon.svg</text>
+  </g>
+</svg>

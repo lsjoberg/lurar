@@ -156,7 +156,7 @@ private struct MenuBarLabel: View {
     @State private var didRunLaunchCoordinator: Bool = false
 
     var body: some View {
-        Image(systemName: engine.isRunning ? "waveform.circle.fill" : "waveform.circle")
+        Image(nsImage: LurarMark.statusBarImage(filled: engine.isRunning))
             .task {
                 guard !didRunLaunchCoordinator else { return }
                 didRunLaunchCoordinator = true

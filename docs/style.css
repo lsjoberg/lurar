@@ -5,6 +5,7 @@
   --accent: #0a0a0a;
   --accent-fg: #fafafa;
   --brand: #0d7a6e;
+  --accent-warm: #ff7a59;
   --border: rgba(0, 0, 0, 0.08);
   --card: #fff;
   --card-soft: #f4f4f4;
@@ -21,6 +22,7 @@
     --accent: #fafafa;
     --accent-fg: #0a0a0a;
     --brand: #3dd6c2;
+    --accent-warm: #ff9272;
     --border: rgba(255, 255, 255, 0.08);
     --card: #141414;
     --card-soft: #1a1a1a;
@@ -64,6 +66,27 @@ header {
   margin: 0 auto;
   gap: 16px;
 }
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.brand-mark {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: block;
+}
+
+.brand-cup   { fill: var(--brand); }
+.brand-band  { fill: none; stroke: var(--brand); }
+.brand-eye   { fill: var(--accent-warm); }
+.brand-wink,
+.brand-mouth { fill: none; stroke: var(--accent-warm); }
 
 .wordmark {
   font-size: 20px;

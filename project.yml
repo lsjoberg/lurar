@@ -50,6 +50,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundlePackageType: APPL
+        CFBundleIconName: AppIcon
         LSUIElement: true
         LSMinimumSystemVersion: "14.2"
         LSApplicationCategoryType: "public.app-category.music"
@@ -89,3 +90,4 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Lurar/Lurar.entitlements
         COMBINE_HIDPI_IMAGES: YES
         ENABLE_HARDENED_RUNTIME: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

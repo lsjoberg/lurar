@@ -1,0 +1,18 @@
+<!-- Lurar mark — monochrome ink variant.
+     For print, embroidery, single-color contexts. Smirk preserved. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <style>
+    .ink        { fill: #0a0a0a; }
+    .ink-stroke { stroke: #0a0a0a; fill: none; }
+    @media (prefers-color-scheme: dark) {
+      .ink        { fill: #fafafa; }
+      .ink-stroke { stroke: #fafafa; fill: none; }
+    }
+  </style>
+  <path  class="ink-stroke" d="M 16 52 Q 50 10, 84 52" stroke-width="6.5" stroke-linecap="round"/>
+  <circle class="ink" cx="16" cy="60" r="13"/>
+  <circle class="ink" cx="84" cy="60" r="13"/>
+  <circle class="ink" cx="40" cy="58" r="5"/>
+  <path  class="ink-stroke" d="M 54 60 Q 60 52, 66 60" stroke-width="5" stroke-linecap="round"/>
+  <path  class="ink-stroke" d="M 43 75 Q 50 77, 57 70" stroke-width="5" stroke-linecap="round"/>
+</svg>
