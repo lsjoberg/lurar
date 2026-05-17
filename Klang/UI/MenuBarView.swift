@@ -47,8 +47,9 @@ struct MenuBarView: View {
                 noMatchesBanner(deviceName: deviceName)
             }
 
-            presetPicker
             outputPicker
+            presetPicker
+            presetActionsRow
             statusRow
 
             Divider()
@@ -57,26 +58,6 @@ struct MenuBarView: View {
             loudnessRow
 
             Divider()
-
-            HStack {
-                Button("Open Editor…") {
-                    dismissMenuBarWindow()
-                    openWindow(id: "editor")
-                    NSApp.activate(ignoringOtherApps: true)
-                }
-                .keyboardShortcut("e", modifiers: [.command])
-
-                Button("Compare A/B…") {
-                    dismissMenuBarWindow()
-                    openWindow(id: "ab")
-                    NSApp.activate(ignoringOtherApps: true)
-                }
-                .help("Sighted or blind A/B comparison of two presets")
-
-                bypassButton
-
-                Spacer()
-            }
 
             HStack {
                 Button {
@@ -271,17 +252,17 @@ struct MenuBarView: View {
         )
     }
 
-    /// Press-and-hold "Bypass" / "Bypassing…" button. Wraps a real
-    /// `NSButton` via `NSViewRepresentable` so the bezel matches the
-    /// surrounding default-style SwiftUI `Button`s exactly. Press/release
-    /// edges come from overriding `mouseDown(with:)` on the NSButton
-    /// subclass — NSButton's internal tracking loop blocks until the user
-    /// releases the mouse, so `super.mouseDown` returning is the mouse-up
-    /// signal.
+    /// Press-and-hold bypass button. Wraps a real `NSButton` via
+    /// `NSViewRepresentable` so press/release edges come from overriding
+    /// `mouseDown(with:)` on the NSButton subclass — NSButton's internal
+    /// tracking loop blocks until the user releases the mouse, so
+    /// `super.mouseDown` returning is the mouse-up signal. SwiftUI gestures
+    /// don't give reliable down/up edges at this granularity.
     private var bypassButton: some View {
         let canBypass = engine.isRunning && !engine.isInComparisonMode
         return BypassNativeButton(
-            title: engine.isBypassed ? "Bypassing\u{2026}" : "Bypass",
+            systemSymbolName: "waveform.slash",
+            accessibilityLabel: engine.isBypassed ? "Bypassing" : "Bypass",
             isActive: engine.isBypassed,
             isEnabled: canBypass,
             onPressChange: { pressed in
@@ -296,7 +277,44 @@ struct MenuBarView: View {
             }
         )
         .fixedSize()
-        .help("Hold to swap to Flat. Global shortcut: \u{2325}B (hold).")
+        .help("Hold to bypass (swap to Flat). Global shortcut: \u{2325}B (hold).")
+    }
+
+    /// Compact action row sitting directly under the Preset picker so the
+    /// three preset-adjacent actions (edit, A/B compare, bypass) cluster with
+    /// the preset they act on rather than living far down the popover.
+    private var presetActionsRow: some View {
+        HStack(spacing: 4) {
+            // Indent past the "Preset" label so the buttons sit under the
+            // picker, aligned to the picker's left edge.
+            Spacer().frame(width: labelColumnWidth + 8)
+            Button {
+                dismissMenuBarWindow()
+                openWindow(id: "editor")
+                NSApp.activate(ignoringOtherApps: true)
+            } label: {
+                Image(systemName: "slider.horizontal.3")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .keyboardShortcut("e", modifiers: [.command])
+            .help("Open EQ editor (\u{2318}E)")
+
+            Button {
+                dismissMenuBarWindow()
+                openWindow(id: "ab")
+                NSApp.activate(ignoringOtherApps: true)
+            } label: {
+                Text("A/B")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Sighted or blind A/B comparison of two presets")
+
+            bypassButton
+
+            Spacer()
+        }
     }
 
     /// Label column width shared by Preset/Output/Status rows so the right-hand
@@ -771,7 +789,8 @@ struct MenuBarView: View {
 /// the super call and `pressed=false` after gives reliable down/up edges
 /// without fighting SwiftUI's gesture priority.
 private struct BypassNativeButton: NSViewRepresentable {
-    let title: String
+    let systemSymbolName: String
+    let accessibilityLabel: String
     let isActive: Bool
     let isEnabled: Bool
     let onPressChange: (Bool) -> Void
@@ -780,7 +799,10 @@ private struct BypassNativeButton: NSViewRepresentable {
         let button = HoldNSButton()
         button.bezelStyle = .rounded
         button.setButtonType(.momentaryPushIn)
-        button.title = title
+        button.controlSize = .small
+        button.imagePosition = .imageOnly
+        button.title = ""
+        button.image = NSImage(systemSymbolName: systemSymbolName, accessibilityDescription: accessibilityLabel)
         // Empty target/action: mouseDown/Up overrides do the work.
         button.target = nil
         button.action = nil
@@ -788,7 +810,9 @@ private struct BypassNativeButton: NSViewRepresentable {
     }
 
     func updateNSView(_ button: HoldNSButton, context: Context) {
-        if button.title != title { button.title = title }
+        // System-symbol NSImages have no .name(), so we can't cheaply diff —
+        // just reassign. The symbol rarely changes anyway.
+        button.image = NSImage(systemSymbolName: systemSymbolName, accessibilityDescription: accessibilityLabel)
         if button.isEnabled != isEnabled { button.isEnabled = isEnabled }
         button.onPressChange = onPressChange
         // `bezelColor` tints a `.rounded` NSButton bezel; combined with a
@@ -801,14 +825,31 @@ private struct BypassNativeButton: NSViewRepresentable {
 
 private final class HoldNSButton: NSButton {
     var onPressChange: ((Bool) -> Void)?
+    /// Bezel/content colors to flash while the mouse is held. Applied
+    /// synchronously around `super.mouseDown` because that call blocks the
+    /// main runloop inside NSButton's tracking loop — so any SwiftUI-driven
+    /// re-render (via `isActive` flowing through `updateNSView`) wouldn't
+    /// land until release, leaving the press visually unconfirmed.
+    var pressedBezelColor: NSColor? = .systemBlue
+    var pressedContentTintColor: NSColor? = .white
 
     override func mouseDown(with event: NSEvent) {
         guard isEnabled else { return }
+        let savedBezel = bezelColor
+        let savedTint = contentTintColor
+        bezelColor = pressedBezelColor
+        contentTintColor = pressedContentTintColor
+        // Force AppKit to paint the new colors before we hand off to the
+        // blocking tracking loop — otherwise the press feedback only
+        // appears the instant the user releases.
+        displayIfNeeded()
         onPressChange?(true)
         super.mouseDown(with: event)
         // super.mouseDown blocks inside NSButton's internal tracking loop
         // until the user releases; by the time control returns here, the
         // mouse is up.
+        bezelColor = savedBezel
+        contentTintColor = savedTint
         onPressChange?(false)
     }
 }
