@@ -28,23 +28,91 @@ In a second terminal, tail OSLog output:
 
 ## Use
 
-1. System Settings → Sound → Output → the device you actually want to listen on (e.g. **HIFIMAN-EF500**). This is also what the tap rides for clock; apps' direct output to this device is muted while the engine is on.
-2. Klang menu bar → set Output to the same device.
-3. Pick a preset. Klang ships with a **Flat** preset; choose **Add more presets…** in the picker to browse the AutoEq catalog (Oratory1990 measurements for HiFiMan Arya Stealth et al.) and add ones for your headphones.
-4. Toggle the engine **ON** and accept the audio-capture prompt the first time.
-5. Play audio in any app — it flows: app → process tap → Klang DSP → HALOutput → DAC → headphones.
+1. Klang menu bar → set **Output** to the device you actually want to listen on (e.g. **HIFIMAN-EF500**). Klang takes care of routing — you don't need to change anything in System Settings → Sound.
+2. Pick a preset. Klang ships with a **Flat** preset; choose **Add more presets…** in the picker to browse the AutoEq catalog (Oratory1990 measurements for HiFiMan Arya Stealth et al.) and add ones for your headphones.
+3. Toggle the engine **ON** and accept the audio-capture prompt the first time.
+4. Play audio in any app — it flows: app → process tap → Klang DSP → HALOutput → DAC → headphones.
 
 Tap *Open Editor…* for live band tweaking. Edits apply to the running engine instantly. Built-in presets are read-only — use **Tweak…** to fork one into your library; the original stays visible as a dashed reference curve, and **Reset to Original** beside the "Derived from …" chip undoes your divergence. **New preset…** in the preset dropdown creates a fully custom preset from scratch (10 log-spaced bands at unity gain). **Save** persists edits, **Discard Changes** throws away unsaved edits, and **Delete** removes a preset.
 
 ### Known limitations
 
-- Apps that start producing audio **after** the engine is toggled on aren't tapped until you toggle Engine off → on. (The tap target list is enumerated at start; a process-list listener is a possible follow-up.)
 - Apps using HAL hog / exclusive mode (some hi-res music players) bypass Core Audio's mixer entirely and can't be tapped. Switch those apps off exclusive mode if you want them EQ'd.
 - Third-party HAL drivers can intercept tap data. Rogue Amoeba's ARK driver (SoundSource, Audio Hijack, Loopback) is the most common culprit — if you're getting silence in the EQ'd path, quit the corresponding app and run `launchctl bootout gui/$(id -u)/com.rogueamoeba.arkaudiod`.
 
 ## Presets
 
 User-editable JSON lives at `~/Library/Application Support/Klang/presets.json`. Klang watches the file and reloads on save (debounced ~150 ms). Add new headphones by appending objects to the array — the schema is on `EQPreset.swift`.
+
+## Reset to scratch
+
+Klang persists state in three places. Each is independently resettable; pick what you need.
+
+**`~/Library/Application Support/Klang/`** — files Klang owns
+
+| Path | What it stores |
+| --- | --- |
+| `presets.json` | Your editable preset library |
+| `enabledBuiltIns.json` | Which AutoEq catalog entries you've turned on |
+| `Catalog/index.json` | Cached parse of AutoEq's `INDEX.md` |
+| `Catalog/presets/*.json` | Per-headphone hydrated preset cache |
+
+**`~/Library/Preferences/se.linus.klang.plist`** — UserDefaults
+
+| Key | Meaning |
+| --- | --- |
+| `klang.loudnessOffsetDB` | Loudness slider position |
+| `klang.presets.migratedBuiltIns_v1` | One-shot migration done |
+| `crossfeed.intensity`, `crossfeed.cutoff` | Crossfeed settings |
+| `spectrum.enabled` | Spectrum overlay toggle in the editor |
+
+**TCC** — system-managed audio-capture grant for `se.linus.klang`.
+
+> ⚠️ Quit Klang before running any of these recipes. `@AppStorage`-backed
+> values are cached in the live process and won't re-read from disk until
+> the app relaunches; TCC state changes are picked up at engine start, so
+> a quit-and-relaunch is the simplest way to get a clean slate.
+
+### Common reset recipes
+
+Trigger the first-run onboarding window again:
+
+```bash
+# Quit Klang first
+tccutil reset AudioCapture se.linus.klang
+# Relaunch Klang → menu bar → toggle Engine ON
+```
+
+Wipe just the user preset library (keeps catalog cache and preferences):
+
+```bash
+# Quit Klang first
+rm ~/Library/Application\ Support/Klang/presets.json
+```
+
+Force a fresh catalog fetch from AutoEq (keeps user presets):
+
+```bash
+# Quit Klang first
+rm -rf ~/Library/Application\ Support/Klang/Catalog
+rm ~/Library/Application\ Support/Klang/enabledBuiltIns.json
+```
+
+Reset all preferences but keep presets and catalog:
+
+```bash
+# Quit Klang first
+defaults delete se.linus.klang
+```
+
+Nuke everything — Klang back to the state of a brand-new install:
+
+```bash
+# Quit Klang first
+defaults delete se.linus.klang
+tccutil reset AudioCapture se.linus.klang
+rm -rf ~/Library/Application\ Support/Klang
+```
 
 ## Regenerating after editing `project.yml`
 
