@@ -41,7 +41,12 @@ struct MenuBarView: View {
 
             Divider()
 
-            if suggestion != nil {
+            // Banner stack: the pending system-default-change banner takes
+            // priority because the user is likely opening the popover
+            // specifically because audio just routed somewhere unexpected.
+            if let pending = deviceManager.pendingDefaultChange {
+                defaultChangeBanner(pending: pending)
+            } else if suggestion != nil {
                 suggestionBanner
             } else if let deviceName = noMatchesNotice {
                 noMatchesBanner(deviceName: deviceName)
@@ -242,6 +247,37 @@ struct MenuBarView: View {
     private func sourceLabel(for entry: CatalogEntry) -> String {
         if let rig = entry.rig { return "\(entry.measurer) · \(rig)" }
         return entry.measurer
+    }
+
+    /// Banner shown when macOS switches its default output device (e.g.
+    /// AirPods connecting) and the user's follow mode is `.ask`. Offers a
+    /// one-click switch or a dismiss; the picker auto-clears the banner if
+    /// the user changes output manually.
+    private func defaultChangeBanner(pending: AudioDevice) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("System default changed")
+                .font(.callout.bold())
+                .lineLimit(1)
+            Text("macOS is now using \(pending.name).")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 6) {
+                Button("Switch") { deviceManager.acceptPendingDefaultChange() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                Spacer(minLength: 0)
+                Button("Keep current") { deviceManager.dismissPendingDefaultChange() }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .controlSize(.small)
+            }
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.accentColor.opacity(0.12))
+        )
     }
 
     /// Single-line "no matches" feedback shown when the user manually invokes

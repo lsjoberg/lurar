@@ -8,11 +8,12 @@ struct SettingsView: View {
     @ObservedObject var syncSettings: PresetSyncSettings
     @ObservedObject var presetStore: PresetStore
     @ObservedObject var excludedAppsStore: ExcludedAppsStore
+    @ObservedObject var outputPreferences: OutputSelectionPreferences
     @ObservedObject var updater: UpdaterController
 
     var body: some View {
         TabView {
-            GeneralSettingsTab(updater: updater)
+            GeneralSettingsTab(outputPreferences: outputPreferences, updater: updater)
                 .tabItem { Label("General", systemImage: "gearshape") }
                 .padding(20)
                 .frame(width: 460)
@@ -33,6 +34,7 @@ struct SettingsView: View {
 // MARK: - General
 
 private struct GeneralSettingsTab: View {
+    @ObservedObject var outputPreferences: OutputSelectionPreferences
     @ObservedObject var updater: UpdaterController
 
     @State private var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled
@@ -58,6 +60,23 @@ private struct GeneralSettingsTab: View {
                 Toggle("Start engine when Lurar launches", isOn: $startEngineOnLaunch)
                     .toggleStyle(.switch)
                 Text("When Lurar has audio-capture permission, the engine starts automatically on launch. Turn this off if you'd rather start it manually from the menu bar.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Picker("When system default output changes", selection: Binding(
+                    get: { outputPreferences.followMode },
+                    set: { outputPreferences.followMode = $0 }
+                )) {
+                    Text("Ask before switching").tag(OutputSelectionPreferences.FollowMode.ask)
+                    Text("Switch automatically").tag(OutputSelectionPreferences.FollowMode.autoFollow)
+                    Text("Do nothing").tag(OutputSelectionPreferences.FollowMode.ignore)
+                }
+                Text("When AirPods or another device connects, macOS may change its default output. Choose how Lurar reacts.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

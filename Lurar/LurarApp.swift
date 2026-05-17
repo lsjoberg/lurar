@@ -6,7 +6,8 @@ private let launchLog = Logger(subsystem: "app.lurar.Lurar", category: "Launch")
 
 @main
 struct LurarApp: App {
-    @StateObject private var deviceManager = DeviceManager()
+    @StateObject private var outputPreferences: OutputSelectionPreferences
+    @StateObject private var deviceManager: DeviceManager
     @StateObject private var syncSettings: PresetSyncSettings
     @StateObject private var presetStore: PresetStore
     @StateObject private var presetCatalog = PresetCatalog()
@@ -83,6 +84,7 @@ struct LurarApp: App {
                 syncSettings: syncSettings,
                 presetStore: presetStore,
                 excludedAppsStore: excludedAppsStore,
+                outputPreferences: outputPreferences,
                 updater: updater
             )
         }
@@ -90,6 +92,13 @@ struct LurarApp: App {
 
     init() {
         bootLog.info("[lurar] Booted: Process Tap + vDSP biquad EQ + HAL output (no AVAudioEngine)")
+        // DeviceManager needs the user's output preferences (last-used UID,
+        // follow mode) at init time so its first refresh restores the right
+        // device. Construct prefs eagerly and share the same instance with
+        // the @StateObject wrapper.
+        let prefs = OutputSelectionPreferences()
+        _outputPreferences = StateObject(wrappedValue: prefs)
+        _deviceManager = StateObject(wrappedValue: DeviceManager(preferences: prefs))
         // PresetStore needs the sync settings at init time so it can pick the
         // right backing location (local vs iCloud) before its first read. We
         // construct both eagerly here and share the same instance.
