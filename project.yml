@@ -47,12 +47,19 @@ targets:
       properties:
         com.apple.security.app-sandbox: false
         com.apple.security.device.audio-input: true
-        com.apple.developer.icloud-services:
-          - CloudDocuments
-        com.apple.developer.icloud-container-identifiers:
-          - iCloud.se.linus.klang
-        com.apple.developer.ubiquity-container-identifiers:
-          - iCloud.se.linus.klang
+        # iCloud Drive sync needs the three entitlement keys below. They're
+        # commented out so ad-hoc dev builds (./scripts/dev.sh with no
+        # DEVELOPMENT_TEAM) succeed — codesign rejects iCloud entitlements
+        # without a development certificate. Uncomment once you've set a
+        # DEVELOPMENT_TEAM and registered the iCloud.se.linus.klang container
+        # in developer.apple.com. With them off, the Settings → Sync toggle
+        # shows "iCloud Drive isn't available" and presets stay local.
+        # com.apple.developer.icloud-services:
+        #   - CloudDocuments
+        # com.apple.developer.icloud-container-identifiers:
+        #   - iCloud.se.linus.klang
+        # com.apple.developer.ubiquity-container-identifiers:
+        #   - iCloud.se.linus.klang
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: se.linus.klang
