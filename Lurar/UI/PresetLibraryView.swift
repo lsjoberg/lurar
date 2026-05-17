@@ -36,6 +36,7 @@ struct PresetLibraryView: View {
             footer
         }
         .frame(minWidth: 520, idealWidth: 620, minHeight: 480, idealHeight: 600)
+        .showsInDockWhileVisible()
     }
 
     private var header: some View {

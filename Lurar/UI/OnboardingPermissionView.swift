@@ -64,22 +64,16 @@ struct OnboardingPermissionView: View {
         }
         .padding(28)
         .frame(width: 480)
+        // Bring Lurar into the dock + Cmd+Tab while the onboarding window
+        // is open — without it the user can't switch back after bouncing
+        // to System Settings to grant the TCC permission.
+        .showsInDockWhileVisible()
         .onAppear {
-            // Flip to a regular dock app while this window is on screen so
-            // Cmd+Tab can switch back to Lurar after the user has bounced to
-            // System Settings. We restore the menu-bar-only accessory policy
-            // in onDisappear — LSUIElement in Info.plist is the static
-            // default; setActivationPolicy is the runtime override.
-            NSApp.setActivationPolicy(.regular)
-            NSApp.activate(ignoringOtherApps: true)
             // Pick the mode that matches the actual TCC state right now.
             // .authorized shouldn't reach this window (MenuBarView only
             // opens it when not authorized) but treat it like initial for
             // safety — no UI harm done.
             mode = AudioCapturePermission.preflight() == .denied ? .denied : .initial
-        }
-        .onDisappear {
-            NSApp.setActivationPolicy(.accessory)
         }
     }
 

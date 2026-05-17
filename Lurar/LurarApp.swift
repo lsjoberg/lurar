@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import OSLog
 
@@ -186,6 +187,118 @@ private struct MenuBarLabel: View {
         case .unknown, .denied:
             launchLog.info("Launch: permission missing, opening onboarding window")
             openWindow(id: "onboarding")
+        }
+    }
+}
+
+// MARK: - Dock-icon presence
+
+/// Dock-icon gate driven by actual `NSWindow` lifecycle, not SwiftUI's
+/// `onAppear` / `onDisappear`. Lurar runs as an `LSUIElement` (menu-bar
+/// only) app by default; any window scene that the user might want to
+/// Cmd+Tab back to is registered here and gets a `willCloseNotification`
+/// observer attached. The dock icon shows whenever at least one tracked
+/// window is open, and goes back to menu-bar-only as soon as the last
+/// one closes via the red button.
+///
+/// We can't lean on SwiftUI's `onDisappear` because a `Window` scene on
+/// macOS keeps its view tree in memory after the user closes the window
+/// — `onDisappear` doesn't reliably fire, so the icon would stick around
+/// forever. Watching `NSWindow.willCloseNotification` is the actual event
+/// the close button raises. `didBecomeKeyNotification` covers the reopen
+/// path (SwiftUI reuses the same NSWindow instance when the user reopens
+/// from the menu bar) without missing windows that come up in the
+/// background.
+@MainActor
+final class DockPresence {
+    static let shared = DockPresence()
+
+    private var openWindows: Set<ObjectIdentifier> = []
+    private var observedWindows: Set<ObjectIdentifier> = []
+
+    private init() {}
+
+    /// Called by `showsInDockWhileVisible()` once SwiftUI has the underlying
+    /// `NSWindow`. Idempotent: repeated calls for the same window only
+    /// attach observers once.
+    func register(_ window: NSWindow) {
+        let id = ObjectIdentifier(window)
+
+        if observedWindows.insert(id).inserted {
+            NotificationCenter.default.addObserver(
+                forName: NSWindow.willCloseNotification,
+                object: window,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor in self?.markClosed(id) }
+            }
+            // Reopening a SwiftUI Window after a close reuses the same
+            // NSWindow but doesn't necessarily re-run our SwiftUI hook —
+            // catch the reopen via didBecomeKey, which fires when the
+            // restored window becomes key.
+            NotificationCenter.default.addObserver(
+                forName: NSWindow.didBecomeKeyNotification,
+                object: window,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor in self?.markOpen(id) }
+            }
+        }
+
+        if window.isVisible && !window.isMiniaturized {
+            markOpen(id)
+        }
+    }
+
+    private func markOpen(_ id: ObjectIdentifier) {
+        guard openWindows.insert(id).inserted else { return }
+        updatePolicy()
+    }
+
+    private func markClosed(_ id: ObjectIdentifier) {
+        guard openWindows.remove(id) != nil else { return }
+        updatePolicy()
+    }
+
+    private func updatePolicy() {
+        let policy: NSApplication.ActivationPolicy = openWindows.isEmpty ? .accessory : .regular
+        guard NSApp.activationPolicy() != policy else { return }
+        NSApp.setActivationPolicy(policy)
+        if policy == .regular {
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+}
+
+extension View {
+    /// Bring Lurar into the dock (and Cmd+Tab) while the hosting `NSWindow`
+    /// is open. Attach to the root of any window scene the user might want
+    /// to switch back to from another app. The actual show/hide bookkeeping
+    /// happens in `DockPresence` via AppKit notifications — see the note
+    /// there about why we can't use SwiftUI's `onDisappear` for the close
+    /// path.
+    func showsInDockWhileVisible() -> some View {
+        background(DockPresenceWindowReader())
+    }
+}
+
+/// Hands the underlying `NSWindow` to `DockPresence` once the SwiftUI view
+/// has been mounted into a window. Stays transparent and zero-sized so it
+/// doesn't affect layout.
+private struct DockPresenceWindowReader: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        NSView()
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        // `nsView.window` is nil during makeNSView (view not yet attached)
+        // and on the first updateNSView call before SwiftUI runs its
+        // layout pass — defer to the next runloop tick so the lookup
+        // succeeds reliably.
+        DispatchQueue.main.async {
+            if let window = nsView.window {
+                DockPresence.shared.register(window)
+            }
         }
     }
 }

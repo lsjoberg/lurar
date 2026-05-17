@@ -42,6 +42,7 @@ struct ABComparisonView: View {
         // setup layout). windowResizability(.contentSize) sizes the window at
         // creation, so this needs to be big enough for the results phase up front.
         .frame(minWidth: 640, minHeight: 640)
+        .showsInDockWhileVisible()
         .onAppear { seedDefaultSlotsIfNeeded() }
         .onDisappear { session.cancel() }
     }

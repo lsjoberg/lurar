@@ -326,6 +326,10 @@ struct EQEditorView: View {
         .onChange(of: isBuiltIn) { _, new in
             closeCoordinator.isBuiltIn = new
         }
+        // Editor is the window users keep open while flipping to a browser
+        // or measurement app — bring Lurar into the dock + Cmd+Tab so they
+        // can get back without having to click the menu-bar icon again.
+        .showsInDockWhileVisible()
     }
 
     // MARK: - Sections
