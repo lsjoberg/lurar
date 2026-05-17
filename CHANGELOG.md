@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/lsjoberg/klang/compare/v0.1.3...v0.1.4) (2026-05-17)
+
+
+### Bug Fixes
+
+* **ci:** bump release runner to Xcode 16.2 ([766b909](https://github.com/lsjoberg/klang/commit/766b909a3a9509eba43f65c368fef5a771f44c57))
+
 ## [0.1.3](https://github.com/lsjoberg/klang/compare/v0.1.2...v0.1.3) (2026-05-17)
 
 
