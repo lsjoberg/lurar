@@ -132,6 +132,18 @@ final class PresetStore: ObservableObject {
         write(presets.filter { $0.id != id })
     }
 
+    /// Append " 2", " 3", … as needed so a fresh preset name doesn't collide
+    /// with any existing one. Shared by the editor's Tweak / New preset flow
+    /// and the menu bar's New preset action so both paths disambiguate the
+    /// same way.
+    func uniqueName(based base: String) -> String {
+        let taken = Set(presets.map(\.name))
+        if !taken.contains(base) { return base }
+        var n = 2
+        while taken.contains("\(base) \(n)") { n += 1 }
+        return "\(base) \(n)"
+    }
+
     // MARK: - Legacy migration
 
     private static let migrationDefaultsKey = "klang.presets.migratedBuiltIns_v1"
