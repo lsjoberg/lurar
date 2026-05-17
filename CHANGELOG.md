@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.2](https://github.com/lsjoberg/lurar/compare/v0.2.1...v0.2.2) (2026-05-17)
+
+
+### Features
+
+* **app:** show Lurar in the dock while a window is open ([9abb7da](https://github.com/lsjoberg/lurar/commit/9abb7da48558d10179825565736534324c90f98b))
+* **editor:** channel-strip layout with drag-on-curve frequency ([63429ed](https://github.com/lsjoberg/lurar/commit/63429ed7c609da7816094a1165cf437d91e8d48b))
+* **presets:** merge local + iCloud libraries when enabling sync on a second Mac ([f8980db](https://github.com/lsjoberg/lurar/commit/f8980dbc510dbb291a15f47cbfedc9d36978d274))
+
+
+### Bug Fixes
+
+* **presets:** replace non-existent NSFileCoordinator two-read API with sequential reads ([291c828](https://github.com/lsjoberg/lurar/commit/291c8288496cf1a8ab8cbf75bb3999a96fa1beaf))
+
 ## [0.2.1](https://github.com/lsjoberg/lurar/compare/v0.2.0...v0.2.1) (2026-05-17)
 
 
