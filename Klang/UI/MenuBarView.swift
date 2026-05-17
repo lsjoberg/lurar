@@ -136,21 +136,42 @@ struct MenuBarView: View {
                         selectedPresetID = UUID(uuidString: uuidString)
                     }
                 ),
-                items: visiblePresets.map { preset in
-                    .init(id: preset.id.uuidString, title: preset.menuLabel)
-                },
+                items: Klang.sortedPresetItems(
+                    presets: visiblePresets,
+                    catalog: presetCatalog,
+                    store: presetStore
+                ),
                 actions: [
+                    .init(id: "new", title: "New preset…"),
                     .init(id: "library", title: "Add more presets…")
                 ],
                 onAction: { actionID in
-                    if actionID == "library" {
+                    switch actionID {
+                    case "new":
+                        createNewPresetAndOpenEditor()
+                    case "library":
                         dismissMenuBarWindow()
                         openWindow(id: "library")
                         NSApp.activate(ignoringOtherApps: true)
+                    default:
+                        break
                     }
                 }
             )
         }
+    }
+
+    /// Create a fully custom preset, select it, and open the editor on it.
+    /// Mirrors the editor's New preset… so both entry points produce the same
+    /// shape (10 log-spaced bands at 0 dB, no parent).
+    private func createNewPresetAndOpenEditor() {
+        let preset = EQPreset.blank(name: presetStore.uniqueName(based: "New Preset"))
+        presetStore.add(preset)
+        selectedPresetID = preset.id
+        engine.apply(preset: preset)
+        dismissMenuBarWindow()
+        openWindow(id: "editor")
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     private var outputPicker: some View {

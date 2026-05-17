@@ -248,26 +248,26 @@ struct EQEditorView: View {
                     get: { draft.id.uuidString },
                     set: { newID in attemptSwitch(to: UUID(uuidString: newID)) }
                 ),
-                items: dropdownPresets.map { preset in
-                    .init(id: preset.id.uuidString, title: preset.menuLabel)
-                },
+                items: Klang.sortedPresetItems(
+                    presets: dropdownPresets,
+                    catalog: presetCatalog,
+                    store: presetStore
+                ),
                 actions: [
-                    .init(id: "new", title: "New preset…")
+                    .init(id: "new", title: "New preset…"),
+                    .init(id: "library", title: "Add more presets…")
                 ],
                 onAction: { actionID in
-                    if actionID == "new" { createNewPreset() }
+                    switch actionID {
+                    case "new": createNewPreset()
+                    case "library": showLibrary = true
+                    default: break
+                    }
                 }
             )
             .disabled(dropdownPresets.isEmpty)
 
             Spacer()
-
-            Button {
-                showLibrary = true
-            } label: {
-                Label("Preset Library…", systemImage: "books.vertical")
-            }
-            .help("Pick which AutoEq headphone presets to show")
         }
     }
 
@@ -487,7 +487,7 @@ struct EQEditorView: View {
         )
         var copy = draft
         copy.id = UUID()
-        copy.name = uniquePresetName(based: draft.name + " (custom)")
+        copy.name = presetStore.uniqueName(based: draft.name + " (custom)")
         // Reset source so the menu label doesn't claim oratory1990 authorship of
         // the user's tweaked copy — lineage is preserved via parentRef.
         copy.source = "Klang"
@@ -500,21 +500,10 @@ struct EQEditorView: View {
     /// Seed a fully custom preset from scratch — 10 log-spaced bands at 0 dB,
     /// no parent reference. Writes to disk immediately.
     private func createNewPreset() {
-        let preset = EQPreset.blank(name: uniquePresetName(based: "New Preset"))
+        let preset = EQPreset.blank(name: presetStore.uniqueName(based: "New Preset"))
         presetStore.add(preset)
         draft = preset
         engine.apply(preset: preset)
-    }
-
-    /// Append " 2", " 3", … as needed so a fresh preset never collides with an
-    /// existing user-preset name. Used by Tweak (which would otherwise generate
-    /// duplicate "<name> (custom)" strings on repeated forks) and New preset.
-    private func uniquePresetName(based base: String) -> String {
-        let taken = Set(presetStore.presets.map(\.name))
-        if !taken.contains(base) { return base }
-        var n = 2
-        while taken.contains("\(base) \(n)") { n += 1 }
-        return "\(base) \(n)"
     }
 
     /// Overwrite the draft's bands + preamp with the live parent curve and
