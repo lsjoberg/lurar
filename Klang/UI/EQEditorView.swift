@@ -45,11 +45,11 @@ struct EQEditorView: View {
         presetStore.isBundledFlat(draft) || presetCatalog.isBuiltIn(draft.id)
     }
 
-    /// Band/preamp sliders are disabled when comparison mode is active too —
-    /// the engine is playing one of two pre-loaded slots, not the editor draft,
-    /// so live edits would silently desync from what's audible.
+    /// Band/preamp sliders are disabled when comparison or bypass mode is
+    /// active — the engine is playing a pre-loaded slot, not the editor
+    /// draft, so live edits would silently desync from what's audible.
     private var editsLocked: Bool {
-        isBuiltIn || engine.isInComparisonMode
+        isBuiltIn || engine.isInComparisonMode || engine.isBypassed
     }
 
     private var savedVersion: EQPreset? {

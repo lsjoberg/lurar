@@ -17,6 +17,13 @@ final class EQEngine: ObservableObject {
     /// per-band edits — those calls no-op against the processor while slot
     /// mode is active, but the UI shouldn't pretend the slider is live.
     @Published private(set) var isInComparisonMode: Bool = false
+    /// True while bypass is active: the EQ is in slot mode with the user's
+    /// current preset in slot A and the bundled `Flat` preset in slot B, and
+    /// slot B is selected — so audio still flows through Klang but the
+    /// cascades produce a flat response (modulo loudness-match attenuation).
+    /// Exits by routing through `apply(preset:)` so the cascades return to a
+    /// coherent single-preset state.
+    @Published private(set) var isBypassed: Bool = false
     /// Loudness-compensation slider value in dB phon offset below the 83-phon
     /// mastering reference. 0 = off, more negative = quieter listening,
     /// more lift. Clamped to `loudnessOffsetRange`. Global setting persisted
@@ -41,6 +48,12 @@ final class EQEngine: ObservableObject {
     private let ringBuffer = StereoFloatRingBuffer(capacityFrames: 96_000) // ~2 s @ 48k stereo
     private lazy var halOutput = HALOutput(ringBuffer: ringBuffer)
 
+    /// Owned here so it's retained for the engine's (i.e. the app's) lifetime
+    /// without relying on SwiftUI @State binding semantics. Created lazily
+    /// via `wireUpBypassHotkey()` after the App's StateObject machinery has
+    /// finished setting up.
+    private var bypassHotkey: BypassHotkey?
+
     private var activeSampleRate: Double?
     private var activeOutput: AudioDevice?
 
@@ -64,6 +77,13 @@ final class EQEngine: ObservableObject {
         // persisted value before the first audio callback. Idempotent at
         // offset 0 (publishes an inactive identity).
         eqProcessor.publishLoudness(offsetDB: loudnessOffsetDB)
+        // Wire up the global ⌥B hotkey here, NOT from `KlangApp.init`. Calling
+        // methods on a `@StateObject`'s wrappedValue from an App's init operates
+        // on a transient instance that SwiftUI later discards before binding the
+        // persistent storage — anything async we scheduled there fires after the
+        // throwaway is deallocated. Doing it from EQEngine's own init guarantees
+        // `self` is the instance being constructed.
+        wireUpBypassHotkey()
     }
 
     // MARK: - Lifecycle
@@ -224,6 +244,10 @@ final class EQEngine: ObservableObject {
             eqProcessor.exitSlotMode()
             isInComparisonMode = false
         }
+        if isBypassed {
+            eqProcessor.exitSlotMode()
+            isBypassed = false
+        }
         activeOutput = nil
         activeSampleRate = nil
         isRunning = false
@@ -306,6 +330,13 @@ final class EQEngine: ObservableObject {
             eqProcessor.exitSlotMode()
             isInComparisonMode = false
         }
+        if isBypassed {
+            // Same idea for bypass: any explicit preset apply takes the engine
+            // out of slot mode. Hold-to-bypass observers (the hotkey, the menu
+            // bar Bypass toggle) watch `isBypassed` and reflect the new state.
+            eqProcessor.exitSlotMode()
+            isBypassed = false
+        }
         currentPreset = preset
         eqProcessor.configure(preset: preset, sampleRate: activeSampleRate ?? 48_000)
     }
@@ -313,8 +344,10 @@ final class EQEngine: ObservableObject {
     func updateBand(index: Int, band: EQBand) {
         // Per-band edits are gated in the editor UI while comparison is active,
         // but defend the audio path too: don't let a stray slider drag desync
-        // from the playing slot.
-        guard !isInComparisonMode else { return }
+        // from the playing slot. Same guard for bypass — slot A holds a frozen
+        // snapshot of the preset at bypass-entry, so editing while bypassed
+        // would silently desync `currentPreset` from what unbypass will play.
+        guard !isInComparisonMode, !isBypassed else { return }
         eqProcessor.updateBand(index: index, band: band)
         if var p = currentPreset, p.bands.indices.contains(index) {
             p.bands[index] = band
@@ -323,7 +356,7 @@ final class EQEngine: ObservableObject {
     }
 
     func setPreamp(_ dB: Float) {
-        guard !isInComparisonMode else { return }
+        guard !isInComparisonMode, !isBypassed else { return }
         eqProcessor.setPreamp(dB: dB)
         if var p = currentPreset {
             p.preamp = dB
@@ -370,6 +403,11 @@ final class EQEngine: ObservableObject {
         matchGainA: Float,
         matchGainB: Float
     ) {
+        // Comparison and bypass share the slot infrastructure. Starting a
+        // comparison takes ownership: the previous bypass slots are about to
+        // be overwritten with comparison presets, so clear the flag so
+        // observers don't think bypass is still in effect.
+        if isBypassed { isBypassed = false }
         let sr = activeSampleRate ?? 48_000
         eqProcessor.loadSlots(
             presetA: presetA,
@@ -401,6 +439,52 @@ final class EQEngine: ObservableObject {
         isInComparisonMode = false
         if let preset = currentPreset {
             eqProcessor.configure(preset: preset, sampleRate: activeSampleRate ?? 48_000)
+        }
+    }
+
+    // MARK: - Bypass (EQ ↔ Flat)
+
+    /// Idempotently install the global ⌥B hotkey. Called from EQEngine.init
+    /// so it operates on the real, persisted engine instance (not a transient
+    /// `@StateObject` wrappedValue throwaway). The BypassHotkey holds a weak
+    /// reference back to the engine — no retain cycle.
+    func wireUpBypassHotkey() {
+        guard bypassHotkey == nil else { return }
+        bypassHotkey = BypassHotkey(engine: self)
+    }
+
+    /// Apply or remove the Flat-preset bypass while the engine keeps running.
+    /// Uses the same A/B slot infrastructure as comparison mode so the swap
+    /// is sample-accurate and loudness-matched: enters slot mode with the
+    /// user's current preset in slot A and the bundled Flat preset in slot B,
+    /// then selects slot B. Exit goes back through `apply(preset:)` so the
+    /// cascades return to the regular single-preset path.
+    ///
+    /// No-op when the engine isn't running, when there's no current preset,
+    /// or when an A/B comparison session is in progress — the comparison
+    /// owns slot mode for the duration of the session.
+    func setBypassed(_ on: Bool) {
+        if on == isBypassed { return }
+        if isInComparisonMode { return }
+        if on {
+            guard isRunning, let preset = currentPreset else { return }
+            let flat = EQPreset.flat
+            let (gA, gB) = LoudnessMatcher.equalAttenuationsDB(presetA: preset, presetB: flat)
+            eqProcessor.loadSlots(
+                presetA: preset,
+                presetB: flat,
+                sampleRate: activeSampleRate ?? 48_000,
+                extraGainDBA: gA,
+                extraGainDBB: gB
+            )
+            eqProcessor.setActiveSlot(.b)
+            isBypassed = true
+        } else if let preset = currentPreset {
+            // apply(preset:) handles `exitSlotMode` + `configure` + flag reset.
+            apply(preset: preset)
+        } else {
+            eqProcessor.exitSlotMode()
+            isBypassed = false
         }
     }
 }

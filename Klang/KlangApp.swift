@@ -85,5 +85,10 @@ struct KlangApp: App {
         excludedAppsStore.onChange = { [weak engine] in
             engine?.reEnumerateTapTargets()
         }
+        // Note: the global ⌥B hotkey is wired up by `EQEngine.init()` itself,
+        // not here. App-level `@StateObject` wrappedValue accesses during init
+        // can hit a transient instance that SwiftUI discards before binding the
+        // persistent storage, so anything we'd schedule from this scope would
+        // run against a dead engine.
     }
 }
