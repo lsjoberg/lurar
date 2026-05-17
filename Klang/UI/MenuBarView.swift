@@ -156,10 +156,19 @@ struct MenuBarView: View {
                     Text("Detected \(deviceManager.selectedOutput?.name ?? "device")")
                         .font(.callout.bold())
                         .lineLimit(1)
-                    Text("Apply the \(match.entry.measurer) measurement?")
+                    Text("Apply this preset measured for your headphones?")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(match.entry.name)
+                            .font(.callout)
+                            .lineLimit(1)
+                        Text(sourceLabel(for: match.entry))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                     HStack(spacing: 6) {
                         Button("Apply") { applySuggestion(match) }
                             .buttonStyle(.borderedProminent)
@@ -648,23 +657,36 @@ struct MenuBarView: View {
     }
 
     /// Magic button: clears the dismissed flag for the current device and
-    /// re-runs the matcher. If matches exist, the banner reappears via the
-    /// normal `reevaluateSuggestion` path. If not, we surface a brief
-    /// "No close matches" notice so the click isn't silent — auto-clears
-    /// after a few seconds.
+    /// surfaces remaining unenabled matches. Differs from the auto path
+    /// (`reevaluateSuggestion`), which stays silent once ANY match is
+    /// enabled — the manual path is the user explicitly asking "what else
+    /// fits?", so already-adopted matches are filtered out rather than
+    /// suppressing the banner entirely. If nothing's left we surface a
+    /// brief "No close matches" notice so the click isn't silent —
+    /// auto-clears after a few seconds.
     private func triggerManualSuggestion() {
         guard let device = deviceManager.selectedOutput else { return }
         devicePresetMemory.clearDismissedSuggestion(for: device.uid)
         noMatchesNotice = nil
-        reevaluateSuggestion()
-        if suggestion == nil {
-            let name = device.name
-            noMatchesNotice = name
-            Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
-                if noMatchesNotice == name {
-                    noMatchesNotice = nil
-                }
+        let matches = PresetSuggester.suggestions(
+            forDevice: device.name,
+            in: presetCatalog.entries
+        )
+        let enabled = presetCatalog.enabledIDs
+        let remaining = matches.filter { !enabled.contains($0.entry.id) }
+        if let first = remaining.first {
+            suggestion = first
+            suggestionAlternatives = Array(remaining.dropFirst())
+            return
+        }
+        suggestion = nil
+        suggestionAlternatives = []
+        let name = device.name
+        noMatchesNotice = name
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            if noMatchesNotice == name {
+                noMatchesNotice = nil
             }
         }
     }
