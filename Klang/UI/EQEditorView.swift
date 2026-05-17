@@ -546,6 +546,8 @@ struct EQEditorView: View {
                 in: -12...0
             )
             .disabled(editsLocked)
+            ClipMeterView(clipMeter: engine.clipMeter)
+                .padding(.top, 2)
         }
     }
 
