@@ -526,9 +526,9 @@ struct MenuBarView: View {
             Text("Status")
                 .foregroundStyle(.secondary)
                 .frame(width: labelColumnWidth, alignment: .leading)
-            Text(engine.statusMessage)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .multilineTextAlignment(.trailing)
+            Text(engine.isRunning ? "Running" : engine.statusMessage)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .multilineTextAlignment(.leading)
                 .lineLimit(3)
             Button {
                 if engine.isRunning { engine.stop() } else { startEngine() }
