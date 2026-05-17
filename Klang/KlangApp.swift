@@ -16,6 +16,7 @@ struct KlangApp: App {
     @StateObject private var updater = UpdaterController()
 
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     var body: some Scene {
         MenuBarExtra {
@@ -25,14 +26,23 @@ struct KlangApp: App {
                 presetStore: presetStore,
                 presetCatalog: presetCatalog,
                 crossfeedSettings: crossfeedSettings,
-                excludedAppsStore: excludedAppsStore,
-                devicePresetMemory: devicePresetMemory,
-                updater: updater
+                devicePresetMemory: devicePresetMemory
             )
         } label: {
             Image(systemName: engine.isRunning ? "waveform.circle.fill" : "waveform.circle")
         }
         .menuBarExtraStyle(.window)
+        // Global ⌘, command so Settings opens regardless of which window is
+        // key — including when the menu bar popover is closed.
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings\u{2026}") {
+                    openSettings()
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+                .keyboardShortcut(",", modifiers: [.command])
+            }
+        }
 
         Window("Klang EQ Editor", id: "editor") {
             EQEditorView(
@@ -61,12 +71,6 @@ struct KlangApp: App {
         .windowResizability(.contentSize)
         .commandsRemoved()
 
-        Window("Excluded Apps", id: "excluded-apps") {
-            ExcludedAppsView(store: excludedAppsStore)
-        }
-        .windowResizability(.contentSize)
-        .commandsRemoved()
-
         Window("Welcome to Klang", id: "onboarding") {
             OnboardingPermissionView(engine: engine, deviceManager: deviceManager)
         }
@@ -74,7 +78,12 @@ struct KlangApp: App {
         .commandsRemoved()
 
         Settings {
-            SettingsView(syncSettings: syncSettings, presetStore: presetStore)
+            SettingsView(
+                syncSettings: syncSettings,
+                presetStore: presetStore,
+                excludedAppsStore: excludedAppsStore,
+                updater: updater
+            )
         }
     }
 
