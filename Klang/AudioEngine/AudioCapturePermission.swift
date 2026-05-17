@@ -23,6 +23,12 @@ enum AudioCapturePermission {
         }
         let result = fn("kTCCServiceAudioCapture" as CFString, nil)
         // TCCAccessPreflight: 0 = authorized, 1 = denied/needs-prompt, 2 = denied.
+        // We log the raw code because the codes are private SPI and have
+        // shifted across macOS releases — when users report "I granted it
+        // but Klang still says blocked" the OSLog tells us whether preflight
+        // is genuinely returning the denied code or something the switch
+        // here is misclassifying.
+        log.debug("TCCAccessPreflight(kTCCServiceAudioCapture) = \(result, privacy: .public)")
         switch result {
         case 0: return .authorized
         case 1: return .denied

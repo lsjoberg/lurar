@@ -61,6 +61,12 @@ struct KlangApp: App {
         }
         .windowResizability(.contentSize)
         .commandsRemoved()
+
+        Window("Welcome to Klang", id: "onboarding") {
+            OnboardingPermissionView(engine: engine, deviceManager: deviceManager)
+        }
+        .windowResizability(.contentSize)
+        .commandsRemoved()
     }
 
     init() {

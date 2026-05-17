@@ -377,7 +377,36 @@ struct MenuBarView: View {
             engine.reportStartFailure("Pick an output device first")
             return
         }
-        engine.start(output: output)
+        // Permission decision tree, driven by the live TCC state — not a
+        // "have we ever shown the explainer" flag, because that misses the
+        // case where TCC was reset externally (tccutil, system update) and
+        // a fresh OS prompt is about to fire. We want our pre-prompt copy
+        // in front of the user every time the OS dialog is coming, even if
+        // they've seen it before.
+        switch AudioCapturePermission.preflight() {
+        case .authorized:
+            engine.start(output: output)
+        case .unknown:
+            // OS is about to prompt — show the welcome copy first so the
+            // user understands what "audio input" means in our context.
+            presentOnboarding()
+        case .denied:
+            // preflight says denied, but it can be stale. Ask the real
+            // source of truth before deciding which dialog (or none) to
+            // show — ensureAuthorized() returns true silently if the OS
+            // would actually permit the capture.
+            if AudioCapturePermission.ensureAuthorized() {
+                engine.start(output: output)
+            } else {
+                presentOnboarding()
+            }
+        }
+    }
+
+    private func presentOnboarding() {
+        dismissMenuBarWindow()
+        openWindow(id: "onboarding")
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     private func restartIfRunning() {
