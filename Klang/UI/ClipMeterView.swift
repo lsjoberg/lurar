@@ -51,9 +51,10 @@ struct ClipMeterView: View {
             }
 
             TimelineView(.periodic(from: .now, by: interval)) { timeline in
-                // Touch timeline.date inside the closure so SwiftUI re-evaluates
-                // each tick. Same idea as `SpectrumOverlayView`.
-                _ = timeline.date
+                // `let _ = timeline.date` makes the body's dependency on the
+                // schedule explicit. SwiftUI's ViewBuilder rejects a bare
+                // `_ = expression` statement, so it has to be a declaration.
+                let _ = timeline.date
                 let snap = clipMeter.snapshot()
                 HStack(alignment: .center, spacing: 8) {
                     VStack(spacing: barSpacing) {
