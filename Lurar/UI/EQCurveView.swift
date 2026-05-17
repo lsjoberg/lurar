@@ -3,7 +3,12 @@ import SwiftUI
 /// Renders the combined frequency response of a set of EQ bands using
 /// `EQCurveGeometry`'s closed-form magnitude math.
 /// Log frequency axis 20 Hz – 20 kHz; linear dB axis ±15 dB (visible ±12 dB gridlines).
-struct EQCurveView: View {
+///
+/// Conforms to `Equatable` so callers can wrap us in `.equatable()` and have
+/// SwiftUI skip the canvas redraw when our inputs are unchanged — used by the
+/// editor's slider-drag freeze to suppress the 128-sample biquad recompute
+/// until the mouse comes back up.
+struct EQCurveView: View, Equatable {
     let bands: [EQBand]
     let preamp: Float
     /// Optional parent-preset curve to draw as a dashed reference behind the
@@ -12,20 +17,35 @@ struct EQCurveView: View {
     var referenceBands: [EQBand]? = nil
     var referencePreamp: Float? = nil
 
+    static func == (lhs: EQCurveView, rhs: EQCurveView) -> Bool {
+        lhs.bands == rhs.bands
+            && lhs.preamp == rhs.preamp
+            && lhs.referenceBands == rhs.referenceBands
+            && lhs.referencePreamp == rhs.referencePreamp
+    }
+
     private let minDB: Double = -15
     private let maxDB: Double = 15
-    private let samples = 256
+    /// Display-only sample count. 128 is visually indistinguishable from 256
+    /// at typical editor widths but halves the per-frame biquad work, which
+    /// matters during slider drags where the curve re-renders on every value
+    /// change.
+    private let samples = 128
 
     var body: some View {
         Canvas { ctx, size in
             drawGrid(ctx: &ctx, size: size)
-            drawCurveFill(ctx: &ctx, size: size)
-            if let refBands = referenceBands {
+            // Compute response cache once per redraw and reuse for fill + stroke
+            // so coefficients aren't rebuilt twice per band.
+            let responses = bands.map { EQCurveGeometry.BandResponse(band: $0) }
+            let refResponses = referenceBands?.map { EQCurveGeometry.BandResponse(band: $0) }
+            drawCurveFill(ctx: &ctx, size: size, responses: responses)
+            if let refResponses {
                 drawReferenceCurve(ctx: &ctx, size: size,
-                                   bands: refBands,
+                                   responses: refResponses,
                                    preamp: referencePreamp ?? 0)
             }
-            drawCurveStroke(ctx: &ctx, size: size)
+            drawCurveStroke(ctx: &ctx, size: size, responses: responses)
         }
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 8))
         .overlay(
@@ -75,19 +95,19 @@ struct EQCurveView: View {
         }
     }
 
-    private func drawCurveFill(ctx: inout GraphicsContext, size: CGSize) {
-        let (_, fill) = curvePaths(in: size, bands: bands, preamp: preamp)
+    private func drawCurveFill(ctx: inout GraphicsContext, size: CGSize, responses: [EQCurveGeometry.BandResponse]) {
+        let (_, fill) = curvePaths(in: size, responses: responses, preamp: preamp)
         ctx.fill(fill, with: .color(Color.accentColor.opacity(0.18)))
     }
 
-    private func drawCurveStroke(ctx: inout GraphicsContext, size: CGSize) {
-        let (path, _) = curvePaths(in: size, bands: bands, preamp: preamp)
+    private func drawCurveStroke(ctx: inout GraphicsContext, size: CGSize, responses: [EQCurveGeometry.BandResponse]) {
+        let (path, _) = curvePaths(in: size, responses: responses, preamp: preamp)
         ctx.stroke(path, with: .color(Color.accentColor), lineWidth: 2)
     }
 
     /// Build both the stroke and filled paths for a given band set. Two passes
     /// (fill, then stroke) let us insert the dashed reference between them.
-    private func curvePaths(in size: CGSize, bands: [EQBand], preamp: Float) -> (Path, Path) {
+    private func curvePaths(in size: CGSize, responses: [EQCurveGeometry.BandResponse], preamp: Float) -> (Path, Path) {
         var path = Path()
         var fill = Path()
         let yZero = EQCurveGeometry.yPos(forDB: 0, minDB: minDB, maxDB: maxDB, in: size)
@@ -96,7 +116,8 @@ struct EQCurveView: View {
         for i in 0...samples {
             let t = Double(i) / Double(samples)
             let f = EQCurveGeometry.minFreq * pow(EQCurveGeometry.maxFreq / EQCurveGeometry.minFreq, t)
-            let dB = EQCurveGeometry.totalDB(at: f, bands: bands, preamp: preamp)
+            var dB = Double(preamp)
+            for r in responses { dB += r.magnitudeDB(at: f) }
             let x = EQCurveGeometry.xPos(forFreq: f, in: size)
             let y = EQCurveGeometry.yPos(forDB: dB, minDB: minDB, maxDB: maxDB, in: size)
             if !started {
@@ -119,8 +140,8 @@ struct EQCurveView: View {
     /// Dashed line, no fill — drawn between the live fill and the live stroke
     /// so the active response stays the most prominent element while the
     /// parent reference remains visible everywhere the curves overlap.
-    private func drawReferenceCurve(ctx: inout GraphicsContext, size: CGSize, bands: [EQBand], preamp: Float) {
-        let (path, _) = curvePaths(in: size, bands: bands, preamp: preamp)
+    private func drawReferenceCurve(ctx: inout GraphicsContext, size: CGSize, responses: [EQCurveGeometry.BandResponse], preamp: Float) {
+        let (path, _) = curvePaths(in: size, responses: responses, preamp: preamp)
         let style = StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [4, 4])
         ctx.stroke(path, with: .color(.secondary.opacity(0.65)), style: style)
     }
