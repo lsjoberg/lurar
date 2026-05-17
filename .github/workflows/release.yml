@@ -21,6 +21,7 @@ jobs:
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
       SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
       SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
+      BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -45,11 +46,12 @@ jobs:
           fi
 
       - name: Import Developer ID certificate
-        if: ${{ secrets.BUILD_CERTIFICATE_BASE64 != '' }}
-        env:
-          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
         run: |
           set -euo pipefail
+          if [[ -z "${BUILD_CERTIFICATE_BASE64:-}" ]]; then
+            echo "==> No BUILD_CERTIFICATE_BASE64 secret set, skipping (dry run)"
+            exit 0
+          fi
           KEYCHAIN="$RUNNER_TEMP/build.keychain"
           CERT_PATH="$RUNNER_TEMP/cert.p12"
 
