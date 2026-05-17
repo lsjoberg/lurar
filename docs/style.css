@@ -4,9 +4,13 @@
   --muted: #666;
   --accent: #0a0a0a;
   --accent-fg: #fafafa;
+  --brand: #0d7a6e;
   --border: rgba(0, 0, 0, 0.08);
   --card: #fff;
+  --card-soft: #f4f4f4;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.04);
+  --shot-shadow: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.06))
+                 drop-shadow(0 14px 40px rgba(0, 0, 0, 0.14));
 }
 
 @media (prefers-color-scheme: dark) {
@@ -16,30 +20,40 @@
     --muted: #888;
     --accent: #fafafa;
     --accent-fg: #0a0a0a;
+    --brand: #3dd6c2;
     --border: rgba(255, 255, 255, 0.08);
     --card: #141414;
+    --card-soft: #1a1a1a;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.2);
+    --shot-shadow: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5))
+                   drop-shadow(0 18px 50px rgba(0, 0, 0, 0.45));
   }
 }
 
-* {
-  box-sizing: border-box;
-}
-
-html, body {
-  margin: 0;
-  padding: 0;
-}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
                "Helvetica Neue", Helvetica, Arial, sans-serif;
   background: var(--bg);
   color: var(--fg);
-  line-height: 1.5;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+a { color: var(--brand); }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+  white-space: nowrap; border: 0;
+}
+
+/* ---------- header ---------- */
 
 header {
   display: flex;
@@ -48,6 +62,7 @@ header {
   padding: 24px 40px;
   max-width: 1100px;
   margin: 0 auto;
+  gap: 16px;
 }
 
 .wordmark {
@@ -56,16 +71,23 @@ header {
   letter-spacing: -0.01em;
 }
 
+header nav {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+
 header nav a {
   color: var(--fg);
   text-decoration: none;
   font-size: 14px;
-  opacity: 0.7;
+  opacity: 0.65;
+  transition: opacity 0.1s ease;
 }
 
-header nav a:hover {
-  opacity: 1;
-}
+header nav a:hover { opacity: 1; }
+
+/* ---------- layout ---------- */
 
 main {
   max-width: 1100px;
@@ -73,13 +95,31 @@ main {
   padding: 0 40px;
 }
 
+main > section { scroll-margin-top: 24px; }
+
+h2 {
+  font-size: clamp(26px, 3.2vw, 36px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+}
+
+.section-lede {
+  color: var(--muted);
+  max-width: 700px;
+  margin: 0 0 32px;
+  font-size: 16px;
+}
+
+/* ---------- hero ---------- */
+
 .hero {
   text-align: center;
-  padding: 64px 0 48px;
+  padding: 64px 0 32px;
 }
 
 .hero h1 {
-  font-size: clamp(40px, 6vw, 72px);
+  font-size: clamp(40px, 6.5vw, 76px);
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.05;
@@ -89,8 +129,8 @@ main {
 .tagline {
   font-size: 18px;
   color: var(--muted);
-  max-width: 620px;
-  margin: 0 auto 40px;
+  max-width: 640px;
+  margin: 0 auto 36px;
 }
 
 .download {
@@ -112,60 +152,326 @@ main {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08), 0 16px 32px rgba(0, 0, 0, 0.08);
 }
 
-.download:active {
-  transform: translateY(0);
-}
+.download:active { transform: translateY(0); }
 
 .requirements {
-  margin-top: 16px;
+  margin-top: 18px;
   font-size: 13px;
   color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px 14px;
 }
 
-.screenshot {
-  margin: 48px 0;
-  text-align: center;
+.pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-weight: 600;
+  color: var(--fg);
+  background: var(--card);
+  font-size: 12px;
+  letter-spacing: 0.01em;
 }
+
+/* ---------- screenshots ----------
+ *
+ * Screenshots are PNGs captured with `screencapture -o -w`, which means the
+ * rounded corners are transparent in the source file. We deliberately do NOT
+ * apply border-radius to the <img> — that would clip *inside* the alpha mask
+ * and chew the visible edge. We also avoid box-shadow, which is cast off the
+ * rectangular bounding box rather than the visible window pixels. Instead we
+ * use `filter: drop-shadow(...)`, which follows the alpha channel.
+ */
+
+.screenshot { margin: 0 0 24px; text-align: center; }
 
 .screenshot img,
-.screenshot-placeholder {
+.screenshot picture {
   max-width: 100%;
   height: auto;
-  border-radius: 16px;
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border);
+  filter: var(--shot-shadow);
 }
 
-.screenshot-placeholder {
+.hero-screenshot {
+  margin: 8px 0 64px;
+}
+
+.hero-screenshot img {
+  max-width: 960px;
   width: 100%;
-  display: block;
 }
 
-.features {
+/* ---------- how it works (pipeline) ---------- */
+
+.how {
+  padding: 32px 0 56px;
+  border-top: 1px solid var(--border);
+}
+
+.pipeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 24px;
-  padding: 48px 0 96px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 18px;
+  counter-reset: step;
+}
+
+.pipeline li {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px 22px 18px;
+  position: relative;
+}
+
+.pipeline li::before {
+  counter-increment: step;
+  content: counter(step);
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--brand);
+  opacity: 0.7;
+}
+
+.pipeline-step {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0 0 6px;
+}
+
+.pipeline li p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ---------- feature grid ---------- */
+
+.features-grid {
+  padding: 56px 0;
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 22px;
+}
+
+.features-grid > h2 {
+  grid-column: 1 / -1;
+  margin-bottom: 12px;
 }
 
 .feature {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .feature h3 {
-  margin: 0 0 8px;
-  font-size: 16px;
-  font-weight: 600;
+  margin: 0 0 6px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .feature p {
   margin: 0;
   font-size: 14px;
   color: var(--muted);
+  line-height: 1.55;
 }
+
+.feature img {
+  width: 100%;
+  height: auto;
+  margin-top: auto;
+  filter: var(--shot-shadow);
+}
+
+.feature--wide {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: center;
+  gap: 32px;
+  padding: 32px;
+}
+
+.feature--wide .feature-text { flex: 1 1 320px; }
+.feature--wide .feature-shot { flex: 1 1 380px; }
+
+.feature--wide img {
+  margin-top: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 720px) {
+  .feature--wide { flex-direction: column; }
+  .feature--wide .feature-shot { width: 100%; }
+}
+
+/* ---------- comparison table ---------- */
+
+.compare {
+  padding: 56px 0;
+  border-top: 1px solid var(--border);
+}
+
+.compare-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.compare table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 640px;
+}
+
+.compare th,
+.compare td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.compare thead th {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--card-soft);
+}
+
+.compare tbody th {
+  font-weight: 600;
+  color: var(--fg);
+  width: 38%;
+}
+
+.compare tbody tr:last-child th,
+.compare tbody tr:last-child td { border-bottom: none; }
+
+.compare thead th:nth-child(2),
+.compare tbody td:first-of-type {
+  font-weight: 600;
+  color: var(--brand);
+}
+
+.compare .yes { color: var(--brand); font-weight: 600; }
+.compare .no  { color: var(--muted); }
+
+.compare-note {
+  margin-top: 14px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* ---------- privacy ---------- */
+
+.privacy {
+  padding: 56px 0;
+  border-top: 1px solid var(--border);
+}
+
+.privacy ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.privacy li {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--brand);
+  border-radius: 12px;
+  padding: 18px 22px;
+  font-size: 14.5px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.privacy li strong { color: var(--fg); }
+.privacy code,
+.faq code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.92em;
+  background: var(--card-soft);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+/* ---------- FAQ ---------- */
+
+.faq {
+  padding: 56px 0;
+  border-top: 1px solid var(--border);
+}
+
+.faq details {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 22px;
+  margin-bottom: 10px;
+}
+
+.faq details[open] { padding-bottom: 18px; }
+
+.faq summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 15.5px;
+  list-style: none;
+  padding: 6px 0;
+  position: relative;
+  padding-right: 24px;
+}
+
+.faq summary::-webkit-details-marker { display: none; }
+
+.faq summary::after {
+  content: "+";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.faq details[open] summary::after { content: "−"; }
+
+.faq details p {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 14.5px;
+  line-height: 1.6;
+}
+
+/* ---------- footer ---------- */
 
 footer {
   border-top: 1px solid var(--border);
@@ -181,6 +487,18 @@ footer a {
   text-underline-offset: 2px;
 }
 
-footer a:hover {
-  color: var(--fg);
+footer a:hover { color: var(--fg); }
+
+/* ---------- responsive niceties ---------- */
+
+@media (max-width: 560px) {
+  header { padding: 20px 20px; }
+  header nav { gap: 14px; }
+  main { padding: 0 20px; }
+  .hero { padding: 40px 0 24px; }
+  .feature, .feature--wide { padding: 22px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .download { transition: none; }
 }

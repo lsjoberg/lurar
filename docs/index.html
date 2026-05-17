@@ -4,77 +4,328 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Klang — system-wide audio EQ for macOS</title>
-  <meta name="description" content="A macOS menu bar parametric EQ for headphone listening. Captures every app's audio via a Core Audio Process Tap and applies a 10-band biquad EQ before sending it to your DAC.">
+  <meta name="description" content="Headphone correction the way Sonarworks does it — without the subscription, without a driver. A 10-band parametric EQ that taps every app's audio via Core Audio and plays the result on your DAC.">
   <meta name="theme-color" content="#0a0a0a">
   <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='52' font-size='52'%3E%F0%9F%8E%9B%EF%B8%8F%3C/text%3E%3C/svg%3E">
   <meta property="og:title" content="Klang">
-  <meta property="og:description" content="System-wide audio EQ for macOS. No virtual driver. No subscription.">
+  <meta property="og:description" content="Headphone correction for macOS. No virtual driver. No subscription.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://lsjoberg.github.io/klang/">
+  <meta property="og:image" content="https://lsjoberg.github.io/klang/screenshots/og.png">
+  <meta name="twitter:card" content="summary_large_image">
 </head>
 <body>
   <header>
     <div class="wordmark">Klang</div>
     <nav>
+      <a href="#features">Features</a>
+      <a href="#compare">Compare</a>
+      <a href="#faq">FAQ</a>
       <a href="https://github.com/lsjoberg/klang">GitHub</a>
     </nav>
   </header>
 
   <main>
     <section class="hero">
-      <h1>System-wide audio EQ<br>for macOS.</h1>
+      <h1>Headphone EQ for macOS,<br>without the driver.</h1>
       <p class="tagline">
-        A menu bar parametric EQ that taps every app's audio via Core Audio,
-        runs it through a 10-band biquad chain, and plays the result on your DAC.
-        No virtual driver, no kernel extension, no subscription.
+        Klang taps every app's audio via Apple's Core Audio Process Tap, runs
+        it through a 10-band parametric EQ, and plays the result on your DAC.
+        No virtual audio device. No kernel extension. No subscription.
       </p>
 
       <a class="download" href="https://github.com/lsjoberg/klang/releases/latest/download/Klang.dmg">
         Download for macOS
       </a>
-      <p class="requirements">Requires macOS 14.2 or later · Apple Silicon &amp; Intel</p>
+      <p class="requirements">
+        <span id="version-pill" class="pill">Latest release</span>
+        <span>Requires macOS 14.2 or later · Apple Silicon &amp; Intel</span>
+        <span>Signed &amp; notarized</span>
+      </p>
     </section>
 
-    <section class="screenshot">
-      <!-- Replace with <img src="screenshot.png" alt="Klang menu bar interface" loading="lazy"> once a screenshot is captured. -->
-      <svg class="screenshot-placeholder" viewBox="0 0 800 480" xmlns="http://www.w3.org/2000/svg" aria-label="Screenshot placeholder">
-        <rect width="800" height="480" rx="16" fill="currentColor" opacity="0.04"/>
-        <text x="400" y="245" text-anchor="middle" font-family="-apple-system, system-ui, sans-serif" font-size="14" fill="currentColor" opacity="0.4">Screenshot coming soon</text>
-      </svg>
+    <section class="screenshot hero-screenshot" aria-label="Klang menu bar interface">
+      <!-- TODO: replace src with screenshots/menu-bar.png (light) and add screenshots/menu-bar-dark.png. -->
+      <picture>
+        <source srcset="screenshots/menu-bar-dark.png" media="(prefers-color-scheme: dark)">
+        <img src="placeholder.svg" alt="Klang menu bar popover with engine on, preset selected, and output device set" loading="eager">
+      </picture>
     </section>
 
-    <section class="features">
-      <div class="feature">
-        <h3>Per-headphone presets</h3>
-        <p>Ships with a Flat preset. Browse the AutoEq catalog (Oratory1990
-          measurements) and add curves for your headphones in seconds.</p>
+    <section class="how" aria-labelledby="how-title">
+      <h2 id="how-title">How it works</h2>
+      <p class="section-lede">
+        Klang doesn't install a virtual audio device, doesn't load a kernel
+        extension, and doesn't replace your output. macOS routes the audio
+        through Apple's own Process Tap API — Klang reads it, EQs it, and
+        sends it on to whichever DAC you've chosen.
+      </p>
+      <ol class="pipeline" aria-label="Signal flow">
+        <li>
+          <div class="pipeline-step">Any app</div>
+          <p>Music, Spotify, browser, conferencing — anything using Core Audio.</p>
+        </li>
+        <li>
+          <div class="pipeline-step">Process Tap</div>
+          <p>Apple's macOS&nbsp;14.2 API. No driver, no extension, no orange mic indicator.</p>
+        </li>
+        <li>
+          <div class="pipeline-step">10-band EQ</div>
+          <p>Float32 vDSP biquad cascade, plus crossfeed and loudness compensation.</p>
+        </li>
+        <li>
+          <div class="pipeline-step">Your DAC</div>
+          <p>Played out via HAL Audio Unit — no resampling unless your device requires it.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section id="features" class="features-grid" aria-labelledby="features-title">
+      <h2 id="features-title">Everything that's in the menu bar</h2>
+
+      <div class="feature feature--wide">
+        <div class="feature-text">
+          <h3>Per-headphone presets, from the AutoEq catalog</h3>
+          <p>
+            Browse the whole AutoEq library — Oratory1990 over-ears, Crinacle
+            IEMs, in-app search by brand. Enable a few for your headphones
+            and they're one click away from the menu bar. Fork any catalog
+            preset to tweak, with the original kept on screen as a dashed
+            reference curve.
+          </p>
+        </div>
+        <div class="feature-shot">
+          <img src="placeholder.svg" alt="Preset library showing AutoEq catalog entries" loading="lazy">
+        </div>
       </div>
-      <div class="feature">
-        <h3>A/B compare</h3>
-        <p>Sighted or blind switching between two presets. Find out which
-          curve you actually prefer, not the one that looks right on paper.</p>
+
+      <div class="feature feature--wide">
+        <div class="feature-shot">
+          <img src="placeholder.svg" alt="EQ editor showing curve, bands, spectrum overlay, and clip meter" loading="lazy">
+        </div>
+        <div class="feature-text">
+          <h3>An editor for when you want to tune it yourself</h3>
+          <p>
+            Ten bands — low shelf, eight peaks, high shelf — with live preview,
+            a post-EQ spectrum analyzer, and a sticky clip meter. Edits apply
+            to the running engine instantly. Edits to a built-in preset
+            silently fork into your library; the original stays one click away.
+          </p>
+        </div>
       </div>
+
+      <div class="feature">
+        <h3>A/B compare, sighted or blind</h3>
+        <p>
+          Switch between two presets without leaving the editor. Blind mode
+          masks which is which and records your votes; broadband RMS
+          loudness-matches both so a louder curve can't win on volume alone.
+        </p>
+        <img src="placeholder.svg" alt="A/B blind comparison view with trial counter" loading="lazy">
+      </div>
+
+      <div class="feature">
+        <h3>Per-device memory &amp; auto-suggest</h3>
+        <p>
+          Klang remembers the last preset per output device — switch DACs and
+          the right curve loads. First time you plug in headphones it knows,
+          it offers to enable the matching AutoEq preset.
+        </p>
+        <img src="placeholder.svg" alt="Auto-detect banner suggesting a matching preset" loading="lazy">
+      </div>
+
       <div class="feature">
         <h3>Crossfeed &amp; loudness</h3>
-        <p>Built-in crossfeed for binaural-friendly imaging. ISO 226:2003
-          loudness contour compensates for low-volume listening.</p>
+        <p>
+          Bauer-style crossfeed with adjustable intensity and head-shadow
+          cutoff for binaural-friendly imaging. An ISO 226:2003 equal-loudness
+          curve compensates for low-volume listening — the Fletcher-Munson
+          smile, dialed in to a phon offset, not guessed at.
+        </p>
+        <img src="placeholder.svg" alt="Crossfeed and loudness sliders" loading="lazy">
       </div>
+
       <div class="feature">
-        <h3>No virtual driver</h3>
-        <p>Uses Apple's Core Audio Process Tap API directly (macOS 14.2+).
-          Nothing to install, nothing to uninstall, nothing to break on the
-          next macOS update.</p>
+        <h3>Per-app exclusion</h3>
+        <p>
+          Some apps manage their own EQ — exclude them by bundle ID and
+          their audio bypasses Klang entirely. Updated live; no engine
+          restart needed.
+        </p>
+        <img src="placeholder.svg" alt="Settings panel listing excluded apps" loading="lazy">
       </div>
+
+      <div class="feature">
+        <h3>Hold-to-bypass hotkey</h3>
+        <p>
+          ⌥B momentarily flattens the EQ so you can hear what your
+          headphones sound like uncorrected. Release to snap back.
+          Implemented as an A/B slot swap, so transitions are click-free.
+        </p>
+        <img src="placeholder.svg" alt="Editor with bypass active" loading="lazy">
+      </div>
+
+      <div class="feature">
+        <h3>iCloud preset sync</h3>
+        <p>
+          Flip a switch in Settings and your preset library follows you to
+          every Mac you sign into. Klang watches the file, debounces echo
+          writes, and reloads cleanly on save.
+        </p>
+        <img src="placeholder.svg" alt="Settings sync tab" loading="lazy">
+      </div>
+    </section>
+
+    <section id="compare" class="compare" aria-labelledby="compare-title">
+      <h2 id="compare-title">How it compares</h2>
+      <p class="section-lede">
+        Klang's niche is corrective headphone EQ. Here's how it stacks up
+        against the apps people usually look at first.
+      </p>
+      <div class="compare-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col"><span class="sr-only">Capability</span></th>
+              <th scope="col">Klang</th>
+              <th scope="col">eqMac</th>
+              <th scope="col">SoundSource</th>
+              <th scope="col">SoundID Reference</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Price</th><td>Free</td><td>Free / paid tier</td><td>Paid</td><td>Subscription</td></tr>
+            <tr><th scope="row">No virtual audio driver</th><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td><td class="no">No</td></tr>
+            <tr><th scope="row">System-wide capture</th><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+            <tr><th scope="row">AutoEq catalog</th><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td><td>Proprietary</td></tr>
+            <tr><th scope="row">A/B compare (sighted &amp; blind)</th><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td><td>Partial</td></tr>
+            <tr><th scope="row">Crossfeed</th><td class="yes">Yes</td><td class="no">No</td><td>Add-on</td><td class="no">No</td></tr>
+            <tr><th scope="row">Loudness compensation</th><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td><td class="no">No</td></tr>
+            <tr><th scope="row">Per-device memory</th><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td><td class="yes">Yes</td></tr>
+            <tr><th scope="row">iCloud preset sync</th><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td><td>Account</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="compare-note">
+        Capability matrix as of writing — competitors change their plans
+        often. We'll keep this honest; if anything's wrong, open an issue.
+      </p>
+    </section>
+
+    <section class="privacy" aria-labelledby="privacy-title">
+      <h2 id="privacy-title">What it touches on your Mac</h2>
+      <ul>
+        <li>
+          <strong>One network destination:</strong> AutoEq's GitHub raw URL,
+          and only when you browse the catalog or refresh it. Klang itself
+          phones nothing home — no analytics, no telemetry, no accounts.
+        </li>
+        <li>
+          <strong>Audio Capture (TCC) permission, granted once.</strong>
+          Klang reads the system mixer via the Process Tap API — it does
+          <em>not</em> light up the orange mic indicator, because the tap
+          isn't a HAL input AU.
+        </li>
+        <li>
+          <strong>Three local locations:</strong>
+          <code>~/Library/Application&nbsp;Support/Klang</code> for presets
+          and the AutoEq cache, <code>~/Library/Preferences/se.linus.klang.plist</code>
+          for settings, and the system-managed TCC grant. Each is independently
+          resettable — recipes in the README.
+        </li>
+      </ul>
+    </section>
+
+    <section id="faq" class="faq" aria-labelledby="faq-title">
+      <h2 id="faq-title">FAQ</h2>
+
+      <details>
+        <summary>Does Klang raise the orange microphone indicator?</summary>
+        <p>
+          No. Klang reads tap samples via an <code>AudioDeviceIOProc</code> on
+          a private aggregate device — not via a HAL input AU — so the
+          orange indicator stays off. The <code>device.audio-input</code>
+          entitlement is required by Core Audio to deliver tap data once
+          TCC is granted, but the indicator is gated on a different API
+          path.
+        </p>
+      </details>
+
+      <details>
+        <summary>What about hi-res music players that use exclusive mode?</summary>
+        <p>
+          Apps that use HAL hog mode bypass Core Audio's mixer entirely and
+          can't be tapped — by anyone. Switch the app out of exclusive mode
+          if you want Klang to EQ it. This isn't a Klang limit; it's how
+          exclusive mode is supposed to work.
+        </p>
+      </details>
+
+      <details>
+        <summary>Will the next macOS update break it?</summary>
+        <p>
+          Klang uses Apple's own Process Tap API (added in macOS 14.2). There
+          is no third-party driver, no kernel extension, no system audio
+          device that an OS update can invalidate. If Apple ever changes the
+          API, Klang gets updated; you don't have to uninstall anything.
+        </p>
+      </details>
+
+      <details>
+        <summary>Is the audio path lossless?</summary>
+        <p>
+          Yes. Float32 internally, no sample-rate conversion unless your
+          output device requires it (most don't). Crossfeed and loudness are
+          structurally bypassed at zero settings — not just numerically
+          flat, but skipped entirely.
+        </p>
+      </details>
+
+      <details>
+        <summary>Why not <code>AVAudioEngine</code>?</summary>
+        <p>
+          Direct HAL Audio Unit means lower latency, no involuntary AGC,
+          and no opaque mixer behavior between us and the DAC. Klang is the
+          last DSP stage before your hardware.
+        </p>
+      </details>
+
+      <details>
+        <summary>What conflicts with Klang?</summary>
+        <p>
+          Other tap-based or HAL-intercepting tools — most commonly Rogue
+          Amoeba's ARK driver (SoundSource, Audio Hijack, Loopback) — can
+          intercept tap data before Klang sees it. If the EQ path is silent
+          and ARK is loaded, quit the offending app and run
+          <code>launchctl bootout gui/$(id -u)/com.rogueamoeba.arkaudiod</code>.
+        </p>
+      </details>
     </section>
   </main>
 
   <footer>
     <p>
-      Open source on
       <a href="https://github.com/lsjoberg/klang">GitHub</a> ·
-      Updates powered by
-      <a href="https://sparkle-project.org">Sparkle</a>
+      <a href="https://github.com/lsjoberg/klang/blob/main/CHANGELOG.md">Changelog</a> ·
+      <a href="https://github.com/lsjoberg/klang/issues">Report an issue</a>
     </p>
   </footer>
+
+  <script>
+    // Pull the latest version out of appcast.xml and surface it in the hero
+    // pill. Same-origin, so no CORS issue; on failure the pill keeps its
+    // default text.
+    fetch('appcast.xml', { cache: 'no-cache' })
+      .then(r => r.ok ? r.text() : Promise.reject(r.status))
+      .then(xml => {
+        const m = xml.match(/<sparkle:shortVersionString>([^<]+)</);
+        if (m) {
+          const pill = document.getElementById('version-pill');
+          if (pill) pill.textContent = 'v' + m[1];
+        }
+      })
+      .catch(() => {});
+  </script>
 </body>
 </html>
