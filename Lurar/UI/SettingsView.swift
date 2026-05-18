@@ -72,16 +72,13 @@ private struct GeneralSettingsTab: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 6) {
-                Picker("When system default output changes", selection: Binding(
-                    get: { outputPreferences.followMode },
-                    set: { outputPreferences.followMode = $0 }
-                )) {
-                    Text("Ask before switching").tag(OutputSelectionPreferences.FollowMode.ask)
-                    Text("Switch automatically").tag(OutputSelectionPreferences.FollowMode.autoFollow)
-                    Text("Do nothing").tag(OutputSelectionPreferences.FollowMode.ignore)
-                }
-                .help("How Lurar reacts when macOS changes the default output device")
-                Text("When AirPods or another device connects, macOS may change its default output. Choose how Lurar reacts.")
+                Toggle("Follow the system default output", isOn: Binding(
+                    get: { outputPreferences.followMode == .autoFollow },
+                    set: { outputPreferences.followMode = $0 ? .autoFollow : .ignore }
+                ))
+                .toggleStyle(.switch)
+                .help("Switch Lurar's output when macOS changes its default output device")
+                Text("When AirPods or another device connects, macOS may change its default output. With this on, Lurar follows along.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

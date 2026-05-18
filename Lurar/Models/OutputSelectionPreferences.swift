@@ -14,9 +14,7 @@ import Combine
 @MainActor
 final class OutputSelectionPreferences: ObservableObject {
     enum FollowMode: String, CaseIterable {
-        /// Show an in-app banner offering to switch. Default.
-        case ask
-        /// Switch Lurar's output silently to match the new system default.
+        /// Switch Lurar's output silently to match the new system default. Default.
         case autoFollow
         /// Don't react at all.
         case ignore
@@ -45,7 +43,7 @@ final class OutputSelectionPreferences: ObservableObject {
     var followMode: FollowMode {
         get {
             guard let raw = defaults.string(forKey: Self.followModeKey),
-                  let mode = FollowMode(rawValue: raw) else { return .ask }
+                  let mode = FollowMode(rawValue: raw) else { return .autoFollow }
             return mode
         }
         set {
