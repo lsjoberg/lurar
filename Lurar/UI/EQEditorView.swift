@@ -438,11 +438,17 @@ struct EQEditorView: View {
 
     @ViewBuilder
     private func parentChip(ref: PresetParentRef) -> some View {
+        // Prefer the snapshot taken at fork time; fall back to the live parent
+        // when older presets (forked before snapshotSource existed) are still
+        // around and the catalog has hydrated them.
+        let source = ref.snapshotSource ?? parentPreset?.source
+        let label = source.map { "Derived from \(ref.snapshotName) · \($0)" }
+                       ?? "Derived from \(ref.snapshotName)"
         HStack(spacing: 6) {
             Image(systemName: "link")
                 .imageScale(.small)
                 .foregroundStyle(.secondary)
-            Text("Derived from \(ref.snapshotName)")
+            Text(label)
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if parentPreset == nil {
@@ -579,7 +585,8 @@ struct EQEditorView: View {
             kind: kind,
             id: draft.id,
             slug: slug,
-            snapshotName: draft.name
+            snapshotName: draft.name,
+            snapshotSource: draft.source
         )
         var copy = draft
         copy.id = UUID()

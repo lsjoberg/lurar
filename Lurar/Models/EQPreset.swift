@@ -13,6 +13,32 @@ struct PresetParentRef: Codable, Hashable {
     /// Parent's display name captured at fork time. Lets the chip render even
     /// when the parent isn't currently hydrated (offline, library disabled).
     var snapshotName: String
+    /// Parent's source label captured at fork time (e.g. `oratory1990` or
+    /// `Rtings · Bruel & Kjaer 5128`). Disambiguates two parents that share
+    /// a name but differ in measurer/rig. Optional for backward compatibility
+    /// with presets forked before this field existed.
+    var snapshotSource: String?
+
+    enum CodingKeys: String, CodingKey {
+        case kind, id, slug, snapshotName, snapshotSource
+    }
+
+    init(kind: Kind, id: UUID, slug: String?, snapshotName: String, snapshotSource: String? = nil) {
+        self.kind = kind
+        self.id = id
+        self.slug = slug
+        self.snapshotName = snapshotName
+        self.snapshotSource = snapshotSource
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.kind = try c.decode(Kind.self, forKey: .kind)
+        self.id = try c.decode(UUID.self, forKey: .id)
+        self.slug = try c.decodeIfPresent(String.self, forKey: .slug)
+        self.snapshotName = try c.decode(String.self, forKey: .snapshotName)
+        self.snapshotSource = try c.decodeIfPresent(String.self, forKey: .snapshotSource)
+    }
 }
 
 struct EQPreset: Codable, Hashable, Identifiable {
