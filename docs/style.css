@@ -331,7 +331,11 @@ h2 {
 
 @media (max-width: 720px) {
   .feature--wide { flex-direction: column; }
-  .feature--wide .feature-shot { width: 100%; }
+  .feature--wide .feature-text,
+  .feature--wide .feature-shot {
+    flex: 0 0 auto;
+    width: 100%;
+  }
 }
 
 /* ---------- comparison table ---------- */
