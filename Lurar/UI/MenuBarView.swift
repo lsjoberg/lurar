@@ -16,6 +16,13 @@ struct MenuBarView: View {
     @State private var selectedPresetID: UUID?
     @State private var showCrossfeedHelp: Bool = false
     @State private var showLoudnessHelp: Bool = false
+    /// TCC state captured when the popover opens. Drives the body switch
+    /// between the full UI and the pre-consent gate so the user never lands
+    /// on functional-looking controls that can't actually start the engine.
+    /// Eager `preflight()` in the initializer avoids a one-frame flash on
+    /// authorized launches; `.task` refreshes on each reopen to catch a
+    /// late grant (or external revoke) without restarting Lurar.
+    @State private var permissionState: AudioCapturePermission.Status = AudioCapturePermission.preflight()
     /// Top-ranked suggestion for the current output, or nil if none matches
     /// confidently / the user has dismissed it / it's already enabled.
     @State private var suggestion: PresetSuggester.Match?
@@ -35,6 +42,66 @@ struct MenuBarView: View {
     }
 
     var body: some View {
+        Group {
+            if permissionState == .authorized {
+                authorizedBody
+            } else {
+                permissionGate
+            }
+        }
+    }
+
+    /// Pre-consent popover. Replaces the full control set so the user can't
+    /// land on a functional-looking power button / picker stack that just
+    /// bounces them to the onboarding window. A single primary action brings
+    /// the onboarding window forward (it was already opened by the launch
+    /// coordinator, but may have been closed via "Not now" or ⌘W).
+    private var permissionGate: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                LurarMark()
+                    .frame(width: 26, height: 26)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Lurar").font(.headline)
+                    Text("Setup needed")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Divider()
+
+            Text("Lurar needs permission to capture system audio before it can apply EQ. Continue the setup to grant it.")
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack {
+                Button("Continue setup\u{2026}") {
+                    dismissMenuBarWindow()
+                    openWindow(id: "onboarding")
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+                .help("Open the welcome window to grant audio-capture permission")
+
+                Spacer()
+
+                Button("Quit Lurar") { NSApp.terminate(nil) }
+                    .lurarShortcut(LurarShortcuts.quit)
+            }
+        }
+        .padding(14)
+        .frame(width: 340)
+        .task {
+            // Pick up a late grant — if the user finished the onboarding
+            // flow while the popover was closed, the next reopen needs to
+            // flip into the authorized body.
+            permissionState = AudioCapturePermission.preflight()
+        }
+    }
+
+    private var authorizedBody: some View {
         VStack(alignment: .leading, spacing: 12) {
             header
 
@@ -99,6 +166,10 @@ struct MenuBarView: View {
         .frame(width: 340)
         .background(hiddenShortcuts)
         .task {
+            // External revoke is rare but possible (System Settings toggle
+            // off while the app is running). Refresh on each reopen so we
+            // can flip back to the gate rather than serving broken controls.
+            permissionState = AudioCapturePermission.preflight()
             wireUp()
             applySelectedPreset()
             reevaluateSuggestion()
