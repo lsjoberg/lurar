@@ -38,4 +38,21 @@ enum MeasurerTier: Int, Comparable {
         "innerfidelity",
         "headphone.com legacy"
     ]
+
+    /// Keep only `.recommended` items when at least one exists in `items`,
+    /// otherwise return the input untouched. `usedFallback` is true in the
+    /// second case so the caller can surface a hint that the suggestion
+    /// isn't from a Tier-1 source. Preserves input ordering.
+    ///
+    /// Generic over the element type so it works for both `[CatalogEntry]`
+    /// (substring catalog search) and `[PresetSuggester.Match]` (device-name
+    /// matcher), and avoids each call site re-implementing the same partition.
+    static func preferRecommended<T>(
+        _ items: [T],
+        measurer: (T) -> String
+    ) -> (items: [T], usedFallback: Bool) {
+        let preferred = items.filter { tier(for: measurer($0)) == .recommended }
+        if !preferred.isEmpty { return (preferred, false) }
+        return (items, true)
+    }
 }
