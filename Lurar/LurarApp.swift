@@ -19,7 +19,6 @@ struct LurarApp: App {
     @StateObject private var updater = UpdaterController()
 
     @Environment(\.openWindow) private var openWindow
-    @Environment(\.openSettings) private var openSettings
 
     var body: some Scene {
         MenuBarExtra {
@@ -40,7 +39,7 @@ struct LurarApp: App {
         .commands {
             CommandGroup(replacing: .appSettings) {
                 Button("Settings\u{2026}") {
-                    openSettings()
+                    openWindow(id: "settings")
                     NSApp.activate(ignoringOtherApps: true)
                 }
                 .keyboardShortcut(",", modifiers: [.command])
@@ -80,7 +79,7 @@ struct LurarApp: App {
         .windowResizability(.contentSize)
         .commandsRemoved()
 
-        Settings {
+        Window("Settings", id: "settings") {
             SettingsView(
                 syncSettings: syncSettings,
                 presetStore: presetStore,
@@ -89,6 +88,8 @@ struct LurarApp: App {
                 updater: updater
             )
         }
+        .windowResizability(.contentSize)
+        .commandsRemoved()
     }
 
     init() {
