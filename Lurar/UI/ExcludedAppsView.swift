@@ -15,6 +15,7 @@ struct ExcludedAppsView: View {
     @State private var runningApps: [AudioProcessInfo.App] = []
     @State private var processListListener: AudioProcessListChangeListener?
     @State private var filter: String = ""
+    @FocusState private var filterFocused: Bool
 
     /// Union of running apps and apps that are excluded but not currently
     /// running — the latter still need to be visible so the user can remove
@@ -67,6 +68,7 @@ struct ExcludedAppsView: View {
             Divider()
             footer
         }
+        .background(hiddenShortcuts)
         .onAppear {
             refreshRunningApps()
             processListListener = AudioProcessListChangeListener {
@@ -83,6 +85,20 @@ struct ExcludedAppsView: View {
             content
                 .frame(minWidth: 460, idealWidth: 520, minHeight: 380, idealHeight: 500)
         }
+    }
+
+    /// Zero-sized hidden Buttons that carry the tab's keyboard bindings.
+    /// \u{2318}F focuses the filter field; \u{2318}N opens the file picker.
+    private var hiddenShortcuts: some View {
+        VStack(spacing: 0) {
+            Button { filterFocused = true } label: { EmptyView() }
+                .lurarShortcut(LurarShortcuts.focusFilter)
+            Button { addAppViaFilePicker() } label: { EmptyView() }
+                .lurarShortcut(LurarShortcuts.addExcluded)
+        }
+        .frame(width: 0, height: 0)
+        .opacity(0)
+        .accessibilityHidden(true)
     }
 
     // MARK: - Sections
@@ -105,6 +121,8 @@ struct ExcludedAppsView: View {
                 .foregroundStyle(.secondary)
             TextField("Filter by app name or bundle ID", text: $filter)
                 .textFieldStyle(.roundedBorder)
+                .focused($filterFocused)
+                .help("Filter the list (\u{2318}F to focus)")
             if !filter.isEmpty {
                 Button {
                     filter = ""
@@ -154,6 +172,7 @@ struct ExcludedAppsView: View {
     private var footer: some View {
         HStack {
             Button("Add app\u{2026}") { addAppViaFilePicker() }
+                .lurarShortcutHelp(LurarShortcuts.addExcluded, label: "Pick an .app bundle to exclude")
             Spacer()
             Text(footerSummary)
                 .font(.callout)

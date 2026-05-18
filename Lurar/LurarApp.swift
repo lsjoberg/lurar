@@ -44,6 +44,16 @@ struct LurarApp: App {
                 }
                 .keyboardShortcut(",", modifiers: [.command])
             }
+            // Global \u{2318}/ \u{2014} surfaces the cheat sheet from any focused
+            // window so enthusiasts can browse the full hotkey list without
+            // hunting through tooltips.
+            CommandGroup(after: .help) {
+                Button("Keyboard Shortcuts") {
+                    openWindow(id: "shortcuts")
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+                .keyboardShortcut("/", modifiers: [.command])
+            }
         }
 
         Window("Lurar EQ Editor", id: "editor") {
@@ -75,6 +85,12 @@ struct LurarApp: App {
 
         Window("Welcome to Lurar", id: "onboarding") {
             OnboardingPermissionView(engine: engine, deviceManager: deviceManager)
+        }
+        .windowResizability(.contentSize)
+        .commandsRemoved()
+
+        Window("Keyboard Shortcuts", id: "shortcuts") {
+            ShortcutsView()
         }
         .windowResizability(.contentSize)
         .commandsRemoved()

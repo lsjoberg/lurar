@@ -168,6 +168,7 @@ struct EQEditorView: View {
         }
         .padding(16)
         .frame(minWidth: 980)
+        .background(hiddenEditorShortcuts)
         .toolbar {
             ToolbarItemGroup(placement: .destructiveAction) {
                 if !isBuiltIn && savedVersion != nil {
@@ -176,6 +177,7 @@ struct EQEditorView: View {
                     } label: {
                         Label("Delete", systemImage: "trash")
                     }
+                    .lurarShortcut(LurarShortcuts.deletePreset)
                 }
             }
             ToolbarItemGroup(placement: .automatic) {
@@ -184,11 +186,14 @@ struct EQEditorView: View {
                         PresetImportExport.exportSingle(draft)
                     }
                     .disabled(presetStore.isBundledFlat(draft))
+                    .lurarShortcut(LurarShortcuts.exportPreset)
                     Button("Export Whole Library…") {
                         PresetImportExport.exportLibrary(presetStore.presets)
                     }
+                    .lurarShortcut(LurarShortcuts.exportLibrary)
                     Divider()
                     Button("Import…") { runImport() }
+                        .lurarShortcut(LurarShortcuts.importPresets)
                 } label: {
                     Label("Share", systemImage: "square.and.arrow.up")
                 }
@@ -202,13 +207,18 @@ struct EQEditorView: View {
                         Label("Tweak\u{2026}", systemImage: "slider.horizontal.3")
                     }
                     .labelStyle(.titleAndIcon)
-                    .help("Make an editable copy of this built-in in your library. The original stays available as a dashed reference curve, and you can reset back to it any time.")
+                    .lurarShortcutHelp(LurarShortcuts.tweak,
+                                       label: "Make an editable copy of this built-in in your library. The original stays available as a dashed reference curve, and you can reset back to it any time.")
+                    .keyboardShortcut(LurarShortcuts.tweak.key, modifiers: LurarShortcuts.tweak.modifiers)
                 } else {
                     Button("Discard Changes") { discardChanges() }
                         .disabled(!isDirty)
-                        .help("Throw away unsaved edits and return to the last saved version.")
+                        .lurarShortcutHelp(LurarShortcuts.discard,
+                                           label: "Throw away unsaved edits and return to the last saved version")
+                        .keyboardShortcut(LurarShortcuts.discard.key, modifiers: LurarShortcuts.discard.modifiers)
                     Button("Save") { presetStore.update(draft) }
                         .disabled(!isDirty)
+                        .lurarShortcut(LurarShortcuts.save)
                 }
             }
         }
@@ -330,6 +340,25 @@ struct EQEditorView: View {
         // or measurement app — bring Lurar into the dock + Cmd+Tab so they
         // can get back without having to click the menu-bar icon again.
         .showsInDockWhileVisible()
+    }
+
+    // MARK: - Shortcuts
+
+    /// Hotkeys for the preset-picker menu actions (New preset, Add more presets)
+    /// that live inside a custom `NSPopUpButton` bridge whose menu items can't
+    /// accept SwiftUI `.keyboardShortcut(...)`. Same pattern as `MenuBarView`'s
+    /// `hiddenShortcuts`.
+    private var hiddenEditorShortcuts: some View {
+        VStack(spacing: 0) {
+            Button { createNewPreset() } label: { EmptyView() }
+                .lurarShortcut(LurarShortcuts.editorNewPreset)
+
+            Button { showLibrary = true } label: { EmptyView() }
+                .lurarShortcut(LurarShortcuts.editorLibrary)
+        }
+        .frame(width: 0, height: 0)
+        .opacity(0)
+        .accessibilityHidden(true)
     }
 
     // MARK: - Sections
@@ -472,9 +501,11 @@ struct EQEditorView: View {
         }
         .controlSize(.small)
         .disabled(!canResetToOriginal)
-        .help(canResetToOriginal
-              ? "Overwrite this preset's bands and preamp with the original \u{201C}\(snapshotName)\u{201D} curve. Replaces your saved version — your name, headphone, and source are kept."
-              : "Bands and preamp already match the original.")
+        .lurarShortcutHelp(LurarShortcuts.resetParent,
+                           label: canResetToOriginal
+                              ? "Overwrite this preset's bands and preamp with the original \u{201C}\(snapshotName)\u{201D} curve. Replaces your saved version — your name, headphone, and source are kept"
+                              : "Bands and preamp already match the original")
+        .keyboardShortcut(LurarShortcuts.resetParent.key, modifiers: LurarShortcuts.resetParent.modifiers)
     }
 
     private func deleteCurrent() {
@@ -553,9 +584,11 @@ struct EQEditorView: View {
             )
         }
         .buttonStyle(.plain)
-        .help(spectrumEnabled
-              ? "Hide the live FFT overlay"
-              : "Show a live FFT of the post-EQ signal")
+        .lurarShortcutHelp(LurarShortcuts.toggleSpectrum,
+                           label: spectrumEnabled
+                              ? "Hide the live FFT overlay"
+                              : "Show a live FFT of the post-EQ signal")
+        .keyboardShortcut(LurarShortcuts.toggleSpectrum.key, modifiers: LurarShortcuts.toggleSpectrum.modifiers)
     }
 
     /// Throw away unsaved edits and snap the draft + engine back to the saved
@@ -827,6 +860,7 @@ struct EQEditorView: View {
                 onEditingChanged: sliderEditingChanged
             )
             .disabled(editsLocked)
+            .help("Preamp \u{2014} master attenuation in dB (\u{2212}12 to 0). Click the value to type it.")
             ClipMeterView(clipMeter: engine.clipMeter)
                 .padding(.top, 2)
         }
@@ -903,6 +937,7 @@ struct EQEditorView: View {
         }
         .buttonStyle(.plain)
         .disabled(editsLocked || draft.bands.count >= SlotMath.count)
+        .help("Add a band centered near \(Self.formatFrequency(defaultFreq))")
     }
 
     // MARK: - Numeric field parsing
@@ -1076,6 +1111,7 @@ private struct EditableValueLabel: View {
             RoundedRectangle(cornerRadius: 4)
                 .strokeBorder(.secondary.opacity(focused ? 0.35 : 0), lineWidth: 1)
         )
+        .help("Click to type a value. \u{2191}/\u{2193} nudge \u{2022} \u{21A9} commit \u{2022} esc cancel.")
         .onAppear { syncFromValue() }
         .onChange(of: value) { _, _ in
             // Live updates from sliders should refresh the displayed text
@@ -1263,6 +1299,7 @@ private struct BandStrip: View, Equatable {
                 )
                 .controlSize(.mini)
                 .disabled(editsLocked)
+                .help("Gain in dB. Click the value above to type it; \u{2191}/\u{2193} nudge by 0.1.")
             }
 
             VStack(spacing: 2) {
@@ -1288,6 +1325,7 @@ private struct BandStrip: View, Equatable {
                 )
                 .controlSize(.mini)
                 .disabled(editsLocked)
+                .help("Bandwidth / resonance. Higher Q = narrower band.")
             }
 
             Divider()

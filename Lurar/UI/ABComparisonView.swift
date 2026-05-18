@@ -244,11 +244,13 @@ struct ABComparisonView: View {
             }
             .keyboardShortcut(.defaultAction)
             .disabled(!session.isReadyToStart || !engine.isRunning)
+            .lurarShortcutHelp(LurarShortcuts.abStart, label: "Start a sighted comparison")
 
             Button("Start blind A/B") {
                 session.start(mode: .blind)
             }
             .disabled(!session.isReadyToStart || !engine.isRunning)
+            .help("Start a blind A/B \u{2014} slot labels shuffle between trials")
 
             Spacer()
 
@@ -262,13 +264,15 @@ struct ABComparisonView: View {
 
     private var sightedRunningControls: some View {
         HStack(spacing: 12) {
-            slotButton(slot: .a, label: "A")
-            slotButton(slot: .b, label: "B")
+            slotButton(slot: .a, label: "A", shortcut: LurarShortcuts.abSlotA)
+            slotButton(slot: .b, label: "B", shortcut: LurarShortcuts.abSlotB)
             Button("Toggle") { session.toggle() }
                 .keyboardShortcut(.space, modifiers: [])
+                .lurarShortcutHelp(LurarShortcuts.abToggle)
             Spacer()
             Button("Done") { session.backToSetup() }
                 .keyboardShortcut(.cancelAction)
+                .lurarShortcutHelp(LurarShortcuts.abCancel, label: "End the session")
         }
     }
 
@@ -276,13 +280,33 @@ struct ABComparisonView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
                 Group {
-                    ForEach(session.blindButtonOrder) { entry in
-                        slotButton(slot: entry.slot, label: entry.label)
+                    // In blind mode the slot identities shuffle between trials,
+                    // so bind "1" to the leftmost button and "2" to the rightmost
+                    // \u{2014} the user picks by VISUAL position, not slot identity.
+                    ForEach(Array(session.blindButtonOrder.enumerated()), id: \.element.id) { index, entry in
+                        slotButton(
+                            slot: entry.slot,
+                            label: entry.label,
+                            shortcut: index == 0 ? LurarShortcuts.abSlotA : LurarShortcuts.abSlotB
+                        )
                     }
                     Button("Toggle") { session.toggle() }
                         .keyboardShortcut(.space, modifiers: [])
+                        .lurarShortcutHelp(LurarShortcuts.abToggle)
                     Button("I prefer this one") { session.vote() }
                         .keyboardShortcut(.defaultAction)
+                        .lurarShortcutHelp(LurarShortcuts.abVote, label: "Vote for the currently-audible slot (\u{21A9})")
+                        .background(
+                            // Sibling invisible Button carries the "v" binding so we keep
+                            // the visible button's `.defaultAction` (Return) binding intact
+                            // \u{2014} two `.keyboardShortcut(...)` modifiers on the same view
+                            // replace rather than stack.
+                            Button { session.vote() } label: { EmptyView() }
+                                .lurarShortcut(LurarShortcuts.abVote)
+                                .frame(width: 0, height: 0)
+                                .opacity(0)
+                                .accessibilityHidden(true)
+                        )
                 }
                 .disabled(session.isTransitioning)
                 Spacer()
@@ -291,8 +315,10 @@ struct ABComparisonView: View {
                     .foregroundStyle(.secondary)
                 Button("Finish") { session.finish() }
                     .disabled(session.trials.isEmpty || session.isTransitioning)
+                    .lurarShortcut(LurarShortcuts.abFinish)
                 Button("Cancel") { session.backToSetup() }
                     .keyboardShortcut(.cancelAction)
+                    .lurarShortcutHelp(LurarShortcuts.abCancel, label: "End the session")
             }
             if session.isTransitioning {
                 Text("Shuffling next trial…")
@@ -306,11 +332,12 @@ struct ABComparisonView: View {
         }
     }
 
-    private func slotButton(slot: EQProcessor.Slot, label: String) -> some View {
+    private func slotButton(slot: EQProcessor.Slot, label: String, shortcut: LurarShortcut? = nil) -> some View {
         Button(label) { session.selectSlot(slot) }
             .buttonStyle(.bordered)
             .controlSize(.large)
             .tint(session.currentSlot == slot ? Color.accentColor : nil)
+            .modifier(OptionalShortcut(shortcut: shortcut))
     }
 
     private func resultsControls(mode: ABComparisonSession.Mode) -> some View {
@@ -330,7 +357,9 @@ struct ABComparisonView: View {
                 }
                 Spacer()
                 Button("Close") { applyAndClose(preset: nil) }
+                    .help("Close without changing the active preset")
                 Button("New session") { session.backToSetup() }
+                    .help("Reset and start over")
             }
         }
     }
@@ -343,9 +372,11 @@ struct ABComparisonView: View {
             Button("Use \(preset.name)") { applyAndClose(preset: preset) }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
+                .help("Apply \u{201C}\(preset.name)\u{201D} and close (\u{21A9})")
         } else {
             Button("Use \(preset.name)") { applyAndClose(preset: preset) }
                 .buttonStyle(.bordered)
+                .help("Apply \u{201C}\(preset.name)\u{201D} and close")
         }
     }
 
@@ -423,6 +454,20 @@ struct ABComparisonView: View {
     private var isRunningSighted: Bool {
         if case .running(.sighted) = session.phase { return true }
         return false
+    }
+}
+
+/// Applies a `LurarShortcut` only when one is provided; no-op when nil.
+/// Keeps `slotButton(...)` callers that don't need a keyboard binding
+/// (rare \u{2014} currently the results screen doesn't use this helper) clean.
+private struct OptionalShortcut: ViewModifier {
+    let shortcut: LurarShortcut?
+    func body(content: Content) -> some View {
+        if let s = shortcut {
+            content.lurarShortcut(s)
+        } else {
+            content
+        }
     }
 }
 

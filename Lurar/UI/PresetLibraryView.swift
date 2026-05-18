@@ -9,6 +9,7 @@ struct PresetLibraryView: View {
 
     @State private var search: String = ""
     @State private var measurerFilter: String = "All"
+    @FocusState private var searchFocused: Bool
 
     private var measurers: [String] {
         let set = Set(catalog.entries.map(\.measurer))
@@ -37,6 +38,26 @@ struct PresetLibraryView: View {
         }
         .frame(minWidth: 520, idealWidth: 620, minHeight: 480, idealHeight: 600)
         .showsInDockWhileVisible()
+        .background(hiddenShortcuts)
+    }
+
+    /// Zero-sized hidden Buttons that carry the library's keyboard bindings
+    /// for actions whose primary control either lives inside a TextField
+    /// (\u{2318}F focus search) or as a regular button that we want surfaced
+    /// in the cheat sheet too (\u{2318}R refresh \u{2014} bound here so the binding
+    /// works whether the footer Refresh button is offscreen or not).
+    private var hiddenShortcuts: some View {
+        VStack(spacing: 0) {
+            Button { searchFocused = true } label: { EmptyView() }
+                .lurarShortcut(LurarShortcuts.focusSearch)
+            Button {
+                Task { await catalog.refreshIndex(force: true) }
+            } label: { EmptyView() }
+                .lurarShortcut(LurarShortcuts.refreshCatalog)
+        }
+        .frame(width: 0, height: 0)
+        .opacity(0)
+        .accessibilityHidden(true)
     }
 
     private var header: some View {
@@ -52,11 +73,14 @@ struct PresetLibraryView: View {
             HStack {
                 TextField("Search headphone, measurer, rig…", text: $search)
                     .textFieldStyle(.roundedBorder)
+                    .focused($searchFocused)
+                    .help("Filter the catalog (\u{2318}F to focus)")
                 Picker("", selection: $measurerFilter) {
                     ForEach(measurers, id: \.self) { Text($0).tag($0) }
                 }
                 .labelsHidden()
                 .frame(width: 160)
+                .help("Filter by measurement source")
             }
         }
         .padding(16)
@@ -123,6 +147,7 @@ struct PresetLibraryView: View {
             Button("Refresh") {
                 Task { await catalog.refreshIndex(force: true) }
             }
+            .lurarShortcutHelp(LurarShortcuts.refreshCatalog, label: "Reload the catalog from AutoEq")
         }
         .padding(40)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -171,6 +196,7 @@ struct PresetLibraryView: View {
                 Button("Retry") { catalog.retry(entry.id) }
                     .buttonStyle(.borderless)
                     .controlSize(.mini)
+                    .help("Retry fetching this preset")
             }
             .help(error)
         } else if catalog.isEnabled(entry.id) && catalog.hydratedPresets[entry.id] != nil {
@@ -189,8 +215,10 @@ struct PresetLibraryView: View {
             Button("Refresh") {
                 Task { await catalog.refreshIndex(force: true) }
             }
+            .lurarShortcutHelp(LurarShortcuts.refreshCatalog, label: "Reload the catalog from AutoEq")
             Button("Done") { dismiss() }
                 .keyboardShortcut(.defaultAction)
+                .lurarShortcutHelp(LurarShortcuts.libraryDone, label: "Close")
         }
         .padding(12)
     }

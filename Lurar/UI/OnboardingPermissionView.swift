@@ -226,29 +226,35 @@ struct OnboardingPermissionView: View {
                 Spacer()
                 Button("Not now") { dismiss() }
                     .keyboardShortcut(.cancelAction)
+                    .help("Close this window without granting permission (esc)")
                 Button("Continue") {
                     continueFromInitial()
                 }
                 .keyboardShortcut(.defaultAction)
+                .help("Show the macOS audio-capture permission prompt (\u{21A9})")
             }
         case .denied:
             HStack {
                 Spacer()
                 Button("Close") { dismiss() }
                     .keyboardShortcut(.cancelAction)
+                    .help("Close this window (esc)")
                 Button("Open System Settings") {
                     openAudioCaptureSettings()
                 }
+                .help("Jump to Privacy & Security \u{2192} Audio Capture in System Settings")
                 Button("Try again") {
                     retryStart()
                 }
                 .keyboardShortcut(.defaultAction)
+                .help("Re-check permission and start the engine if granted (\u{21A9})")
             }
         case .success:
             HStack {
                 Spacer()
                 Button("Done") { dismiss() }
                     .keyboardShortcut(.defaultAction)
+                    .help("Close this window (\u{21A9})")
             }
         }
     }

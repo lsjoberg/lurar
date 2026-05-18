@@ -47,6 +47,7 @@ private struct GeneralSettingsTab: View {
             VStack(alignment: .leading, spacing: 6) {
                 Toggle("Start at login", isOn: $launchAtLogin)
                     .toggleStyle(.switch)
+                    .help("Register Lurar with Login Items so it launches when you sign in")
                     .onChange(of: launchAtLogin, initial: false) { _, newValue in
                         toggleLaunchAtLogin(newValue)
                     }
@@ -60,6 +61,7 @@ private struct GeneralSettingsTab: View {
             VStack(alignment: .leading, spacing: 6) {
                 Toggle("Start engine when Lurar launches", isOn: $startEngineOnLaunch)
                     .toggleStyle(.switch)
+                    .help("Begin processing audio as soon as Lurar boots, instead of waiting for a manual start")
                 Text("When Lurar has audio-capture permission, the engine starts automatically on launch. Turn this off if you'd rather start it manually from the menu bar.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -77,6 +79,7 @@ private struct GeneralSettingsTab: View {
                     Text("Switch automatically").tag(OutputSelectionPreferences.FollowMode.autoFollow)
                     Text("Do nothing").tag(OutputSelectionPreferences.FollowMode.ignore)
                 }
+                .help("How Lurar reacts when macOS changes the default output device")
                 Text("When AirPods or another device connects, macOS may change its default output. Choose how Lurar reacts.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -91,6 +94,7 @@ private struct GeneralSettingsTab: View {
                     Spacer()
                     Button("Check for Updates\u{2026}") { updater.checkForUpdates() }
                         .disabled(!updater.canCheckForUpdates)
+                        .help("Manually check for a newer Lurar release")
                 }
                 Text("Lurar checks for new releases automatically. You can also check manually.")
                     .font(.caption)

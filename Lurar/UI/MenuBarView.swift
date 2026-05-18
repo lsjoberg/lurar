@@ -76,17 +76,28 @@ struct MenuBarView: View {
                         .imageScale(.medium)
                 }
                 .buttonStyle(.borderless)
-                .keyboardShortcut(",", modifiers: [.command])
-                .help("Settings (⌘,)")
+                .lurarShortcut(LurarShortcuts.openSettings)
+
+                Button {
+                    dismissMenuBarWindow()
+                    openWindow(id: "shortcuts")
+                    NSApp.activate(ignoringOtherApps: true)
+                } label: {
+                    Image(systemName: "keyboard")
+                        .imageScale(.medium)
+                }
+                .buttonStyle(.borderless)
+                .lurarShortcut(LurarShortcuts.showShortcuts)
 
                 Spacer()
 
                 Button("Quit Lurar") { NSApp.terminate(nil) }
-                    .keyboardShortcut("q", modifiers: [.command])
+                    .lurarShortcut(LurarShortcuts.quit)
             }
         }
         .padding(14)
         .frame(width: 340)
+        .background(hiddenShortcuts)
         .task {
             wireUp()
             applySelectedPreset()
@@ -135,6 +146,39 @@ struct MenuBarView: View {
         .onReceive(presetCatalog.$enabledIDs) { _ in reevaluateSuggestion() }
     }
 
+    // MARK: - Shortcuts
+
+    /// Hidden buttons that carry the popover's keyboard bindings. The preset
+    /// picker's "New preset\u{2026} / Suggest\u{2026} / Add more\u{2026}" actions live inside a
+    /// custom `NSPopUpButton` bridge (`FixedWidthPopUp`) whose menu items can't
+    /// accept SwiftUI `.keyboardShortcut(...)`. Mounting zero-sized invisible
+    /// Buttons in a `.background` keeps them in the popover's responder chain
+    /// so the shortcuts fire while the popover is key, without affecting layout.
+    private var hiddenShortcuts: some View {
+        VStack(spacing: 0) {
+            Button {
+                createNewPresetAndOpenEditor()
+            } label: { EmptyView() }
+                .lurarShortcut(LurarShortcuts.newPreset)
+
+            Button {
+                triggerManualSuggestion()
+            } label: { EmptyView() }
+                .lurarShortcut(LurarShortcuts.suggest)
+                .disabled(deviceManager.selectedOutput == nil)
+
+            Button {
+                dismissMenuBarWindow()
+                openWindow(id: "library")
+                NSApp.activate(ignoringOtherApps: true)
+            } label: { EmptyView() }
+                .lurarShortcut(LurarShortcuts.openLibrary)
+        }
+        .frame(width: 0, height: 0)
+        .opacity(0)
+        .accessibilityHidden(true)
+    }
+
     // MARK: - Sections
 
     private var header: some View {
@@ -176,10 +220,12 @@ struct MenuBarView: View {
                         Button("Apply") { applySuggestion(match) }
                             .buttonStyle(.borderedProminent)
                             .controlSize(.small)
+                            .help("Enable this preset and apply it now")
                         Button("Choose another") {
                             showingAlternatives = true
                         }
                         .controlSize(.small)
+                        .help("See other catalog matches for this device")
                         .popover(isPresented: $showingAlternatives, arrowEdge: .bottom) {
                             alternativesPopover
                         }
@@ -188,6 +234,7 @@ struct MenuBarView: View {
                             .buttonStyle(.plain)
                             .foregroundStyle(.secondary)
                             .controlSize(.small)
+                            .help("Dismiss this suggestion for the current device")
                     }
                 }
                 .padding(10)
@@ -225,6 +272,7 @@ struct MenuBarView: View {
                             applySuggestion(match)
                         }
                         .controlSize(.small)
+                        .help("Enable and apply this preset")
                     }
                 }
             }
@@ -237,6 +285,7 @@ struct MenuBarView: View {
             }
             .buttonStyle(.link)
             .controlSize(.small)
+            .lurarShortcutHelp(LurarShortcuts.openLibrary, label: "Open the full preset library")
         }
         .padding(12)
         .frame(width: 280)
@@ -264,11 +313,13 @@ struct MenuBarView: View {
                 Button("Switch") { deviceManager.acceptPendingDefaultChange() }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
+                    .help("Switch Lurar's output to the new system default")
                 Spacer(minLength: 0)
                 Button("Keep current") { deviceManager.dismissPendingDefaultChange() }
                     .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
                     .controlSize(.small)
+                    .help("Stay on the current device")
             }
         }
         .padding(10)
@@ -323,7 +374,7 @@ struct MenuBarView: View {
             }
         )
         .fixedSize()
-        .help("Hold to bypass (swap to Flat). Global shortcut: \u{2325}B (hold).")
+        .lurarShortcutHelp(LurarShortcuts.bypassHold, label: "Hold to bypass (swap to Flat). Global shortcut")
     }
 
     /// Compact action row sitting directly under the Preset picker so the
@@ -343,8 +394,7 @@ struct MenuBarView: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
-            .keyboardShortcut("e", modifiers: [.command])
-            .help("Open EQ editor (\u{2318}E)")
+            .lurarShortcut(LurarShortcuts.openEditor)
 
             Button {
                 dismissMenuBarWindow()
@@ -355,7 +405,7 @@ struct MenuBarView: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
-            .help("Sighted or blind A/B comparison of two presets")
+            .lurarShortcut(LurarShortcuts.openAB)
 
             bypassButton
 
@@ -411,6 +461,7 @@ struct MenuBarView: View {
                     }
                 }
             )
+            .help("Pick a preset \u{2022} \u{2318}N new \u{2022} \u{2318}D suggest \u{2022} \u{2318}L library")
         }
     }
 
@@ -456,6 +507,7 @@ struct MenuBarView: View {
                 items: deviceManager.outputDevices.map { .init(id: $0.uid, title: $0.name) }
             )
             .disabled(deviceManager.outputDevices.isEmpty)
+            .help("Pick the audio device Lurar plays to")
         }
     }
 
@@ -490,6 +542,7 @@ struct MenuBarView: View {
                 ),
                 in: Double(EQEngine.loudnessOffsetRange.lowerBound)...Double(EQEngine.loudnessOffsetRange.upperBound)
             )
+            .help("Loudness compensation \u{2014} ISO 226 contour boost for quiet listening. 0 dB = off.")
         }
     }
 
@@ -537,7 +590,9 @@ struct MenuBarView: View {
                     .imageScale(.large)
             }
             .buttonStyle(.plain)
-            .help(engine.isRunning ? "Turn engine off" : "Turn engine on")
+            .lurarShortcutHelp(LurarShortcuts.toggleEngine,
+                               label: engine.isRunning ? "Turn engine off" : "Turn engine on")
+            .keyboardShortcut(LurarShortcuts.toggleEngine.key, modifiers: LurarShortcuts.toggleEngine.modifiers)
         }
         .font(.callout)
     }
@@ -577,6 +632,7 @@ struct MenuBarView: View {
                 ),
                 in: 0...1
             )
+            .help("Crossfeed \u{2014} headphone-to-speaker imaging blend. 0% = off.")
         }
     }
 
