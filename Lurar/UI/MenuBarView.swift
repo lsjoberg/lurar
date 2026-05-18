@@ -12,7 +12,6 @@ struct MenuBarView: View {
     @ObservedObject var devicePresetMemory: DevicePresetMemory
 
     @Environment(\.openWindow) private var openWindow
-    @Environment(\.openSettings) private var openSettings
 
     @State private var selectedPresetID: UUID?
     @State private var showCrossfeedHelp: Bool = false
@@ -70,7 +69,7 @@ struct MenuBarView: View {
             HStack {
                 Button {
                     dismissMenuBarWindow()
-                    openSettings()
+                    openWindow(id: "settings")
                     NSApp.activate(ignoringOtherApps: true)
                 } label: {
                     Image(systemName: "gearshape")

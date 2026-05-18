@@ -28,6 +28,7 @@ struct SettingsView: View {
                 .frame(width: 460)
         }
         .frame(width: 520)
+        .showsInDockWhileVisible()
     }
 }
 
