@@ -55,8 +55,10 @@
     </section>
 
     <section class="screenshot hero-screenshot" aria-label="Lurar menu bar interface">
-      <!-- TODO: replace placeholder.svg with screenshots/menu-bar.png (light) and add a <source> for screenshots/menu-bar-dark.png. -->
-      <img src="placeholder.svg" alt="Lurar menu bar popover with engine on, preset selected, and output device set" loading="eager">
+      <picture>
+        <source srcset="screenshots/menu-bar-dark.png" media="(prefers-color-scheme: dark)">
+        <img src="screenshots/menu-bar.png" alt="Lurar menu bar popover with engine on, preset selected, and output device set" loading="eager">
+      </picture>
     </section>
 
     <section class="how" aria-labelledby="how-title">
@@ -102,13 +104,19 @@
           </p>
         </div>
         <div class="feature-shot">
-          <img src="placeholder.svg" alt="Preset library showing AutoEq catalog entries" loading="lazy">
+          <picture>
+            <source srcset="screenshots/preset-library-dark.png" media="(prefers-color-scheme: dark)">
+            <img src="screenshots/preset-library.png" alt="Preset library showing AutoEq catalog entries" loading="lazy">
+          </picture>
         </div>
       </div>
 
       <div class="feature feature--wide">
         <div class="feature-shot">
-          <img src="placeholder.svg" alt="EQ editor showing curve, bands, spectrum overlay, and clip meter" loading="lazy">
+          <picture>
+            <source srcset="screenshots/editor-dark.png" media="(prefers-color-scheme: dark)">
+            <img src="screenshots/editor.png" alt="EQ editor showing curve, bands, spectrum overlay, and clip meter" loading="lazy">
+          </picture>
         </div>
         <div class="feature-text">
           <h3>An editor for when you want to tune it yourself</h3>
@@ -128,7 +136,10 @@
           masks which is which and records your votes; broadband RMS
           loudness-matches both so a louder curve can't win on volume alone.
         </p>
-        <img src="placeholder.svg" alt="A/B blind comparison view with trial counter" loading="lazy">
+        <picture>
+          <source srcset="screenshots/ab-blind-dark.png" media="(prefers-color-scheme: dark)">
+          <img src="screenshots/ab-blind.png" alt="A/B blind comparison view with trial counter" loading="lazy">
+        </picture>
       </div>
 
       <div class="feature">
@@ -138,7 +149,10 @@
           the right curve loads. First time you plug in headphones it knows,
           it offers to enable the matching AutoEq preset.
         </p>
-        <img src="placeholder.svg" alt="Auto-detect banner suggesting a matching preset" loading="lazy">
+        <picture>
+          <source srcset="screenshots/auto-detect-dark.png" media="(prefers-color-scheme: dark)">
+          <img src="screenshots/auto-detect.png" alt="Auto-detect banner suggesting a matching preset" loading="lazy">
+        </picture>
       </div>
 
       <div class="feature">
@@ -149,7 +163,10 @@
           curve compensates for low-volume listening — the Fletcher-Munson
           smile, dialed in to a phon offset, not guessed at.
         </p>
-        <img src="placeholder.svg" alt="Crossfeed and loudness sliders" loading="lazy">
+        <picture>
+          <source srcset="screenshots/crossfeed-loudness-dark.png" media="(prefers-color-scheme: dark)">
+          <img src="screenshots/crossfeed-loudness.png" alt="Crossfeed and loudness sliders" loading="lazy">
+        </picture>
       </div>
 
       <div class="feature">
@@ -159,7 +176,10 @@
           their audio bypasses Lurar entirely. Updated live; no engine
           restart needed.
         </p>
-        <img src="placeholder.svg" alt="Settings panel listing excluded apps" loading="lazy">
+        <picture>
+          <source srcset="screenshots/excluded-apps-dark.png" media="(prefers-color-scheme: dark)">
+          <img src="screenshots/excluded-apps.png" alt="Settings panel listing excluded apps" loading="lazy">
+        </picture>
       </div>
 
       <div class="feature">
@@ -169,7 +189,10 @@
           headphones sound like uncorrected. Release to snap back.
           Implemented as an A/B slot swap, so transitions are click-free.
         </p>
-        <img src="placeholder.svg" alt="Editor with bypass active" loading="lazy">
+        <picture>
+          <source srcset="screenshots/bypass-dark.png" media="(prefers-color-scheme: dark)">
+          <img src="screenshots/bypass.png" alt="Editor with bypass active" loading="lazy">
+        </picture>
       </div>
 
       <div class="feature">
@@ -179,7 +202,10 @@
           every Mac you sign into. Lurar watches the file, debounces echo
           writes, and reloads cleanly on save.
         </p>
-        <img src="placeholder.svg" alt="Settings sync tab" loading="lazy">
+        <picture>
+          <source srcset="screenshots/sync-dark.png" media="(prefers-color-scheme: dark)">
+          <img src="screenshots/sync.png" alt="Settings sync tab" loading="lazy">
+        </picture>
       </div>
     </section>
 

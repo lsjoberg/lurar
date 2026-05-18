@@ -3,12 +3,19 @@
 # transparent rounded corners (no shadow bleed, no wallpaper leak).
 #
 # Usage:
-#   scripts/screenshot.sh <name>            # window capture (default)
-#   scripts/screenshot.sh <name> window     # same as above
-#   scripts/screenshot.sh <name> region     # rectangular region capture
-#   scripts/screenshot.sh <name> bar        # menu bar strip (interactive region)
-#   scripts/screenshot.sh prep              # one-time prep (dock, wallpaper hints)
-#   scripts/screenshot.sh list              # show suggested shot names + status
+#   scripts/screenshot.sh <name>                       # window capture (default)
+#   scripts/screenshot.sh <name> window                # same as above
+#   scripts/screenshot.sh <name> region                # rectangular region capture
+#   scripts/screenshot.sh <name> bar                   # menu bar strip (interactive region)
+#   scripts/screenshot.sh <name> <mode> --delay <sec>  # wait N s before capture starts
+#   scripts/screenshot.sh prep                         # one-time prep (dock, wallpaper hints)
+#   scripts/screenshot.sh list                         # show suggested shot names + status
+#
+# Use --delay for focus-fragile UI (NSPopover-style surfaces like the menu bar
+# popover or the auto-detect banner). Without it, switching focus to Terminal
+# to run this script dismisses the popover, and running it first means the
+# camera cursor eats the click you'd use to open the popover. With e.g.
+# `--delay 5`, you get 5 s to open the popover; window-pick activates after.
 #
 # Output: docs/screenshots/<name>.png
 #
@@ -77,21 +84,47 @@ ensure_lurar_running() {
   fi
 }
 
+DELAY=0
+
+# screencapture's own -T flag is ignored when combined with -w/-i (interactive
+# modes), so we implement the delay ourselves with a countdown sleep before
+# kicking off the interactive capture.
+wait_for_delay() {
+  local label="$1"
+  if (( DELAY <= 0 )); then return; fi
+  echo "$label"
+  local i
+  for (( i = DELAY; i > 0; i-- )); do
+    printf '  %ds...\r' "$i"
+    sleep 1
+  done
+  printf '  go!     \n'
+}
+
 capture_window() {
   local out="$1"
-  echo "Click the Lurar window or popover you want to capture..."
+  wait_for_delay "Capture in ${DELAY}s — open the popover/window now."
+  if (( DELAY <= 0 )); then
+    echo "Click the Lurar window or popover you want to capture..."
+  fi
   screencapture -o -w "$out"
 }
 
 capture_region() {
   local out="$1"
-  echo "Drag a rectangle to capture..."
+  wait_for_delay "Capture in ${DELAY}s — get the screen ready, then drag a rectangle."
+  if (( DELAY <= 0 )); then
+    echo "Drag a rectangle to capture..."
+  fi
   screencapture -o -i "$out"
 }
 
 capture_bar() {
   local out="$1"
-  echo "Drag a rectangle across the menu bar area..."
+  wait_for_delay "Capture in ${DELAY}s — then drag across the menu bar area."
+  if (( DELAY <= 0 )); then
+    echo "Drag a rectangle across the menu bar area..."
+  fi
   # `-i` is interactive region; for the menu bar strip you draw the rect
   # yourself. -o is still applied even though there's no window shadow,
   # which is harmless.
@@ -127,28 +160,37 @@ One-time setup tips (do these once, then capture freely):
 
   1. Quit unnecessary apps. Close any browser tabs that might flash through.
 
-  2. Set Desktop to a solid color so any future viewer that ignores alpha
+  2. Turn on Reduce Transparency so vibrancy surfaces (menu bar popover,
+     Settings panes, sidebars) render as opaque solid colors instead of
+     leaking the wallpaper tint through. Without this, light-mode popovers
+     captured over a gray desktop come out looking muddy/dimmed.
+       defaults write com.apple.universalaccess reduceTransparency -bool true
+     Or via UI: System Settings → Accessibility → Display → Reduce transparency.
+     Restore later with:
+       defaults write com.apple.universalaccess reduceTransparency -bool false
+
+  3. Set Desktop to a solid color so any future viewer that ignores alpha
      gets a clean fringe:
        System Settings → Wallpaper → Color → pick a neutral.
      Dark wallpaper for dark shots, light for light. The CSS handles
      shadows, so you don't need the desktop in the shot.
 
-  3. Auto-hide the Dock for the duration of a capture session:
+  4. Auto-hide the Dock for the duration of a capture session:
        defaults write com.apple.dock autohide -bool true && killall Dock
      Restore later with:
        defaults write com.apple.dock autohide -bool false && killall Dock
 
-  4. Hide noisy menu bar extras (Wi-Fi, Battery, Bluetooth, Control Center)
+  5. Hide noisy menu bar extras (Wi-Fi, Battery, Bluetooth, Control Center)
      via System Settings → Control Center, so the menu bar shot is just
      Lurar and the system clock.
 
-  5. Capture on a Retina display — `screencapture` records the native 2x
+  6. Capture on a Retina display — `screencapture` records the native 2x
      pixel buffer automatically. Don't downscale before committing.
 
-  6. Re-run a capture you don't like — `screencapture` overwrites without
+  7. Re-run a capture you don't like — `screencapture` overwrites without
      prompting.
 
-  7. For dark-mode variants: switch the system to dark via
+  8. For dark-mode variants: switch the system to dark via
         osascript -e 'tell app "System Events" to tell appearance preferences to set dark mode to true'
      ...capture...then flip back.
 TIPS
@@ -181,8 +223,29 @@ main() {
 
   ensure_macos
 
-  local name="$1"
-  local mode="${2:-window}"
+  local name="$1"; shift
+  local mode="window"
+  if [[ $# -gt 0 && "$1" != --* ]]; then
+    mode="$1"; shift
+  fi
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --delay)
+        [[ $# -ge 2 ]] || { echo "--delay requires a number of seconds" >&2; exit 2; }
+        DELAY="$2"; shift 2
+        ;;
+      --delay=*)
+        DELAY="${1#*=}"; shift
+        ;;
+      *) echo "unknown option: $1" >&2; exit 2 ;;
+    esac
+  done
+
+  if ! [[ "$DELAY" =~ ^[0-9]+$ ]]; then
+    echo "--delay must be a non-negative integer, got '$DELAY'" >&2
+    exit 2
+  fi
 
   if [[ "$name" =~ [^A-Za-z0-9._-] ]]; then
     echo "screenshot.sh: name must be alphanumeric (plus . _ -), got '$name'" >&2
