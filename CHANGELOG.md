@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.0](https://github.com/lsjoberg/lurar/compare/v0.2.3...v0.3.0) (2026-05-18)
+
+
+### Features
+
+* **audio:** fade engine start, stop, app-quit, and 150 ms startup mute ([3a182ef](https://github.com/lsjoberg/lurar/commit/3a182ef0f52c1fed654ac55cc9eb69631f169d4b))
+* **audio:** pin HAL Output sample rate, bridge tap rate with AudioConverter ([11340db](https://github.com/lsjoberg/lurar/commit/11340db22126e50454e3a817bf30f631cebddae6))
+* **audio:** runtime diagnostics + fade-mute on output device rate change ([cdfb036](https://github.com/lsjoberg/lurar/commit/cdfb036617baba4b6ffae73ccd2c5ecadebd0fbf))
+* **prefs:** auto-follow system default output by default, as a switch ([485f9c6](https://github.com/lsjoberg/lurar/commit/485f9c68660439f193f036a7e370c5b42b05354c))
+* **ui:** gate menu-bar popover behind TCC consent ([7cb56ab](https://github.com/lsjoberg/lurar/commit/7cb56ab1478e0bfc584b95e632a9bb04fa4a9935))
+
+
+### Bug Fixes
+
+* **audio:** smooth track-change rebuilds with fade + skip-if-unchanged + HAL keep-alive ([f9e19a0](https://github.com/lsjoberg/lurar/commit/f9e19a051573ec118ad6d0b83dd258e013c2643f))
+* **launch:** apply selected preset at autostart, not on first menu open ([97ffb14](https://github.com/lsjoberg/lurar/commit/97ffb1471abdf3fe5f405f08dfb1542902aab12c))
+* **release:** let feat commits bump minor in pre-1.0 ([7469c6f](https://github.com/lsjoberg/lurar/commit/7469c6fd4c83a1e0cb3fa6b1457084eaf269c1a7))
+
 ## [0.2.3](https://github.com/lsjoberg/lurar/compare/v0.2.2...v0.2.3) (2026-05-18)
 
 
