@@ -13,18 +13,8 @@ final class DeviceManager: ObservableObject {
         didSet {
             guard let uid = selectedOutput?.uid, uid != oldValue?.uid else { return }
             preferences.lastOutputUID = uid
-            // Any change to the selected output makes a pending nudge stale —
-            // the user has either accepted it, ignored it, or picked something
-            // else entirely.
-            pendingDefaultChange = nil
         }
     }
-
-    /// Set when the system default output changes mid-session to a device
-    /// that differs from `selectedOutput`, and the user's `followMode` is
-    /// `.ask`. The menu bar surfaces a banner offering to switch. Cleared
-    /// when the user accepts, dismisses, or manually changes the picker.
-    @Published var pendingDefaultChange: AudioDevice?
 
     /// Called by EQEngine to react to device topology changes (re-bind / stop / restart).
     var onTopologyChange: (() -> Void)?
@@ -63,8 +53,7 @@ final class DeviceManager: ObservableObject {
 
         // Output policy: keep current selection if still around; otherwise
         // restore the last-used UID; otherwise fall back to the current system
-        // default; otherwise the first device. Clear pending banner state if
-        // the device list change resolved it.
+        // default; otherwise the first device.
         if let sel = selectedOutput, let still = outs.first(where: { $0.uid == sel.uid }) {
             selectedOutput = still
         } else {
@@ -73,11 +62,6 @@ final class DeviceManager: ObservableObject {
             let systemDefault = CoreAudioDevices.defaultOutput()
                 .flatMap { def in outs.first { $0.id == def.id } }
             selectedOutput = remembered ?? systemDefault ?? outs.first
-        }
-
-        if let pending = pendingDefaultChange,
-           !outs.contains(where: { $0.uid == pending.uid }) {
-            pendingDefaultChange = nil
         }
 
         // Only nudge the engine if the visible device list materially
@@ -94,20 +78,6 @@ final class DeviceManager: ObservableObject {
         log.info("Refresh — output=\(self.selectedOutput?.name ?? "nil") initial=\(initial) materialChange=\(materialChange)")
 
         if !initial && materialChange { onTopologyChange?() }
-    }
-
-    /// Accept the pending system-default switch (called by the menu bar's
-    /// "Switch" button). Updates `selectedOutput` and clears the banner.
-    func acceptPendingDefaultChange() {
-        guard let pending = pendingDefaultChange else { return }
-        selectedOutput = pending
-        pendingDefaultChange = nil
-    }
-
-    /// Dismiss the pending system-default switch (called by the menu bar's
-    /// "Keep current" button). Leaves `selectedOutput` alone.
-    func dismissPendingDefaultChange() {
-        pendingDefaultChange = nil
     }
 
     private func handleSystemDefaultChanged() {
@@ -127,18 +97,11 @@ final class DeviceManager: ObservableObject {
             log.info("System default changed to \(newDefault.name, privacy: .public) but it isn't in the visible output list")
             return
         }
-        if resolved.uid == selectedOutput?.uid {
-            pendingDefaultChange = nil
-            return
-        }
+        if resolved.uid == selectedOutput?.uid { return }
         switch preferences.followMode {
         case .autoFollow:
             log.info("System default changed → \(resolved.name, privacy: .public); auto-follow on")
             selectedOutput = resolved
-            pendingDefaultChange = nil
-        case .ask:
-            log.info("System default changed → \(resolved.name, privacy: .public); surfacing banner")
-            pendingDefaultChange = resolved
         case .ignore:
             log.info("System default changed → \(resolved.name, privacy: .public); ignore mode — no action")
         }
