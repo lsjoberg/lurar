@@ -41,6 +41,7 @@ private struct GeneralSettingsTab: View {
     @State private var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled
 
     @AppStorage("startEngineOnLaunch") private var startEngineOnLaunch: Bool = true
+    @AppStorage(EQEngine.muteOnDeviceRateChangeKey) private var muteOnDeviceRateChange: Bool = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -81,6 +82,18 @@ private struct GeneralSettingsTab: View {
                 }
                 .help("How Lurar reacts when macOS changes the default output device")
                 Text("When AirPods or another device connects, macOS may change its default output. Choose how Lurar reacts.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Mute briefly on output rate change", isOn: $muteOnDeviceRateChange)
+                    .toggleStyle(.switch)
+                    .help("Fade audio out for ~150 ms when the output device's sample rate changes, to mask the resampler transient")
+                Text("Apple Music and other hi-res sources can change your DAC's sample rate between tracks. Fading briefly hides the audible pitch glitch as Core Audio's internal sample-rate converter re-tunes. Turn this off if you'd rather hear the unmasked transition.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

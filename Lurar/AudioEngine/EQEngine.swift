@@ -86,12 +86,36 @@ final class EQEngine: ObservableObject {
 
     // Tap-side sample-rate listener. Fires on every tap-rate change (hi-res
     // track switches when the listening DAC tracks the system default) and
-    // triggers a soft reconfigure that keeps the chain running. There's no
-    // output-side listener — the HAL Output AU's internal SRC handles
-    // device-rate changes without us having to react.
+    // triggers a soft reconfigure that keeps the chain running. There's a
+    // diagnostic-only listener on the output side too — it logs device-rate
+    // moves so we can correlate them with audible artifacts, but it doesn't
+    // act on them. The HAL Output AU's internal SRC handles device-rate
+    // changes; we're keeping the listener purely to surface what's happening.
     private var inputRateListener: AudioDevicePropertyListener?
+    private var outputRateListener: AudioDevicePropertyListener?
     private var pendingRestart: DispatchWorkItem?
     private var restartCooldownUntil: Date = .distantPast
+    /// Periodic ring-buffer state dump, ~every 3 s while running.
+    /// Surfaces underruns (HAL reading from empty ring), drift, and
+    /// rate mismatches we can't catch from the listeners alone.
+    private var diagnosticTimer: Timer?
+
+    /// Last-known nominal sample rate of the active output device. Used
+    /// by the output-rate listener to tell a real device-rate move apart
+    /// from a notification fired with no change (so the diagnostic log
+    /// and the fade-mute trigger are both anchored to the right
+    /// reference, not to our halSR pin).
+    private var lastDeviceRate: Double = 0
+    /// In-flight fade-in scheduled after a device-rate fade-mute. Tracked
+    /// so that a second device-rate notification arriving during the
+    /// mute window can cancel the pending un-mute and re-mute cleanly.
+    private var pendingFadeInWork: DispatchWorkItem?
+
+    /// User-defaults key for the "fade-mute on output device rate change"
+    /// toggle (exposed in Settings → General). Defaults to `true` — the
+    /// fade masks an audible artifact from the HAL Output AU's internal
+    /// SRC re-tuning when the DAC's nominal rate changes mid-stream.
+    static let muteOnDeviceRateChangeKey = "muteOnDeviceRateChange"
 
     init() {
         let stored = UserDefaults.standard.object(forKey: Self.loudnessOffsetDefaultsKey) as? Double
@@ -345,7 +369,9 @@ final class EQEngine: ObservableObject {
 
             restartCooldownUntil = Date().addingTimeInterval(0.5)
 
-            installListeners(inputDeviceID: inputDeviceID)
+            lastDeviceRate = (try? CoreAudioSampleRate.nominal(for: output.id)) ?? 0
+            installListeners(inputDeviceID: inputDeviceID, outputDeviceID: output.id)
+            startDiagnosticTimer()
         } catch {
             isRunning = false
             statusMessage = "Error: \(String(describing: error))"
@@ -365,6 +391,7 @@ final class EQEngine: ObservableObject {
 
     func stop() {
         tearDownListeners()
+        stopDiagnosticTimer()
         try? tapInput.stop()
         try? halOutput.stop()
         ringBuffer.reset()
@@ -385,7 +412,7 @@ final class EQEngine: ObservableObject {
 
     // MARK: - Runtime change handling
 
-    private func installListeners(inputDeviceID: AudioDeviceID) {
+    private func installListeners(inputDeviceID: AudioDeviceID, outputDeviceID: AudioDeviceID) {
         inputRateListener = AudioDevicePropertyListener(
             deviceID: inputDeviceID,
             selector: kAudioDevicePropertyNominalSampleRate
@@ -394,13 +421,23 @@ final class EQEngine: ObservableObject {
                 self?.handleTapRateNotification(deviceID: inputDeviceID)
             }
         }
-        // No output rate listener: with pinned halSR + the HAL Output AU's
-        // internal SRC, the output device is free to move its nominal rate
-        // around (hi-res streaming apps shifting the DAC between source
-        // rates, Audio MIDI Setup tweaks) and we don't have to react. The
-        // AU's client format stays at halSR; the device runs at whatever
-        // rate it's set to; Core Audio bridges between them without
-        // tearing the AU down.
+        // Output-device rate listener. The HAL Output AU's internal SRC
+        // already bridges device-rate changes to our pinned halSR, so we
+        // never tear the chain down here — but a hi-res-source DAC moving
+        // from (say) 192 kHz to 44.1 kHz on a track change produces an
+        // audible pitch transient as Core Audio's SRC re-tunes its
+        // polyphase state. The handler fades the ring-buffer output to
+        // silence for ~150 ms across the transition to mask that
+        // artifact. Behavior is gated by the `muteOnDeviceRateChange`
+        // user-defaults toggle.
+        outputRateListener = AudioDevicePropertyListener(
+            deviceID: outputDeviceID,
+            selector: kAudioDevicePropertyNominalSampleRate
+        ) { [weak self] in
+            Task { @MainActor in
+                self?.handleOutputRateNotification(deviceID: outputDeviceID)
+            }
+        }
     }
 
     /// Tap rate changed — the system default output (which the aggregate
@@ -414,12 +451,106 @@ final class EQEngine: ObservableObject {
     /// running, so the DAC stays locked and audio is continuous.
     private func handleTapRateNotification(deviceID: AudioDeviceID) {
         guard isRunning else { return }
-        guard let actual = try? CoreAudioSampleRate.nominal(for: deviceID) else { return }
+        guard let actual = try? CoreAudioSampleRate.nominal(for: deviceID) else {
+            log.info("Tap rate notification fired but rate read failed")
+            return
+        }
         if let active = activeSampleRate, abs(actual - active) < 0.5 {
-            log.debug("Ignoring tap rate change — rate unchanged at \(Int(actual)) Hz")
+            // Promoted to .info so it shows up under the default log
+            // predicate — when investigating glitches we need to know
+            // whether the listener fired at all.
+            log.info("Tap rate notification fired but rate unchanged at \(Int(actual)) Hz — no reconfigure needed")
             return
         }
         softReconfigureForTapSR(actual)
+    }
+
+    /// The output device's nominal sample rate changed (or Core Audio
+    /// fired a no-op notification — most often a track change in a
+    /// hi-res streaming app reconfiguring the DAC). If the rate actually
+    /// moved and the toggle is enabled, ride the resulting SRC-retune
+    /// transient with a brief fade-mute on the ring buffer.
+    private func handleOutputRateNotification(deviceID: AudioDeviceID) {
+        guard isRunning else { return }
+        let actual = (try? CoreAudioSampleRate.nominal(for: deviceID)) ?? -1
+        let previous = lastDeviceRate
+        if abs(actual - previous) < 0.5 {
+            log.info("Output rate notification fired but device rate unchanged at \(Int(actual)) Hz")
+            return
+        }
+        log.info("Output device rate moved: \(Int(previous)) Hz → \(Int(actual)) Hz (halSR pin unchanged; HAL Output AU bridging via internal SRC)")
+        lastDeviceRate = actual
+
+        let muteEnabled = UserDefaults.standard.object(forKey: Self.muteOnDeviceRateChangeKey) as? Bool ?? true
+        if muteEnabled {
+            scheduleDeviceRateFadeMute()
+        }
+    }
+
+    // Fade-mute envelope used to mask the HAL Output AU's SRC retune
+    // when the output device's nominal sample rate changes mid-stream.
+    // Total disturbance: fadeOut + muteHold + fadeIn ≈ 255 ms, with
+    // ~150 ms of full silence in the middle — long enough to cover the
+    // observed retune transient on the systems we've tested.
+    private static let deviceRateFadeOutSeconds: Double = 0.025
+    private static let deviceRateMuteHoldSeconds: Double = 0.150
+    private static let deviceRateFadeInSeconds: Double = 0.080
+
+    /// Quickly ramp the ring-buffer output to zero, then schedule a
+    /// slower ramp back to unity after a brief hold. If another
+    /// device-rate notification arrives while a fade-in is pending,
+    /// cancel it and re-mute — back-to-back rate moves (e.g. 96 → 192
+    /// → 44.1 across a single track change) stay continuously ducked
+    /// until the device finally settles.
+    private func scheduleDeviceRateFadeMute() {
+        let sr = halSampleRate ?? 48000
+        pendingFadeInWork?.cancel()
+        ringBuffer.setOutputGain(0, rampFrames: Int(Self.deviceRateFadeOutSeconds * sr))
+
+        let work = DispatchWorkItem { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                guard self.isRunning else { return }
+                let srNow = self.halSampleRate ?? 48000
+                self.ringBuffer.setOutputGain(1, rampFrames: Int(Self.deviceRateFadeInSeconds * srNow))
+                self.pendingFadeInWork = nil
+            }
+        }
+        pendingFadeInWork = work
+        let delay = Self.deviceRateFadeOutSeconds + Self.deviceRateMuteHoldSeconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
+    private func startDiagnosticTimer() {
+        stopDiagnosticTimer()
+        ringBuffer.resetUnderrunCount()
+        let timer = Timer(timeInterval: 3.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.logDiagnosticSnapshot() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        diagnosticTimer = timer
+    }
+
+    private func stopDiagnosticTimer() {
+        diagnosticTimer?.invalidate()
+        diagnosticTimer = nil
+    }
+
+    private func logDiagnosticSnapshot() {
+        guard isRunning else { return }
+        let snapshot = ringBuffer.underrunSnapshot()
+        let hal = halSampleRate ?? 0
+        let tap = activeSampleRate ?? 0
+        let deviceRate = (activeOutput?.id).flatMap { try? CoreAudioSampleRate.nominal(for: $0) } ?? 0
+        let availableMs = hal > 0 ? Double(snapshot.available) * 1000.0 / hal : 0
+        if snapshot.reads > 0 {
+            // Underrun → reader hit the empty edge of the ring; HAL got
+            // zero-padded silence. Most likely cause of audible glitches.
+            log.info("DIAG: tap=\(Int(tap)) Hz hal=\(Int(hal)) Hz device=\(Int(deviceRate)) Hz ringFill=\(snapshot.available)f (~\(String(format: "%.1f", availableMs)) ms) underruns=\(snapshot.reads) worst=\(snapshot.worstShortfall)f")
+        } else {
+            log.info("DIAG: tap=\(Int(tap)) Hz hal=\(Int(hal)) Hz device=\(Int(deviceRate)) Hz ringFill=\(snapshot.available)f (~\(String(format: "%.1f", availableMs)) ms)")
+        }
+        ringBuffer.resetUnderrunCount()
     }
 
     /// Apply a new tap sample rate without tearing the audio chain down.
@@ -442,7 +573,10 @@ final class EQEngine: ObservableObject {
     private func tearDownListeners() {
         pendingRestart?.cancel()
         pendingRestart = nil
+        pendingFadeInWork?.cancel()
+        pendingFadeInWork = nil
         inputRateListener = nil
+        outputRateListener = nil
     }
 
     private func scheduleRestart(reason: String, force: Bool = false) {

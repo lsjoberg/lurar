@@ -25,6 +25,17 @@ final class StereoFloatRingBuffer {
     private var rampStep: Float = 0
     private var rampFramesRemaining: Int = 0
 
+    /// Diagnostic counter — incremented every time `read()` is short of
+    /// frames (writer fell behind, reader hit the empty/wrap edge of the
+    /// buffer and got zero-padded). Cleared by `resetUnderrunCount()`.
+    /// Read from the main thread; written from the audio thread under the
+    /// existing lock.
+    private(set) var underrunReads: Int = 0
+    /// Diagnostic: the smallest non-zero amount by which a `read()` fell
+    /// short, in frames. Tells us "how bad was the worst underrun" so we
+    /// can tell a single-frame edge case apart from a real drain.
+    private(set) var worstUnderrunShortfall: Int = 0
+
     init(capacityFrames: Int) {
         self.capacity = capacityFrames
         left = .allocate(capacity: capacityFrames)
@@ -94,8 +105,29 @@ final class StereoFloatRingBuffer {
         if n < frames {
             ldst.advanced(by: n).update(repeating: 0, count: frames - n)
             rdst.advanced(by: n).update(repeating: 0, count: frames - n)
+            let shortfall = frames - n
+            underrunReads &+= 1
+            if shortfall > worstUnderrunShortfall {
+                worstUnderrunShortfall = shortfall
+            }
         }
         return n
+    }
+
+    /// Clear the underrun counters. Main thread.
+    func resetUnderrunCount() {
+        os_unfair_lock_lock(&lock)
+        defer { os_unfair_lock_unlock(&lock) }
+        underrunReads = 0
+        worstUnderrunShortfall = 0
+    }
+
+    /// Snapshot `(reads, worstShortfallFrames, availableFrames)` for
+    /// periodic diagnostic logging. Main thread.
+    func underrunSnapshot() -> (reads: Int, worstShortfall: Int, available: Int) {
+        os_unfair_lock_lock(&lock)
+        defer { os_unfair_lock_unlock(&lock) }
+        return (underrunReads, worstUnderrunShortfall, writeIdx - readIdx)
     }
 
     /// Schedule a linear gain ramp toward `target` over the next `rampFrames`
