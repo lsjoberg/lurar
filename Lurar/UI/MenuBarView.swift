@@ -16,13 +16,25 @@ struct MenuBarView: View {
     @State private var selectedPresetID: UUID?
     @State private var showCrossfeedHelp: Bool = false
     @State private var showLoudnessHelp: Bool = false
-    /// TCC state captured when the popover opens. Drives the body switch
-    /// between the full UI and the pre-consent gate so the user never lands
-    /// on functional-looking controls that can't actually start the engine.
-    /// Eager `preflight()` in the initializer avoids a one-frame flash on
-    /// authorized launches; `.task` refreshes on each reopen to catch a
-    /// late grant (or external revoke) without restarting Lurar.
-    @State private var permissionState: AudioCapturePermission.Status = AudioCapturePermission.preflight()
+    /// TCC state, lazily read at body time so the first popover open after
+    /// onboarding doesn't briefly render the pre-consent gate.
+    ///
+    /// `@State` defaults are evaluated once when SwiftUI first constructs
+    /// the view — for MenuBarExtra that's at app launch, well before the
+    /// user finishes onboarding. Storing the eager preflight() result
+    /// there captures the pre-grant state, and the `.task` refresh fires
+    /// only AFTER the first render, producing a one-frame "Setup needed"
+    /// flash whenever a freshly-granted user opens the popover for the
+    /// first time. Storing `nil` and falling back to a fresh preflight in
+    /// the body computed property means every first render sees the
+    /// current TCC state; the `.task` path still updates the stored value
+    /// so subsequent renders are cheap and external revokes still flip
+    /// the UI on the next reopen.
+    @State private var permissionState: AudioCapturePermission.Status?
+
+    private var currentPermission: AudioCapturePermission.Status {
+        permissionState ?? AudioCapturePermission.preflight()
+    }
     /// Top-ranked suggestion for the current output, or nil if none matches
     /// confidently / the user has dismissed it / it's already enabled.
     @State private var suggestion: PresetSuggester.Match?
@@ -58,7 +70,7 @@ struct MenuBarView: View {
 
     var body: some View {
         Group {
-            if permissionState == .authorized {
+            if currentPermission == .authorized {
                 authorizedBody
             } else {
                 permissionGate

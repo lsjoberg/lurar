@@ -91,7 +91,12 @@ struct LurarApp: App {
         .commandsRemoved()
 
         Window("Welcome to Lurar", id: "onboarding") {
-            OnboardingPermissionView(engine: engine, deviceManager: deviceManager)
+            OnboardingPermissionView(
+                engine: engine,
+                deviceManager: deviceManager,
+                presetCatalog: presetCatalog,
+                devicePresetMemory: devicePresetMemory
+            )
         }
         .windowResizability(.contentSize)
         .commandsRemoved()
@@ -243,10 +248,29 @@ private struct MenuBarLabel: View {
                 runLaunchCoordinator()
             }
             .onChange(of: deviceManager.selectedOutput) { _, newOut in
-                guard pendingAutostart, let out = newOut else { return }
-                pendingAutostart = false
-                engine.start(output: out)
-                applyInitialPreset()
+                // Three cases:
+                // 1. We were waiting for any device to materialize at launch
+                //    (pendingAutostart) — start the engine on the first one
+                //    that shows up and seed the preset.
+                // 2. The engine is running and the user (or auto-follow)
+                //    switched outputs — rebind to the new device so audio
+                //    actually flows there. This used to live in MenuBarView
+                //    only, which meant a closed-popover autoFollow swap (e.g.
+                //    AirPods connecting during onboarding) updated the UI
+                //    selection but kept playing through the old device.
+                //    EQEngine.start handles same-device reentry cleanly,
+                //    so duplicate fires from MenuBarView are no-ops.
+                // 3. selectedOutput went nil — stop the engine; there's
+                //    nothing to play through.
+                if pendingAutostart, let out = newOut {
+                    pendingAutostart = false
+                    engine.start(output: out)
+                    applyInitialPreset()
+                } else if let out = newOut, engine.isRunning {
+                    engine.start(output: out)
+                } else if newOut == nil, engine.isRunning {
+                    engine.stop()
+                }
             }
     }
 
