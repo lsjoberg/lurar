@@ -89,6 +89,15 @@ final class HALOutput {
             throw CoreAudioError.osStatus(cbStatus, "HALOutput set render callback")
         }
 
+        // Bump MaximumFramesPerSlice above the 512 default. With the pinned
+        // halSR design we don't tear the AU down when the bound device's
+        // nominal rate changes externally — Core Audio bridges that
+        // mismatch with its internal SRC, but during the transition it may
+        // hand the render callback bursty buffers wider than the default
+        // cap. 4096 matches what `ProcessTapInput` allocates for the same
+        // reason.
+        AUHAL.setMaxFramesPerSlice(4096, on: au)
+
         let initStatus = AudioUnitInitialize(au)
         if initStatus != noErr {
             throw CoreAudioError.osStatus(initStatus, "HALOutput initialize")

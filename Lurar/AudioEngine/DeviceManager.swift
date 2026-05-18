@@ -32,6 +32,11 @@ final class DeviceManager: ObservableObject {
     private let preferences: OutputSelectionPreferences
     private var topologyListener: DeviceChangeListener?
     private var defaultOutputListener: DefaultOutputDeviceListener?
+    /// UID snapshot of the last visible device list — used to decide
+    /// whether a topology notification actually changed anything the user
+    /// cares about, or whether it was just our private tap aggregate
+    /// churning during an engine restart.
+    private var lastVisibleUIDs: [String] = []
 
     init(preferences: OutputSelectionPreferences) {
         self.preferences = preferences
@@ -75,9 +80,20 @@ final class DeviceManager: ObservableObject {
             pendingDefaultChange = nil
         }
 
-        log.info("Refresh — output=\(self.selectedOutput?.name ?? "nil") initial=\(initial)")
+        // Only nudge the engine if the visible device list materially
+        // changed. The tap rebuild that follows e.g. an excluded-apps
+        // toggle churns aggregate devices through the system topology;
+        // those changes are filtered out of the picker but the raw
+        // notification still fires here, and firing `onTopologyChange`
+        // would force a redundant engine restart for something the user
+        // can't see.
+        let newUIDs = outs.map(\.uid)
+        let materialChange = newUIDs != lastVisibleUIDs
+        lastVisibleUIDs = newUIDs
 
-        if !initial { onTopologyChange?() }
+        log.info("Refresh — output=\(self.selectedOutput?.name ?? "nil") initial=\(initial) materialChange=\(materialChange)")
+
+        if !initial && materialChange { onTopologyChange?() }
     }
 
     /// Accept the pending system-default switch (called by the menu bar's
