@@ -13,6 +13,18 @@ final class StereoFloatRingBuffer {
     private var readIdx: Int = 0
     private var lock = os_unfair_lock()
 
+    // Per-read gain envelope. The reader (HAL render callback) multiplies each
+    // sample by `currentGain`, which linearly ramps toward `targetGain` over
+    // `rampFramesRemaining` more *actually-consumed* frames. The ramp only
+    // advances on real reads — padding zeros don't move it — so that a fade-in
+    // armed during the engine restart waits for fresh samples to land in the
+    // ring before scaling them, rather than burning the ramp on the empty
+    // post-teardown window.
+    private var currentGain: Float = 1.0
+    private var targetGain: Float = 1.0
+    private var rampStep: Float = 0
+    private var rampFramesRemaining: Int = 0
+
     init(capacityFrames: Int) {
         self.capacity = capacityFrames
         left = .allocate(capacity: capacityFrames)
@@ -76,6 +88,7 @@ final class StereoFloatRingBuffer {
                 rdst.advanced(by: first).update(from: right, count: n - first)
             }
             readIdx += n
+            applyGainEnvelope(left: ldst, right: rdst, frames: n)
         }
 
         if n < frames {
@@ -85,11 +98,61 @@ final class StereoFloatRingBuffer {
         return n
     }
 
+    /// Schedule a linear gain ramp toward `target` over the next `rampFrames`
+    /// frames actually read out of the buffer. Use `target = 0` to fade out
+    /// before a teardown, `target = 1` to fade back in after a restart. A
+    /// ramp of 0 frames snaps the gain immediately. Safe to call from any
+    /// thread.
+    func setOutputGain(_ target: Float, rampFrames: Int) {
+        os_unfair_lock_lock(&lock)
+        defer { os_unfair_lock_unlock(&lock) }
+        targetGain = target
+        if currentGain == target {
+            rampStep = 0
+            rampFramesRemaining = 0
+            return
+        }
+        let frames = max(0, rampFrames)
+        if frames == 0 {
+            currentGain = target
+            rampStep = 0
+            rampFramesRemaining = 0
+        } else {
+            rampStep = (target - currentGain) / Float(frames)
+            rampFramesRemaining = frames
+        }
+    }
+
     func reset() {
         os_unfair_lock_lock(&lock)
         defer { os_unfair_lock_unlock(&lock) }
         writeIdx = 0
         readIdx = 0
+    }
+
+    // Called with `lock` held. Advances the gain ramp across the `n` real
+    // samples just copied into the destination buffers and scales them in
+    // place. Padding zeros (n < frames case) are skipped — see the field
+    // comment above for why.
+    private func applyGainEnvelope(left ldst: UnsafeMutablePointer<Float>,
+                                   right rdst: UnsafeMutablePointer<Float>,
+                                   frames n: Int) {
+        var g = currentGain
+        let step = rampStep
+        let target = targetGain
+        var remaining = rampFramesRemaining
+        if remaining == 0 && g == 1.0 { return } // unity passthrough fast path
+        for i in 0..<n {
+            ldst[i] *= g
+            rdst[i] *= g
+            if remaining > 0 {
+                g += step
+                remaining -= 1
+                if remaining == 0 { g = target }
+            }
+        }
+        currentGain = g
+        rampFramesRemaining = remaining
     }
 
     var availableFrames: Int {

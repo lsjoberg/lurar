@@ -108,6 +108,11 @@ final class EQEngine: ObservableObject {
 
     private func rebindOutput(output: AudioDevice, sampleRate: Double) -> Bool {
         outputRateListener = nil
+        // Cancel any pending restart from a previous SR notification — picking
+        // a new output device supersedes it. The fade-out that notification
+        // armed is undone by the fade-in below.
+        pendingRestart?.cancel()
+        pendingRestart = nil
         do {
             try halOutput.stop()
             if try CoreAudioSampleRate.nominal(for: output.id) != sampleRate {
@@ -125,6 +130,10 @@ final class EQEngine: ObservableObject {
 
             activeOutput = output
             log.info("Engine output rebound: System → \(output.name) @ \(Int(sampleRate)) Hz")
+            // Restore unity gain (a no-op if a fade-out wasn't in flight). Use
+            // a short ramp so the first samples on the new device get the same
+            // soft entry as a full restart.
+            ringBuffer.setOutputGain(1, rampFrames: Int(Self.fadeInSeconds * sampleRate))
             installOutputRateListener(output: output)
             restartCooldownUntil = Date().addingTimeInterval(0.5)
             return true
@@ -136,15 +145,29 @@ final class EQEngine: ObservableObject {
     }
 
     private func fullStart(output: AudioDevice) {
+        // Snapshot pre-teardown state so we can decide further down whether the
+        // HAL Output AU needs to bounce. Bouncing costs ~tens of ms of AU
+        // init + a DAC re-lock click on many devices; skipping it when the
+        // client format is unchanged turns a tap-only rebuild (excluded-apps
+        // toggle, same-rate spurious notification) into a near-silent
+        // transition.
+        let previousSampleRate = activeSampleRate
+        let outputUnchanged = (activeOutput?.id == output.id)
+        let halWasRunning = (halOutput.deviceID != 0)
+
         tearDownListeners()
         try? tapInput.stop()
-        try? halOutput.stop()
-        ringBuffer.reset()
+        // Don't stop HALOutput yet — leaving it alive lets it keep pulling
+        // (faded, then silent) samples through the teardown so the DAC stays
+        // locked. We only stop it below if the new client format actually
+        // requires it.
 
         // 0. Process Tap API requires the private TCC service kTCCServiceAudioCapture.
         //    Without it the tap silently delivers zero buffers. Prompt the user if
         //    not yet authorized.
         if !AudioCapturePermission.ensureAuthorized() {
+            try? halOutput.stop()
+            ringBuffer.reset()
             isRunning = false
             statusMessage = "Audio capture permission denied. Grant in System Settings → Privacy & Security."
             log.error("Engine start aborted: TCC audio capture not authorized")
@@ -171,11 +194,25 @@ final class EQEngine: ObservableObject {
             activeSampleRate = sampleRate
         } catch {
             try? tapInput.stop()
+            try? halOutput.stop()
+            ringBuffer.reset()
             isRunning = false
             statusMessage = "Error: \(String(describing: error))"
             log.error("Tap setup failed: \(String(describing: error))")
             return
         }
+
+        // Decide whether to bounce HALOutput. Anything that changes the AU's
+        // client format (sample rate) or its bound device requires a full
+        // stop/init; otherwise we can leave the AU running and just rebuild
+        // the tap behind it.
+        let canKeepHAL = halWasRunning
+            && outputUnchanged
+            && previousSampleRate == sampleRate
+        if !canKeepHAL {
+            try? halOutput.stop()
+        }
+        ringBuffer.reset()
 
         // 2. Client format for the output side. Tap input feeds the EQ at the tap's
         //    native format; HALOutput pulls Float32 stereo from the ring buffer.
@@ -186,6 +223,7 @@ final class EQEngine: ObservableObject {
             interleaved: false
         ) else {
             try? tapInput.stop()
+            try? halOutput.stop()
             statusMessage = "Error: could not build client format"
             return
         }
@@ -221,12 +259,21 @@ final class EQEngine: ObservableObject {
                 ringBuffer.write(left: left, right: right, frames: frames)
             }
 
-            // 5. Start the output AU on the user's chosen device.
-            try halOutput.start(deviceID: output.id, clientFormat: clientFormat)
+            // 5. Start the output AU on the user's chosen device — unless it's
+            //    still alive from the previous run.
+            if !canKeepHAL {
+                try halOutput.start(deviceID: output.id, clientFormat: clientFormat)
+            }
 
             activeOutput = output
             isRunning = true
-            log.info("Engine started: System → \(output.name) @ \(Int(sampleRate)) Hz")
+            log.info("Engine started: System → \(output.name) @ \(Int(sampleRate)) Hz halBounced=\(!canKeepHAL)")
+
+            // Fade the new stream in. The ring buffer's gain ramp only
+            // advances on real reads, so this waits for the first samples to
+            // land before scaling them — there's no risk of burning the ramp
+            // on the empty post-teardown window.
+            ringBuffer.setOutputGain(1, rampFrames: Int(Self.fadeInSeconds * sampleRate))
 
             restartCooldownUntil = Date().addingTimeInterval(0.5)
 
@@ -239,6 +286,14 @@ final class EQEngine: ObservableObject {
             try? halOutput.stop()
         }
     }
+
+    // Fade-in is longer than fade-out because there's usually a brief gap
+    // between fullStart returning and the new tap's first IOProc callback
+    // landing samples in the ring buffer. The ring buffer only advances the
+    // ramp on real reads, but a longer target window keeps the rise gentle
+    // even on slow first-callback devices.
+    private static let fadeOutSeconds: Double = 0.010
+    private static let fadeInSeconds: Double = 0.030
 
     func stop() {
         tearDownListeners()
@@ -266,7 +321,9 @@ final class EQEngine: ObservableObject {
             deviceID: inputDeviceID,
             selector: kAudioDevicePropertyNominalSampleRate
         ) { [weak self] in
-            Task { @MainActor in self?.scheduleRestart(reason: "tap rate change") }
+            Task { @MainActor in
+                self?.handleRateNotification(reason: "tap rate change", deviceID: inputDeviceID)
+            }
         }
         installOutputRateListener(output: output)
     }
@@ -276,8 +333,27 @@ final class EQEngine: ObservableObject {
             deviceID: output.id,
             selector: kAudioDevicePropertyNominalSampleRate
         ) { [weak self] in
-            Task { @MainActor in self?.scheduleRestart(reason: "output rate change") }
+            Task { @MainActor in
+                self?.handleRateNotification(reason: "output rate change", deviceID: output.id)
+            }
         }
+    }
+
+    /// Core Audio fires the nominal-rate listener on any property change
+    /// notification — including ones where the value didn't actually move
+    /// (e.g. a track-to-track switch between two 44.1 kHz tracks still emits
+    /// the event). Peek the device's current rate and short-circuit when it
+    /// matches what the engine is already running at; that skips the entire
+    /// teardown/rebuild and the audible gap that comes with it.
+    private func handleRateNotification(reason: String, deviceID: AudioDeviceID) {
+        guard isRunning else { return }
+        if let active = activeSampleRate,
+           let actual = try? CoreAudioSampleRate.nominal(for: deviceID),
+           abs(actual - active) < 0.5 {
+            log.debug("Ignoring \(reason) — rate unchanged at \(Int(actual)) Hz")
+            return
+        }
+        scheduleRestart(reason: reason)
     }
 
     private func tearDownListeners() {
@@ -294,6 +370,13 @@ final class EQEngine: ObservableObject {
             return
         }
         log.info("Scheduling engine restart: \(reason)")
+        // Begin the fade-out *now*, not in the debounced work item. The
+        // 150 ms debounce gives HALOutput plenty of callbacks to drain the
+        // ramp before the actual teardown starts — by the time we reset the
+        // ring buffer, the DAC has been hearing silence for a while.
+        if let sr = activeSampleRate {
+            ringBuffer.setOutputGain(0, rampFrames: Int(Self.fadeOutSeconds * sr))
+        }
         pendingRestart?.cancel()
         let work = DispatchWorkItem { [weak self] in
             Task { @MainActor in
