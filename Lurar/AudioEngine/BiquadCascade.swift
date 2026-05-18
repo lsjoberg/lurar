@@ -93,8 +93,11 @@ enum BiquadCoefficients {
             return normalize(b0, b1, b2, a0, a1, a2)
 
         case .lowShelf:
-            // RBJ low shelf, S=1 (shelf slope) — derived from Q via the standard mapping.
-            let alpha = sinW0 / 2.0 * sqrt((A + 1.0 / A) * (1.0 / max(qClamped, 0.0001) - 1.0) + 2.0)
+            // RBJ low shelf with peaking-Q alpha — matches AutoEq's PEQ convention
+            // (autoeq/peq.py uses sin(w0)/(2*Q) for shelves) and the on-screen curve
+            // in EQCurveGeometry. Using the cookbook's S-form here instead made the
+            // audio shelves broader than the preset author optimized for.
+            let alpha = sinW0 / (2.0 * qClamped)
             let twoSqrtAalpha = 2.0 * sqrt(A) * alpha
             let b0 = A * ((A + 1.0) - (A - 1.0) * cosW0 + twoSqrtAalpha)
             let b1 = 2.0 * A * ((A - 1.0) - (A + 1.0) * cosW0)
@@ -105,7 +108,7 @@ enum BiquadCoefficients {
             return normalize(b0, b1, b2, a0, a1, a2)
 
         case .highShelf:
-            let alpha = sinW0 / 2.0 * sqrt((A + 1.0 / A) * (1.0 / max(qClamped, 0.0001) - 1.0) + 2.0)
+            let alpha = sinW0 / (2.0 * qClamped)
             let twoSqrtAalpha = 2.0 * sqrt(A) * alpha
             let b0 = A * ((A + 1.0) + (A - 1.0) * cosW0 + twoSqrtAalpha)
             let b1 = -2.0 * A * ((A - 1.0) + (A + 1.0) * cosW0)
