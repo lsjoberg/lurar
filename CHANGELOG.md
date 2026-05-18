@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.4](https://github.com/lsjoberg/lurar/compare/v0.2.3...v0.2.4) (2026-05-18)
+
+
+### Features
+
+* **ui:** gate menu-bar popover behind TCC consent ([7cb56ab](https://github.com/lsjoberg/lurar/commit/7cb56ab1478e0bfc584b95e632a9bb04fa4a9935))
+
 ## [0.2.3](https://github.com/lsjoberg/lurar/compare/v0.2.2...v0.2.3) (2026-05-18)
 
 
