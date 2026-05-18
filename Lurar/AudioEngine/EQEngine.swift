@@ -110,6 +110,14 @@ final class EQEngine: ObservableObject {
     /// so that a second device-rate notification arriving during the
     /// mute window can cancel the pending un-mute and re-mute cleanly.
     private var pendingFadeInWork: DispatchWorkItem?
+    /// In-flight teardown scheduled after a stop fade-out. Tracked so
+    /// that a new start() arriving during the fade can finalize the
+    /// pending teardown before rebuilding the chain.
+    private var pendingStopWork: DispatchWorkItem?
+    /// In-flight fade-in scheduled after the post-start mute hold.
+    /// Tracked so a stop or rapid restart during the mute window can
+    /// cancel it instead of unmuting a now-dead or rebuilt chain.
+    private var pendingStartFadeInWork: DispatchWorkItem?
 
     /// User-defaults key for the "fade-mute on output device rate change"
     /// toggle (exposed in Settings → General). Defaults to `true` — the
@@ -219,8 +227,24 @@ final class EQEngine: ObservableObject {
         let outputUnchanged = (activeOutput?.id == output.id)
         let halWasRunning = (halOutput.deviceID != 0)
 
+        // If a fade-then-stop was in flight, finalize it synchronously so the
+        // pending teardown work won't fire later and tear down our brand-new
+        // chain. (A start arriving during the fade window should rebuild
+        // cleanly, not race against the scheduled stop.)
+        if pendingStopWork != nil {
+            finishStopSynchronously()
+        }
+
         tearDownListeners()
         try? tapInput.stop()
+        // Snap the ring buffer's output gain to silence before the audio
+        // chain starts producing samples. The fade-in below ramps from
+        // 0 → 1; without this pre-mute, a cold start (currentGain == 1
+        // from RingBuffer init) makes the ramp a no-op and the first
+        // samples land at full amplitude — audible on quiet content.
+        // Safe on the restart path too: gain is already near 0 from the
+        // scheduleRestart fade-out, so this is at worst a no-op.
+        ringBuffer.setOutputGain(0, rampFrames: 0)
         // Don't stop HALOutput yet — leaving it alive lets it keep pulling
         // (faded, then silent) samples through the teardown so the DAC stays
         // locked. We only stop it below if the new client format actually
@@ -361,11 +385,16 @@ final class EQEngine: ObservableObject {
             isRunning = true
             log.info("Engine started: tap=\(Int(tapSampleRate)) Hz → \(output.name) @ \(Int(halSR)) Hz halBounced=\(!canKeepHAL)")
 
-            // Fade the new stream in. The ring buffer's gain ramp only
-            // advances on real reads, so this waits for the first samples to
-            // land before scaling them — there's no risk of burning the ramp
-            // on the empty post-teardown window.
-            ringBuffer.setOutputGain(1, rampFrames: Int(Self.fadeInSeconds * halSR))
+            // Hold the output muted for ~150 ms before fading in, then ramp
+            // up over the standard fade-in window. On a cold engine start,
+            // the system audio routing doesn't switch to our tap instantly:
+            // for a brief window the same source audio is delivered to the
+            // DAC twice — once via the still-active direct route, and once
+            // via the tap → resampler → ring → HAL Output AU pipeline with
+            // a small capture lag. That overlap is what produced the audible
+            // "loops 10 ms back" artifact on startup. Holding silence past
+            // the routing switch lets the direct route stop before we speak.
+            scheduleStartupFadeIn(halSR: halSR)
 
             restartCooldownUntil = Date().addingTimeInterval(0.5)
 
@@ -389,7 +418,94 @@ final class EQEngine: ObservableObject {
     private static let fadeOutSeconds: Double = 0.010
     private static let fadeInSeconds: Double = 0.030
 
-    func stop() {
+    // Used by stop() to fade the ring buffer to silence before tearing
+    // down the audio chain. Longer than the restart fade-out because we
+    // want the stop transition to be deliberately gentle, not just
+    // glitch-suppressing.
+    private static let stopFadeOutSeconds: Double = 0.040
+
+    // Hold the output muted for this long after `fullStart` succeeds
+    // before kicking off the regular fade-in. Masks the
+    // tap-activation overlap window where audio briefly comes out the
+    // DAC both via the direct route and via our pipeline. Tuned
+    // empirically — the audible artifact a user reported was ~10 ms,
+    // and 150 ms is a comfortable margin.
+    private static let startupMuteHoldSeconds: Double = 0.150
+
+    /// Schedule the fade-in to unity after `startupMuteHoldSeconds`. The
+    /// ring buffer stays at gain 0 during the hold (snapped to 0 at the
+    /// top of `fullStart`), so the audio thread emits silence while the
+    /// system audio routing finishes switching from the direct route to
+    /// our tap. A pending fade-in is cancellable so stop / restart paths
+    /// can supersede it cleanly.
+    private func scheduleStartupFadeIn(halSR: Double) {
+        pendingStartFadeInWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                guard self.isRunning else { return }
+                let sr = self.halSampleRate ?? halSR
+                self.ringBuffer.setOutputGain(1, rampFrames: Int(Self.fadeInSeconds * sr))
+                self.pendingStartFadeInWork = nil
+            }
+        }
+        pendingStartFadeInWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.startupMuteHoldSeconds, execute: work)
+    }
+
+    /// Stop the engine, fading audio to silence before tearing down the
+    /// audio chain so the DAC doesn't get cut mid-buffer. UI state
+    /// (`isRunning`, `statusMessage`) updates eagerly; audio teardown
+    /// happens after the fade completes. `completion` fires once the
+    /// teardown is done — used by the app delegate to gate
+    /// `applicationShouldTerminate`'s reply on the fade finishing.
+    func stop(completion: (() -> Void)? = nil) {
+        guard isRunning, halSampleRate != nil else {
+            finishStopSynchronously()
+            completion?()
+            return
+        }
+
+        let sr = halSampleRate ?? 48000
+        ringBuffer.setOutputGain(0, rampFrames: Int(Self.stopFadeOutSeconds * sr))
+
+        // Tear down listeners and diagnostics eagerly so rate-change
+        // notifications and any pending restart/fade-in work scheduled
+        // before stop() was called can't fire fullStart() or unmute the
+        // ring buffer mid-fade. The tap and HAL Output AU stay alive
+        // until `finishStopSynchronously` runs after the fade.
+        tearDownListeners()
+        stopDiagnosticTimer()
+
+        // Flip UI state immediately so the menu bar reflects "Stopped"
+        // before the fade completes. The audio chain keeps running (now
+        // ramping toward silence) until the deferred teardown.
+        isRunning = false
+        statusMessage = "Stopped"
+
+        pendingStopWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            Task { @MainActor in
+                guard let self else { completion?(); return }
+                self.finishStopSynchronously()
+                completion?()
+            }
+        }
+        pendingStopWork = work
+        // Small safety margin past the ramp duration so the audio thread
+        // has actually consumed faded samples down to ~0 before we stop
+        // the AU.
+        let delay = Self.stopFadeOutSeconds + 0.015
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
+    /// Synchronously tear down listeners, the diagnostic timer, the tap,
+    /// the HAL Output AU, and reset the ring buffer. Called either
+    /// directly when the engine wasn't running, or from the deferred
+    /// stop completion after the fade.
+    private func finishStopSynchronously() {
+        pendingStopWork?.cancel()
+        pendingStopWork = nil
         tearDownListeners()
         stopDiagnosticTimer()
         try? tapInput.stop()
@@ -489,11 +605,17 @@ final class EQEngine: ObservableObject {
 
     // Fade-mute envelope used to mask the HAL Output AU's SRC retune
     // when the output device's nominal sample rate changes mid-stream.
-    // Total disturbance: fadeOut + muteHold + fadeIn ≈ 255 ms, with
-    // ~150 ms of full silence in the middle — long enough to cover the
-    // observed retune transient on the systems we've tested.
-    private static let deviceRateFadeOutSeconds: Double = 0.025
-    private static let deviceRateMuteHoldSeconds: Double = 0.150
+    // Core Audio fires the listener *after* the device rate has already
+    // changed, so by the time we mute, part of the SRC transient is
+    // already in flight to the DAC. We compensate by muting fast (short
+    // fade-out) and holding silence long enough that the SRC settles
+    // completely before we restore.
+    //
+    // Total disturbance: 10 + 250 + 80 ≈ 340 ms, with 250 ms of full
+    // silence in the middle. That's a noticeable pause on track changes,
+    // but masks the audible pitch transient.
+    private static let deviceRateFadeOutSeconds: Double = 0.010
+    private static let deviceRateMuteHoldSeconds: Double = 0.250
     private static let deviceRateFadeInSeconds: Double = 0.080
 
     /// Quickly ramp the ring-buffer output to zero, then schedule a
@@ -504,6 +626,8 @@ final class EQEngine: ObservableObject {
     /// until the device finally settles.
     private func scheduleDeviceRateFadeMute() {
         let sr = halSampleRate ?? 48000
+        let totalMs = Int((Self.deviceRateFadeOutSeconds + Self.deviceRateMuteHoldSeconds + Self.deviceRateFadeInSeconds) * 1000)
+        log.info("Device-rate fade-mute scheduled (~\(totalMs) ms total disturbance)")
         pendingFadeInWork?.cancel()
         ringBuffer.setOutputGain(0, rampFrames: Int(Self.deviceRateFadeOutSeconds * sr))
 
@@ -575,6 +699,8 @@ final class EQEngine: ObservableObject {
         pendingRestart = nil
         pendingFadeInWork?.cancel()
         pendingFadeInWork = nil
+        pendingStartFadeInWork?.cancel()
+        pendingStartFadeInWork = nil
         inputRateListener = nil
         outputRateListener = nil
     }

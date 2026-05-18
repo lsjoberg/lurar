@@ -41,6 +41,21 @@ struct MenuBarView: View {
         Lurar.visiblePresets(catalog: presetCatalog, store: presetStore)
     }
 
+    /// Quit handler that fades audio to silence before terminating. We
+    /// route both Quit buttons through this rather than calling
+    /// `NSApp.terminate(nil)` directly because the app-delegate
+    /// `applicationShouldTerminate` path is unreliable on some macOS
+    /// versions (Cmd+Q on a MenuBarExtra app sometimes bypasses it), and
+    /// the explicit `engine.stop { terminate }` here is a known-good
+    /// path that doesn't depend on the delegate firing.
+    private func quitLurar() {
+        if engine.isRunning {
+            engine.stop { NSApp.terminate(nil) }
+        } else {
+            NSApp.terminate(nil)
+        }
+    }
+
     var body: some View {
         Group {
             if permissionState == .authorized {
@@ -87,7 +102,7 @@ struct MenuBarView: View {
 
                 Spacer()
 
-                Button("Quit Lurar") { NSApp.terminate(nil) }
+                Button("Quit Lurar") { quitLurar() }
                     .lurarShortcut(LurarShortcuts.quit)
             }
         }
@@ -158,7 +173,7 @@ struct MenuBarView: View {
 
                 Spacer()
 
-                Button("Quit Lurar") { NSApp.terminate(nil) }
+                Button("Quit Lurar") { quitLurar() }
                     .lurarShortcut(LurarShortcuts.quit)
             }
         }

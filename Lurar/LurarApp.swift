@@ -7,6 +7,7 @@ private let launchLog = Logger(subsystem: "app.lurar.Lurar", category: "Launch")
 
 @main
 struct LurarApp: App {
+    @NSApplicationDelegateAdaptor(LurarAppDelegate.self) private var appDelegate
     @StateObject private var outputPreferences: OutputSelectionPreferences
     @StateObject private var deviceManager: DeviceManager
     @StateObject private var syncSettings: PresetSyncSettings
@@ -142,7 +143,43 @@ struct LurarApp: App {
         // not here. App-level `@StateObject` wrappedValue accesses during init
         // can hit a transient instance that SwiftUI discards before binding the
         // persistent storage, so anything we'd schedule from this scope would
-        // run against a dead engine.
+        // run against a dead engine. The same caveat applies to wiring the
+        // app delegate's engine reference — that happens from
+        // `MenuBarLabel.task` (see `runLaunchCoordinator`'s call site) where
+        // the persistent engine is guaranteed.
+    }
+}
+
+/// Intercepts `NSApp.terminate(_:)` (Cmd+Q, "Quit Lurar" menu item, or
+/// any other route) so the engine can fade audio out before the process
+/// dies. Without this, the HAL Output AU gets cut mid-buffer and the
+/// DAC emits a click as macOS reroutes audio back to its default
+/// destination.
+@MainActor
+final class LurarAppDelegate: NSObject, NSApplicationDelegate {
+    /// Set by `MenuBarLabel.task` once the persistent engine `@StateObject`
+    /// is bound. Weak because the engine is owned by the SwiftUI app, not us.
+    weak var engine: EQEngine?
+
+    nonisolated override init() {
+        super.init()
+        MainActor.assumeIsolated {
+            launchLog.info("LurarAppDelegate: created (NSApp.delegate adaptor instantiated)")
+        }
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        let engineWired = (engine != nil)
+        let engineRunning = engine?.isRunning ?? false
+        launchLog.info("applicationShouldTerminate: engineWired=\(engineWired) engineRunning=\(engineRunning)")
+        guard let engine, engine.isRunning else {
+            return .terminateNow
+        }
+        engine.stop {
+            launchLog.info("Engine stop completion fired; replying terminateLater = true")
+            NSApp.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
     }
 }
 
@@ -178,6 +215,18 @@ private struct MenuBarLabel: View {
             .task {
                 guard !didRunLaunchCoordinator else { return }
                 didRunLaunchCoordinator = true
+                // Hand the app delegate a weak ref to the engine so it can
+                // fade audio out on Cmd+Q before the process exits. We wire
+                // it here rather than from `LurarApp.init()` because the
+                // engine `@StateObject`'s wrappedValue isn't guaranteed to
+                // be the persistent instance during App init — see the note
+                // in `LurarApp.init()`.
+                if let delegate = NSApp.delegate as? LurarAppDelegate {
+                    delegate.engine = engine
+                    launchLog.info("App delegate engine reference wired")
+                } else {
+                    launchLog.error("Could not wire app delegate engine; NSApp.delegate is \(String(describing: NSApp.delegate))")
+                }
                 runLaunchCoordinator()
             }
             .onChange(of: deviceManager.selectedOutput) { _, newOut in
