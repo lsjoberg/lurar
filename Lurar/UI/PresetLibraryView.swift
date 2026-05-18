@@ -11,20 +11,40 @@ struct PresetLibraryView: View {
     @State private var measurerFilter: String = "All"
     @FocusState private var searchFocused: Bool
 
+    /// Sentinel value for the measurer dropdown: matches every entry whose
+    /// measurer is `MeasurerTier.recommended`. Picked so it can't collide with
+    /// a real AutoEq measurer string.
+    private static let recommendedFilterTag = "__lurar_recommended__"
+
     private var measurers: [String] {
         let set = Set(catalog.entries.map(\.measurer))
-        return ["All"] + set.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        let sorted = set.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        return [Self.recommendedFilterTag, "All"] + sorted
+    }
+
+    private func measurerDisplay(_ value: String) -> String {
+        value == Self.recommendedFilterTag ? "Recommended" : value
     }
 
     private var filtered: [CatalogEntry] {
         let needle = search.trimmingCharacters(in: .whitespaces).lowercased()
-        return catalog.entries.filter { entry in
-            if measurerFilter != "All" && entry.measurer != measurerFilter { return false }
+        let matches = catalog.entries.filter { entry in
+            if measurerFilter == Self.recommendedFilterTag {
+                if MeasurerTier.tier(for: entry.measurer) != .recommended { return false }
+            } else if measurerFilter != "All" && entry.measurer != measurerFilter {
+                return false
+            }
             guard !needle.isEmpty else { return true }
             if entry.name.lowercased().contains(needle) { return true }
             if entry.measurer.lowercased().contains(needle) { return true }
             if let rig = entry.rig?.lowercased(), rig.contains(needle) { return true }
             return false
+        }
+        return matches.sorted { a, b in
+            let ta = MeasurerTier.tier(for: a.measurer)
+            let tb = MeasurerTier.tier(for: b.measurer)
+            if ta != tb { return ta < tb }
+            return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
         }
     }
 
@@ -76,11 +96,13 @@ struct PresetLibraryView: View {
                     .focused($searchFocused)
                     .help("Filter the catalog (\u{2318}F to focus)")
                 Picker("", selection: $measurerFilter) {
-                    ForEach(measurers, id: \.self) { Text($0).tag($0) }
+                    ForEach(measurers, id: \.self) { value in
+                        Text(measurerDisplay(value)).tag(value)
+                    }
                 }
                 .labelsHidden()
                 .frame(width: 160)
-                .help("Filter by measurement source")
+                .help("Filter by measurement source. \u{201C}Recommended\u{201D} keeps only sources with established methodology (oratory1990, crinacle).")
             }
         }
         .padding(16)
@@ -164,6 +186,15 @@ struct PresetLibraryView: View {
                         .padding(.horizontal, 6)
                         .padding(.vertical, 1)
                         .background(Color.secondary.opacity(0.15), in: Capsule())
+                    if MeasurerTier.tier(for: entry.measurer) == .recommended {
+                        Text("Recommended")
+                            .font(.caption2.weight(.medium))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .foregroundStyle(.tint)
+                            .background(Color.accentColor.opacity(0.15), in: Capsule())
+                            .help("Widely cited measurement source with established methodology.")
+                    }
                     if let rig = entry.rig {
                         Text(rig).font(.caption).foregroundStyle(.secondary)
                     }
