@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Lurar — system-wide audio EQ for macOS</title>
-  <meta name="description" content="Headphone correction the way Sonarworks does it — without the subscription, without a driver. A 10-band parametric EQ that taps every app's audio via Core Audio and plays the result on your DAC.">
+  <meta name="description" content="Headphone correction for macOS with the AutoEq catalog built in. A 10-band parametric EQ that taps every app's audio via Core Audio and plays the result on your DAC. Free, no account, no driver to install.">
   <meta name="theme-color" content="#0a0a0a">
   <link rel="stylesheet" href="style.css">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <meta property="og:title" content="Lurar">
-  <meta property="og:description" content="Headphone correction for macOS. No virtual driver. No subscription.">
+  <meta property="og:description" content="Headphone correction for macOS with AutoEq built in. Free, no subscription, no driver.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://lurar.app/">
   <meta property="og:image" content="https://lurar.app/screenshots/og.png">
@@ -38,11 +38,12 @@
 
   <main>
     <section class="hero">
-      <h1>Headphone EQ for macOS,<br>without the driver.</h1>
+      <h1>Headphone correction for macOS,<br>with AutoEq built in.</h1>
       <p class="tagline">
         Lurar taps every app's audio via Apple's Core Audio Process Tap, runs
-        it through a 10-band parametric EQ, and plays the result on your DAC.
-        No virtual audio device. No kernel extension. No subscription.
+        it through a 10-band parametric EQ tuned to your headphones from the
+        AutoEq catalog, and plays the result on your DAC. Free, no account,
+        no driver to install.
       </p>
 
       <a class="download" href="https://github.com/lsjoberg/lurar/releases/latest/download/Lurar.dmg">
@@ -62,7 +63,7 @@
     <section class="how" aria-labelledby="how-title">
       <h2 id="how-title">How it works</h2>
       <p class="section-lede">
-        Lurar doesn't install a virtual audio device, doesn't load a kernel
+        Lurar doesn't add a device to Sound Settings, doesn't load a kernel
         extension, and doesn't replace your output. macOS routes the audio
         through Apple's own Process Tap API — Lurar reads it, EQs it, and
         sends it on to whichever DAC you've chosen.
@@ -202,12 +203,12 @@
           </thead>
           <tbody>
             <tr><th scope="row">Price</th><td>Free</td><td>Free / paid tier</td><td>Paid</td><td>Subscription</td></tr>
-            <tr><th scope="row">No virtual audio driver</th><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td><td class="no">No</td></tr>
-            <tr><th scope="row">System-wide capture</th><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
             <tr><th scope="row">AutoEq catalog</th><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td><td>Proprietary</td></tr>
             <tr><th scope="row">A/B compare (sighted &amp; blind)</th><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td><td>Partial</td></tr>
             <tr><th scope="row">Crossfeed</th><td class="yes">Yes</td><td class="no">No</td><td>Add-on</td><td class="no">No</td></tr>
             <tr><th scope="row">Loudness compensation</th><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td><td class="no">No</td></tr>
+            <tr><th scope="row">No virtual audio driver</th><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td><td class="no">No</td></tr>
+            <tr><th scope="row">System-wide capture</th><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
             <tr><th scope="row">Per-device memory</th><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td><td class="yes">Yes</td></tr>
             <tr><th scope="row">iCloud preset sync</th><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td><td>Account</td></tr>
           </tbody>
@@ -215,7 +216,9 @@
       </div>
       <p class="compare-note">
         Capability matrix as of writing — competitors change their plans
-        often. We'll keep this honest; if anything's wrong, open an issue.
+        often. A few newer utilities also use the Process Tap API to skip
+        the driver; the three above are the apps people compare against
+        first. If anything's wrong, open an issue.
       </p>
     </section>
 
