@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0](https://github.com/lsjoberg/lurar/compare/v0.2.3...v0.3.0) (2026-05-18)
+
+
+### Features
+
+* **ui:** gate menu-bar popover behind TCC consent ([7cb56ab](https://github.com/lsjoberg/lurar/commit/7cb56ab1478e0bfc584b95e632a9bb04fa4a9935))
+
+
+### Bug Fixes
+
+* **audio:** smooth track-change rebuilds with fade + skip-if-unchanged + HAL keep-alive ([f9e19a0](https://github.com/lsjoberg/lurar/commit/f9e19a051573ec118ad6d0b83dd258e013c2643f))
+* **release:** let feat commits bump minor in pre-1.0 ([7469c6f](https://github.com/lsjoberg/lurar/commit/7469c6fd4c83a1e0cb3fa6b1457084eaf269c1a7))
+
 ## [0.2.3](https://github.com/lsjoberg/lurar/compare/v0.2.2...v0.2.3) (2026-05-18)
 
 
