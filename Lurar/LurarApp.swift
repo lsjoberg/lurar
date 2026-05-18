@@ -32,7 +32,13 @@ struct LurarApp: App {
                 devicePresetMemory: devicePresetMemory
             )
         } label: {
-            MenuBarLabel(engine: engine, deviceManager: deviceManager)
+            MenuBarLabel(
+                engine: engine,
+                deviceManager: deviceManager,
+                presetStore: presetStore,
+                presetCatalog: presetCatalog,
+                devicePresetMemory: devicePresetMemory
+            )
         }
         .menuBarExtraStyle(.window)
         // Global ⌘, command so Settings opens regardless of which window is
@@ -191,6 +197,13 @@ final class LurarAppDelegate: NSObject, NSApplicationDelegate {
 private struct MenuBarLabel: View {
     @ObservedObject var engine: EQEngine
     @ObservedObject var deviceManager: DeviceManager
+    // Preset stores are needed to resolve the right preset at autostart —
+    // without this, `MenuBarView.task` (which mounts lazily when the
+    // popover first opens) was the only thing applying a preset, so
+    // audio passed through flat until the user touched the menu.
+    @ObservedObject var presetStore: PresetStore
+    @ObservedObject var presetCatalog: PresetCatalog
+    @ObservedObject var devicePresetMemory: DevicePresetMemory
 
     @Environment(\.openWindow) private var openWindow
 
@@ -233,6 +246,7 @@ private struct MenuBarLabel: View {
                 guard pendingAutostart, let out = newOut else { return }
                 pendingAutostart = false
                 engine.start(output: out)
+                applyInitialPreset()
             }
     }
 
@@ -246,6 +260,7 @@ private struct MenuBarLabel: View {
             if let out = deviceManager.selectedOutput {
                 launchLog.info("Launch: authorized + autostart on, starting engine on \(out.name, privacy: .public)")
                 engine.start(output: out)
+                applyInitialPreset()
             } else {
                 launchLog.info("Launch: authorized + autostart on, but no output device yet — deferring")
                 pendingAutostart = true
@@ -254,6 +269,33 @@ private struct MenuBarLabel: View {
             launchLog.info("Launch: permission missing, opening onboarding window")
             openWindow(id: "onboarding")
         }
+    }
+
+    /// Push the user's selected preset into the engine at autostart. Without
+    /// this, `currentPreset` stays nil until `MenuBarView.task` runs — and
+    /// because the popover content is mounted lazily by `MenuBarExtra`'s
+    /// `.window` style, that's the first time the user opens the menu. Until
+    /// then audio passed through with flat EQ. Resolution order mirrors
+    /// `MenuBarView.wireUp`: the per-device "last preset" memory wins, then
+    /// the first visible preset as a fallback.
+    private func applyInitialPreset() {
+        let visible = visiblePresets(catalog: presetCatalog, store: presetStore)
+        let resolvedID: UUID? = {
+            if let device = deviceManager.selectedOutput,
+               let lastID = devicePresetMemory.lastPresetID(for: device.uid),
+               visible.contains(where: { $0.id == lastID }) {
+                return lastID
+            }
+            return visible.first?.id
+        }()
+        guard let id = resolvedID,
+              let preset = visible.first(where: { $0.id == id }) else {
+            launchLog.info("applyInitialPreset: no resolvable preset (visible=\(visible.count))")
+            return
+        }
+        if engine.currentPreset?.id == preset.id { return }
+        engine.apply(preset: preset)
+        launchLog.info("Applied initial preset on autostart: \(preset.name, privacy: .public)")
     }
 }
 
