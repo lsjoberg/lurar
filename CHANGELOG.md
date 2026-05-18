@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.3](https://github.com/lsjoberg/lurar/compare/v0.2.2...v0.2.3) (2026-05-18)
+
+
+### Features
+
+* **editor:** include parent source in the "Derived from" chip ([3e90a5d](https://github.com/lsjoberg/lurar/commit/3e90a5de2901d95f04f9b21f2f71d8e61a363655))
+* **settings:** open Settings as a regular Window in the dock ([b028de8](https://github.com/lsjoberg/lurar/commit/b028de875027909207f5f15d46ee9ffe146b427b))
+
+
+### Bug Fixes
+
+* collapse oversized wide-feature cards on mobile ([161d42e](https://github.com/lsjoberg/lurar/commit/161d42e1e3c4eebbed619e88d15b9f669d39ac27))
+* **eq:** use peaking-Q alpha for shelves so audio matches AutoEq + on-screen curve ([f995893](https://github.com/lsjoberg/lurar/commit/f995893330ba519c7b2310331b0f03457008aeb3))
+
 ## [0.2.2](https://github.com/lsjoberg/lurar/compare/v0.2.1...v0.2.2) (2026-05-17)
 
 
