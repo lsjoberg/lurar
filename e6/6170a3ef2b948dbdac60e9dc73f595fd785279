@@ -1,0 +1,29 @@
+docs/index.html
+  s_52baf072eaa9a6::t_097e2f4232b4c8 107-110
+  s_52baf072eaa9a6::t_77a2dbd87fffb9 166-169
+  s_52baf072eaa9a6::t_df905da07374fb 139-142
+  s_52baf072eaa9a6::t_30ea3597bbdade 192-195
+  s_52baf072eaa9a6::t_2757e7389fb7e6 179-182
+  s_52baf072eaa9a6::t_c33de561703ee6 152-155
+  s_52baf072eaa9a6::t_d1c8018a96c799 116-119
+  s_52baf072eaa9a6::t_6816355bd0d6bf 205-208
+scripts/screenshot.sh
+  s_52baf072eaa9a6::t_6f7b2ccf3c872c 178,183,187,190,193
+  s_52baf072eaa9a6::t_66f12b85cd525c 163-172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "e66170a3ef2b948dbdac60e9dc73f595fd785279",
+  "prompts": {},
+  "sessions": {
+    "s_52baf072eaa9a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1baa1f08-4b98-450d-b82c-99de76fb87af",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Linus Sjöberg <linus.sjoberg@tradera.com>"
+    }
+  }
+}
