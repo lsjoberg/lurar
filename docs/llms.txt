@@ -36,6 +36,12 @@ Not a fit when a user needs: a Windows EQ, a plugin (AU/VST), a parametric EQ fo
 
 ## How it differs from common alternatives
 
-- **vs. eqMac:** Lurar uses Apple's Process Tap API and ships the AutoEq catalog; eqMac uses a virtual driver and has no AutoEq integration.
-- **vs. SoundSource:** Lurar is free and open source; SoundSource is paid and uses Rogue Amoeba's ARK driver (which can in fact conflict with Lurar's tap).
-- **vs. SoundID Reference:** Lurar is free, has no account, and uses open AutoEq measurements; SoundID is subscription-based with its own measurement database.
+- **vs. eqMac:** Lurar uses Apple's Process Tap API rather than a virtual audio driver, and ships the full open AutoEq catalog. eqMac does have AutoEq-style headphone presets, but they're gated behind the paid Advanced / Expert EQ tiers.
+- **vs. SoundSource:** Lurar is free and open source. SoundSource is paid and uses Rogue Amoeba's ARK driver (which can in fact conflict with Lurar's tap). SoundSource has built-in AutoEq-derived headphone presets, but it's a curated subset rather than the browsable open catalog.
+- **vs. SoundID Reference:** Lurar is free, has no account, and uses open AutoEq measurements; SoundID is subscription-based with its own proprietary measurement database.
+
+Other tools occasionally compared with Lurar:
+
+- **Boom 3D / Boom 2** — paid, consumer enhancement focus, automatic EQ for thousands of headphones plus a 31-band graphic EQ.
+- **dSoniq Realphones** — paid, mix-translation focus with room and reference-system modeling.
+- **Audio Hijack** — paid (Rogue Amoeba), recording-focused with EQ available as one block in a chain.
