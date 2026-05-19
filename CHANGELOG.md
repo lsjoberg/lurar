@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/lsjoberg/lurar/compare/v0.3.0...v0.4.0) (2026-05-19)
+
+
+### Features
+
+* **ab:** show full preset label (with author/rig) in A/B results ([d5d76f7](https://github.com/lsjoberg/lurar/commit/d5d76f7621905ee6c176050991d2f16fbf7b804b))
+
 ## [0.3.0](https://github.com/lsjoberg/lurar/compare/v0.2.3...v0.3.0) (2026-05-19)
 
 
