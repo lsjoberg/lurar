@@ -33,6 +33,17 @@ struct OnboardingPermissionView: View {
         case setup
     }
 
+    /// Sub-pages within `.setup`. Output and preset selection each get
+    /// their own page so the window doesn't feel cramped, and both expose
+    /// a Skip that jumps directly to `.whatsNext` — the overview is shown
+    /// to everyone so even users who set things up manually learn where
+    /// the menu-bar icon lives and how to bypass / open the editor.
+    enum SetupStep {
+        case output
+        case preset
+        case whatsNext
+    }
+
     @ObservedObject var engine: EQEngine
     @ObservedObject var deviceManager: DeviceManager
     @ObservedObject var presetCatalog: PresetCatalog
@@ -43,6 +54,10 @@ struct OnboardingPermissionView: View {
     /// Captured from live preflight on first appearance. Becomes `.denied`
     /// in-place if Continue triggers an OS denial, or `.setup` if granted.
     @State private var mode: Mode = .initial
+
+    /// Active page when `mode == .setup`. Advances on Continue, retreats on
+    /// Back, jumps straight to `.whatsNext` when the user hits Skip.
+    @State private var setupStep: SetupStep = .output
 
     /// Latches when the user clicks "Try again" and the request path still
     /// reports blocked. Surfaces a hint about ad-hoc-signed dev builds
@@ -76,10 +91,14 @@ struct OnboardingPermissionView: View {
                     reassurance
                     deniedInstruction
                 case .setup:
-                    setupIntro
-                    outputSection
-                    presetSection
-                    whatsNextSection
+                    switch setupStep {
+                    case .output:
+                        outputSection
+                    case .preset:
+                        presetSection
+                    case .whatsNext:
+                        whatsNextSection
+                    }
                 }
                 Spacer(minLength: 0)
                 buttons
@@ -87,8 +106,8 @@ struct OnboardingPermissionView: View {
             .padding(28)
         }
         .frame(
-            width: mode == .setup ? 580 : 480,
-            height: mode == .setup ? 860 : nil
+            width: mode == .denied ? 480 : 580,
+            height: mode == .denied ? nil : 540
         )
         // Bring Lurar into the dock + Cmd+Tab while the onboarding window
         // is open — without it the user can't switch back after bouncing
@@ -145,8 +164,14 @@ struct OnboardingPermissionView: View {
                 .font(.system(size: 32))
                 .foregroundStyle(.orange)
         case .setup:
-            LurarMark()
-                .frame(width: 36, height: 36)
+            if setupStep == .whatsNext {
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.system(size: 32))
+                    .foregroundStyle(.green)
+            } else {
+                LurarMark()
+                    .frame(width: 36, height: 36)
+            }
         }
     }
 
@@ -154,7 +179,12 @@ struct OnboardingPermissionView: View {
         switch mode {
         case .initial: return "Welcome to Lurar"
         case .denied: return "Audio capture is blocked"
-        case .setup: return "You're all set"
+        case .setup:
+            switch setupStep {
+            case .output: return "Pick your output"
+            case .preset: return "Add a headphone preset"
+            case .whatsNext: return "You're all set"
+            }
         }
     }
 
@@ -162,7 +192,12 @@ struct OnboardingPermissionView: View {
         switch mode {
         case .initial: return "One quick permission and you're set."
         case .denied: return "macOS won't re-prompt — here's how to re-enable it."
-        case .setup: return "A couple of quick choices and Lurar's tuned for you."
+        case .setup:
+            switch setupStep {
+            case .output: return "Lurar is EQ'ing system audio — choose where you're listening."
+            case .preset: return "Match your gear, or skip and add one later."
+            case .whatsNext: return "Here's where to find Lurar from here on out."
+            }
         }
     }
 
@@ -183,17 +218,10 @@ struct OnboardingPermissionView: View {
 
     // MARK: - Setup mode
 
-    private var setupIntro: some View {
-        Text("Permission granted. Lurar is now applying EQ to system audio — pick where you're listening and add a preset for your headphones.")
-            .font(.callout)
-            .fixedSize(horizontal: false, vertical: true)
-    }
-
     // MARK: Output section
 
     private var outputSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            sectionLabel("1.", "Pick your output")
             if deviceManager.outputDevices.isEmpty {
                 Text("Looking for output devices…")
                     .font(.callout)
@@ -228,7 +256,6 @@ struct OnboardingPermissionView: View {
 
     private var presetSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            sectionLabel("2.", "Add a preset for your headphones")
             // Only surface the pill once the catalog is loaded — otherwise
             // we'd nudge "pick your headphones" with nothing to pick from.
             if !presetCatalog.entries.isEmpty {
@@ -386,25 +413,27 @@ struct OnboardingPermissionView: View {
     // MARK: What's next section
 
     private var whatsNextSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            sectionLabel("3.", "What's next")
-            VStack(spacing: 8) {
-                WhatsNextRow(
-                    iconImage: Image(nsImage: LurarMark.statusBarImage(filled: true, pointSize: 16)),
-                    title: "Lurar lives in your menu bar.",
-                    body: "Find this icon up top — click it to switch outputs, change presets, or toggle the engine."
-                )
-                WhatsNextRow(
-                    systemIcon: "rectangle.lefthalf.filled",
-                    title: "Hear the difference.",
-                    body: "Hold ⌥B anywhere to bypass the EQ, or open A/B Compare (⌘B) for a blind test."
-                )
-                WhatsNextRow(
-                    systemIcon: "slider.horizontal.3",
-                    title: "Tweak the curve.",
-                    body: "Open Editor (⌘E) to nudge bands live — edits apply to the running engine instantly."
-                )
-            }
+        VStack(spacing: 8) {
+            WhatsNextRow(
+                iconImage: Image(nsImage: LurarMark.statusBarImage(filled: true, pointSize: 16)),
+                title: "Lurar lives in your menu bar.",
+                body: "Find this icon up top — click it to switch outputs, change presets, or toggle the engine."
+            )
+            WhatsNextRow(
+                systemIcon: "waveform.slash",
+                title: "Hear the difference.",
+                body: "Hold ⌥B anywhere to bypass the EQ and compare against the raw signal."
+            )
+            WhatsNextRow(
+                label: "A/B",
+                title: "A/B test your presets.",
+                body: "Open A/B Compare (⌘B) for a level-matched, blind comparison between two presets."
+            )
+            WhatsNextRow(
+                systemIcon: "slider.horizontal.3",
+                title: "Tweak the curve.",
+                body: "Open Editor (⌘E) to nudge bands live — edits apply to the running engine instantly."
+            )
         }
     }
 
@@ -469,17 +498,6 @@ struct OnboardingPermissionView: View {
         .padding(.top, 4)
     }
 
-    private func sectionLabel(_ number: String, _ title: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(number)
-                .monospacedDigit()
-                .foregroundStyle(.tertiary)
-                .frame(width: 18, alignment: .leading)
-            Text(title)
-                .font(.headline)
-        }
-    }
-
     private func stepRow(_ number: String, _ markdown: LocalizedStringKey) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(number)
@@ -526,10 +544,33 @@ struct OnboardingPermissionView: View {
             }
         case .setup:
             HStack {
+                if setupStep == .preset {
+                    Button("Back") { setupStep = .output }
+                        .help("Return to output selection")
+                }
                 Spacer()
-                Button("Done") { dismiss() }
-                    .keyboardShortcut(.defaultAction)
-                    .help("Close this window (\u{21A9})")
+                if setupStep == .output {
+                    Button("Skip — I'll set it up myself") {
+                        setupStep = .whatsNext
+                    }
+                    .help("Skip the guided setup and jump to the overview")
+                    Button("Continue") { setupStep = .preset }
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(deviceManager.selectedOutput == nil)
+                        .help("Pick a headphone preset next (\u{21A9})")
+                } else if setupStep == .preset {
+                    Button("Skip — I'll set it up myself") {
+                        setupStep = .whatsNext
+                    }
+                    .help("Skip preset selection and jump to the overview")
+                    Button("Continue") { setupStep = .whatsNext }
+                        .keyboardShortcut(.defaultAction)
+                        .help("Continue to the overview (\u{21A9})")
+                } else {
+                    Button("Done") { dismiss() }
+                        .keyboardShortcut(.defaultAction)
+                        .help("Close this window (\u{21A9})")
+                }
             }
         }
     }
@@ -875,6 +916,10 @@ private struct WhatsNextRow: View {
     enum Icon {
         case image(Image)
         case system(String)
+        /// Short text rendered as a bordered chip — mirrors the menu bar's
+        /// `Text("A/B")` button so the overview row visually matches the
+        /// affordance users will actually look for later.
+        case label(String)
     }
 
     let icon: Icon
@@ -893,10 +938,16 @@ private struct WhatsNextRow: View {
         self.detail = body
     }
 
+    init(label: String, title: String, body: String) {
+        self.icon = .label(label)
+        self.title = title
+        self.detail = body
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             iconView
-                .frame(width: 22, height: 22)
+                .frame(width: 28, height: 22)
                 .padding(.top, 1)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -927,6 +978,21 @@ private struct WhatsNextRow: View {
             Image(systemName: name)
                 .font(.title3)
                 .foregroundStyle(.secondary)
+        case .label(let text):
+            Text(text)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(.quaternary)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .strokeBorder(.tertiary, lineWidth: 0.5)
+                )
+                .lineLimit(1)
         }
     }
 }
