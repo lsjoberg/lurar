@@ -18,6 +18,7 @@ struct LurarApp: App {
     @StateObject private var excludedAppsStore = ExcludedAppsStore()
     @StateObject private var devicePresetMemory = DevicePresetMemory()
     @StateObject private var updater = UpdaterController()
+    @StateObject private var burnInTracker = BurnInTracker()
 
     @Environment(\.openWindow) private var openWindow
 
@@ -37,7 +38,8 @@ struct LurarApp: App {
                 deviceManager: deviceManager,
                 presetStore: presetStore,
                 presetCatalog: presetCatalog,
-                devicePresetMemory: devicePresetMemory
+                devicePresetMemory: devicePresetMemory,
+                burnInTracker: burnInTracker
             )
         }
         .menuBarExtraStyle(.window)
@@ -113,7 +115,9 @@ struct LurarApp: App {
                 presetStore: presetStore,
                 excludedAppsStore: excludedAppsStore,
                 outputPreferences: outputPreferences,
-                updater: updater
+                updater: updater,
+                burnInTracker: burnInTracker,
+                deviceManager: deviceManager
             )
         }
         .windowResizability(.contentSize)
@@ -209,6 +213,7 @@ private struct MenuBarLabel: View {
     @ObservedObject var presetStore: PresetStore
     @ObservedObject var presetCatalog: PresetCatalog
     @ObservedObject var devicePresetMemory: DevicePresetMemory
+    @ObservedObject var burnInTracker: BurnInTracker
 
     @Environment(\.openWindow) private var openWindow
 
@@ -245,6 +250,13 @@ private struct MenuBarLabel: View {
                 } else {
                     launchLog.error("Could not wire app delegate engine; NSApp.delegate is \(String(describing: NSApp.delegate))")
                 }
+                // Subscribe the burn-in counter to the engine's lifecycle.
+                // Wired from this scope (not `LurarApp.init`) for the same
+                // reason as the delegate above: app-init `@StateObject`
+                // wrappedValues can be transient throwaways, and Combine
+                // subscriptions bound to a transient publisher silently
+                // never observe the persistent engine.
+                burnInTracker.observe(engine: engine)
                 runLaunchCoordinator()
             }
             .onChange(of: deviceManager.selectedOutput) { _, newOut in

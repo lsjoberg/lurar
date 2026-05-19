@@ -69,6 +69,7 @@ Lurar persists state in three places. Each is independently resettable; pick wha
 | `lurar.suggestionsDismissedDevices` | Device UIDs you said *Not now* to in the auto-detect banner |
 | `crossfeed.intensity`, `crossfeed.cutoff` | Crossfeed settings |
 | `spectrum.enabled` | Spectrum overlay toggle in the editor |
+| `lurar.burnInByDevice` | `[deviceUID: {name, seconds}]` engine runtime tally for the Settings → General "Burn-in" section |
 
 **TCC** — system-managed audio-capture grant for `app.lurar.Lurar`.
 

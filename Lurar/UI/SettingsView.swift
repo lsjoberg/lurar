@@ -10,10 +10,17 @@ struct SettingsView: View {
     @ObservedObject var excludedAppsStore: ExcludedAppsStore
     @ObservedObject var outputPreferences: OutputSelectionPreferences
     @ObservedObject var updater: UpdaterController
+    @ObservedObject var burnInTracker: BurnInTracker
+    @ObservedObject var deviceManager: DeviceManager
 
     var body: some View {
         TabView {
-            GeneralSettingsTab(outputPreferences: outputPreferences, updater: updater)
+            GeneralSettingsTab(
+                outputPreferences: outputPreferences,
+                updater: updater,
+                burnInTracker: burnInTracker,
+                deviceManager: deviceManager
+            )
                 .tabItem { Label("General", systemImage: "gearshape") }
                 .padding(20)
                 .frame(width: 460)
@@ -37,6 +44,8 @@ struct SettingsView: View {
 private struct GeneralSettingsTab: View {
     @ObservedObject var outputPreferences: OutputSelectionPreferences
     @ObservedObject var updater: UpdaterController
+    @ObservedObject var burnInTracker: BurnInTracker
+    @ObservedObject var deviceManager: DeviceManager
 
     @State private var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled
 
@@ -110,6 +119,10 @@ private struct GeneralSettingsTab: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            Divider()
+
+            BurnInSection(tracker: burnInTracker, deviceManager: deviceManager)
 
             Spacer(minLength: 0)
         }
@@ -240,5 +253,96 @@ private struct SyncSettingsTab: View {
         } else {
             syncSettings.iCloudEnabled = false
         }
+    }
+}
+
+// MARK: - Burn-in
+
+private struct BurnInSection: View {
+    @ObservedObject var tracker: BurnInTracker
+    @ObservedObject var deviceManager: DeviceManager
+
+    @State private var showHelp: Bool = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 4) {
+                Text("Burn-in counter").font(.callout.weight(.semibold))
+                Button {
+                    showHelp.toggle()
+                } label: {
+                    Image(systemName: "questionmark.circle")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("What is the burn-in counter?")
+                .popover(isPresented: $showHelp, arrowEdge: .top) {
+                    burnInHelp
+                }
+                Spacer()
+            }
+            let entries = tracker.entries()
+            if entries.isEmpty {
+                Text("Lurar will tally engine runtime per output once you start it.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(entries, id: \.uid) { entry in
+                        HStack(spacing: 8) {
+                            Text(displayName(for: entry))
+                                .font(.callout)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            if entry.uid == tracker.activeDeviceUID {
+                                Text("running")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 1)
+                                    .background(.secondary.opacity(0.15), in: Capsule())
+                            }
+                            Spacer()
+                            Text(Self.format(seconds: entry.seconds))
+                                .font(.callout.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var burnInHelp: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Burn-in counter").font(.headline)
+            Text("How many hours the EQ engine has spent driving each output device. It\u{2019}s just a tally \u{2014} Lurar doesn\u{2019}t change anything about how it processes audio based on this number.")
+                .fixedSize(horizontal: false, vertical: true)
+            Text("The name is a nod to the audiophile tradition of \u{201C}burning in\u{201D} new headphones by playing audio through them for tens or hundreds of hours, in the belief that the diaphragms loosen up and the sound improves. The evidence is contested at best; Lurar takes no position.")
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .font(.callout)
+        .padding(14)
+        .frame(width: 320)
+    }
+
+    private func displayName(for entry: BurnInTracker.Entry) -> String {
+        // Prefer the device's current live name in case the user renamed it
+        // in Audio MIDI Setup since the last time we recorded a run.
+        if let live = deviceManager.outputDevices.first(where: { $0.uid == entry.uid }) {
+            return live.name
+        }
+        return entry.name
+    }
+
+    private static func format(seconds: Double) -> String {
+        if seconds < 60 { return "<1m" }
+        if seconds < 3600 { return "~\(Int(seconds / 60))m" }
+        let hours = seconds / 3600
+        if hours < 10 {
+            return String(format: "~%.1fh", hours)
+        }
+        return "~\(Int(hours))h"
     }
 }

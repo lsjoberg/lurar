@@ -76,7 +76,10 @@ final class EQEngine: ObservableObject {
     /// device with a different preferred rate. `activeSampleRate` ≠ this is
     /// the steady state during hi-res streaming.
     private var halSampleRate: Double?
-    private var activeOutput: AudioDevice?
+    /// Output device the engine is currently driving, or nil when idle.
+    /// Published so observers (e.g. `BurnInTracker`) can react to rebinds
+    /// without polling.
+    @Published private(set) var activeOutput: AudioDevice?
 
     /// User's per-app exclusion list. Read at tap-creation time in `fullStart`
     /// and after every change via `reEnumerateTapTargets`. Weak because the
