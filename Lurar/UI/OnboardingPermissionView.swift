@@ -292,19 +292,31 @@ struct OnboardingPermissionView: View {
                 .padding(.vertical, 8)
         } else {
             let device = deviceManager.selectedOutput
-            let matches: [PresetSuggester.Match] = {
+            // Pull more candidates than we'll show so the Tier-1 filter has
+            // something to work with — the raw suggester returns score-sorted,
+            // and Tier-1 entries may not be in the top 3 by similarity alone
+            // (e.g. crinacle's "HD 6XX" tied with a community measurer).
+            let rawMatches: [PresetSuggester.Match] = {
                 guard let device else { return [] }
                 return PresetSuggester.suggestions(
                     forDevice: device.name,
                     in: presetCatalog.entries,
-                    limit: 3
+                    limit: 12
                 )
             }()
+            let preference = MeasurerTier.preferRecommended(rawMatches) { $0.entry.measurer }
+            let matches = Array(preference.items.prefix(3))
             if let device, !matches.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Suggested for \(device.name):")
                         .font(.callout)
                         .foregroundStyle(.secondary)
+                    if let caption = Self.fallbackCaption(for: preference.selectedTier) {
+                        Text(caption)
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     VStack(spacing: 4) {
                         ForEach(matches, id: \.entry.id) { match in
                             PresetRow(
@@ -594,12 +606,15 @@ struct OnboardingPermissionView: View {
             || engine.currentPreset?.id == EQPreset.flatID
         guard currentlyOnFlat else { return }
 
-        let matches = PresetSuggester.suggestions(
+        // Same Tier-1-preferring pick the suggested-list section shows, so the
+        // auto-applied preset and the highlighted row in the UI stay in sync.
+        let rawMatches = PresetSuggester.suggestions(
             forDevice: device.name,
             in: presetCatalog.entries,
-            limit: 1
+            limit: 12
         )
-        guard let top = matches.first else { return }
+        let preferred = MeasurerTier.preferRecommended(rawMatches) { $0.entry.measurer }.items
+        guard let top = preferred.first else { return }
         applyEntry(top.entry)
     }
 
@@ -631,15 +646,17 @@ struct OnboardingPermissionView: View {
         let matches = PresetSuggester.suggestions(
             forDevice: query,
             in: presetCatalog.entries,
-            limit: 1
+            limit: 12
         )
-        if let first = matches.first {
+        let preferred = MeasurerTier.preferRecommended(matches) { $0.entry.measurer }.items
+        if let first = preferred.first {
             applyEntry(first.entry)
             return
         }
         // Fallback to substring match if the suggester's stricter rules
         // reject (some short queries like "HD 600" don't reach 2-token
-        // overlap with multi-word catalog names).
+        // overlap with multi-word catalog names). filteredEntries already
+        // tier-prefers, so this stays consistent.
         if let entry = filteredEntries(for: query).first {
             applyEntry(entry)
         }
@@ -648,15 +665,32 @@ struct OnboardingPermissionView: View {
     private func filteredEntries(for query: String) -> [CatalogEntry] {
         let needle = query.lowercased().trimmingCharacters(in: .whitespaces)
         guard !needle.isEmpty else { return [] }
-        return presetCatalog.entries
+        let substringMatches = presetCatalog.entries
             .filter { $0.name.lowercased().contains(needle) }
-            .prefix(6)
-            .map { $0 }
+        let preferred = MeasurerTier.preferRecommended(substringMatches) { $0.measurer }.items
+        return Array(preferred.prefix(6))
     }
 
     private func sourceLabel(for entry: CatalogEntry) -> String {
         if let rig = entry.rig { return "\(entry.measurer) · \(rig)" }
         return entry.measurer
+    }
+
+    /// Caption shown below the "Suggested for…" header when the cascade had
+    /// to fall back below Tier 1. `nil` on the happy path so the row list
+    /// sits directly under the header. Tier 2 gets its own copy because the
+    /// jump from oratory1990/crinacle to e.g. Rtings is a smaller hop than to
+    /// an unvetted community squig, and users picking a niche headphone
+    /// benefit from knowing which it is.
+    private static func fallbackCaption(for tier: MeasurerTier) -> String? {
+        switch tier {
+        case .recommended:
+            return nil
+        case .trusted:
+            return "No oratory1990 or crinacle measurement found — showing a trusted source."
+        case .other:
+            return "No oratory1990 or crinacle measurement found — showing community sources."
+        }
     }
 
     /// True when this catalog entry is the one currently EQ'ing the audio.

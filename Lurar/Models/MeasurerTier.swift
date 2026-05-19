@@ -38,4 +38,24 @@ enum MeasurerTier: Int, Comparable {
         "innerfidelity",
         "headphone.com legacy"
     ]
+
+    /// Pick the strongest tier represented in `items`: prefer `.recommended`
+    /// matches, fall back to `.trusted`, then to the full input. `selectedTier`
+    /// tells the caller which bucket was returned so it can adjust copy (e.g.
+    /// "showing community sources"). Preserves input ordering inside each
+    /// bucket.
+    ///
+    /// Generic over the element type so it works for both `[CatalogEntry]`
+    /// (substring catalog search) and `[PresetSuggester.Match]` (device-name
+    /// matcher), and avoids each call site re-implementing the same cascade.
+    static func preferRecommended<T>(
+        _ items: [T],
+        measurer: (T) -> String
+    ) -> (items: [T], selectedTier: MeasurerTier) {
+        let recommended = items.filter { tier(for: measurer($0)) == .recommended }
+        if !recommended.isEmpty { return (recommended, .recommended) }
+        let trusted = items.filter { tier(for: measurer($0)) == .trusted }
+        if !trusted.isEmpty { return (trusted, .trusted) }
+        return (items, .other)
+    }
 }
