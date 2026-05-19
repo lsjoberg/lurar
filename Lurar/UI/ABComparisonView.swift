@@ -366,17 +366,24 @@ struct ABComparisonView: View {
 
     /// "Use [preset]" — applies that preset to the engine and closes the window.
     /// The prominent button is the winner in blind mode (when there's one).
+    /// Label includes the author/rig suffix (matching the slot dropdown) and is
+    /// width-capped so a long catalog label doesn't push the trailing
+    /// Close / New session buttons off-screen.
     @ViewBuilder
     private func useButton(preset: EQPreset, isWinner: Bool) -> some View {
+        let label = Text("Use \(preset.menuLabel)")
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .frame(maxWidth: 260)
         if isWinner {
-            Button("Use \(preset.name)") { applyAndClose(preset: preset) }
+            Button(action: { applyAndClose(preset: preset) }) { label }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
-                .help("Apply \u{201C}\(preset.name)\u{201D} and close (\u{21A9})")
+                .help("Apply \u{201C}\(preset.menuLabel)\u{201D} and close (\u{21A9})")
         } else {
-            Button("Use \(preset.name)") { applyAndClose(preset: preset) }
+            Button(action: { applyAndClose(preset: preset) }) { label }
                 .buttonStyle(.bordered)
-                .help("Apply \u{201C}\(preset.name)\u{201D} and close")
+                .help("Apply \u{201C}\(preset.menuLabel)\u{201D} and close")
         }
     }
 
@@ -410,13 +417,13 @@ struct ABComparisonView: View {
                 .font(.headline)
             HStack(spacing: 20) {
                 preferenceTile(
-                    title: session.presetA?.name ?? "Slot A",
+                    title: session.presetA?.menuLabel ?? "Slot A",
                     votes: a,
                     total: a + b,
                     label: "shown as \(session.blindLabel(for: .a))"
                 )
                 preferenceTile(
-                    title: session.presetB?.name ?? "Slot B",
+                    title: session.presetB?.menuLabel ?? "Slot B",
                     votes: b,
                     total: a + b,
                     label: "shown as \(session.blindLabel(for: .b))"
