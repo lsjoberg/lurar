@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/lsjoberg/lurar/compare/v0.4.0...v0.4.1) (2026-05-20)
+
+
+### Bug Fixes
+
+* **ci:** PR-based appcast update instead of direct push to main ([fa9de88](https://github.com/lsjoberg/lurar/commit/fa9de88a3f5801625d413de265ea1e672f058019))
+
 ## [0.4.0](https://github.com/lsjoberg/lurar/compare/v0.3.0...v0.4.0) (2026-05-19)
 
 
