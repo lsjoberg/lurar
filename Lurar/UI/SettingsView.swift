@@ -108,9 +108,13 @@ private struct GeneralSettingsTab: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 6) {
-                HStack {
+                HStack(spacing: 10) {
                     Text("Updates").font(.callout.weight(.semibold))
                     Spacer()
+                    Text("Lurar \(appVersion)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .help("Currently installed version")
                     Button("Check for Updates\u{2026}") { updater.checkForUpdates() }
                         .disabled(!updater.canCheckForUpdates)
                         .help("Manually check for a newer Lurar release")
@@ -130,6 +134,10 @@ private struct GeneralSettingsTab: View {
             // Re-sync in case the user toggled the login item from System Settings.
             launchAtLogin = SMAppService.mainApp.status == .enabled
         }
+    }
+
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
     }
 
     private func toggleLaunchAtLogin(_ on: Bool) {
