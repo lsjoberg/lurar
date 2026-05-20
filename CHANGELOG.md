@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0](https://github.com/lsjoberg/lurar/compare/v0.4.3...v0.5.0) (2026-05-20)
+
+
+### Features
+
+* **settings:** show installed version next to Check for Updates ([e01f49b](https://github.com/lsjoberg/lurar/commit/e01f49b1bce89f5877aa5530386c723b7b81fc57))
+* **updater:** inline release notes in Sparkle update dialog ([1d6335a](https://github.com/lsjoberg/lurar/commit/1d6335a3e1b82eecdce72294782fa0f35cd231c5))
+
 ## [0.4.3](https://github.com/lsjoberg/lurar/compare/v0.4.2...v0.4.3) (2026-05-20)
 
 
