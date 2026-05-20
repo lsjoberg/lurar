@@ -176,11 +176,18 @@ Plus one repository variable:
 | --- | --- |
 | `SPARKLE_PUBLIC_ED_KEY` | The matching public key (printed by `generate_keys` alongside the private one; not secret). |
 
-### Required for release-please → release.yml chaining
+### Required for cross-workflow chaining
 
 | Secret | Why |
 | --- | --- |
-| `RELEASE_PLEASE_TOKEN` | A fine-grained PAT (account → Settings → Developer settings → Personal access tokens → Fine-grained → scope to `lsjoberg/lurar`, permissions `Contents: read & write` + `Pull requests: read & write`). Required because the default `GITHUB_TOKEN` cannot trigger downstream workflows — without this, release-please tags the release but `release.yml` never fires and the DMG never gets built. If the secret is absent, release-please falls back to `GITHUB_TOKEN` and you'll have to manually run `release.yml` against the new tag via *Actions → Release → Run workflow*. |
+| `RELEASE_PLEASE_TOKEN` | A fine-grained PAT (account → Settings → Developer settings → Personal access tokens → Fine-grained → scope to `lsjoberg/lurar`, permissions `Contents: read & write` + `Pull requests: read & write`). Used by two workflows: (1) `release-please.yml` needs it because `GITHUB_TOKEN` can't trigger downstream workflows — without it, release-please tags the release but `release.yml` never fires; (2) `release.yml` needs it to open the appcast PR (direct push to `main` is blocked by branch rules) — `GITHUB_TOKEN`-authored PRs don't trigger CI either, so auto-merge would never fire. If the secret is absent, release-please falls back to `GITHUB_TOKEN` and you'll have to manually run `release.yml` against the new tag via *Actions → Release → Run workflow*, and the appcast step will fail. |
+
+### Repository settings
+
+The release workflow also assumes:
+
+- **Allow auto-merge** is enabled (Settings → General → Pull requests → *Allow auto-merge*). Required by `gh pr merge --auto` on the appcast PR.
+- The `main` ruleset's required status check is named `build` (matches `ci.yml`'s job). If you rename the CI job, update the ruleset so the appcast PR has something to wait on.
 
 ### Permanence of the Sparkle feed URL
 
