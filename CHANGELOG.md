@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/lsjoberg/lurar/compare/v0.4.1...v0.4.2) (2026-05-20)
+
+
+### Bug Fixes
+
+* **ci:** use PAT for checkout so appcast push has a single auth header ([fb1100c](https://github.com/lsjoberg/lurar/commit/fb1100c1835dd0669f7faca6882c2e1ac32321f2))
+
 ## [0.4.1](https://github.com/lsjoberg/lurar/compare/v0.4.0...v0.4.1) (2026-05-20)
 
 
