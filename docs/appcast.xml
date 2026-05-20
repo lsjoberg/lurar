@@ -6,22 +6,20 @@
     <description>System-wide audio EQ for macOS.</description>
     <language>en</language>
     <item>
-      <title>Lurar 0.5.0</title>
-      <pubDate>Wed, 20 May 2026 12:21:14 +0000</pubDate>
-      <sparkle:version>23</sparkle:version>
-      <sparkle:shortVersionString>0.5.0</sparkle:shortVersionString>
+      <title>Lurar 0.5.1</title>
+      <pubDate>Wed, 20 May 2026 13:26:40 +0000</pubDate>
+      <sparkle:version>24</sparkle:version>
+      <sparkle:shortVersionString>0.5.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.2</sparkle:minimumSystemVersion>
-      <description><![CDATA[<pre>
-
-### Features
-
-* **settings:** show installed version next to Check for Updates ([e01f49b](https://github.com/lsjoberg/lurar/commit/e01f49b1bce89f5877aa5530386c723b7b81fc57))
-* **updater:** inline release notes in Sparkle update dialog ([1d6335a](https://github.com/lsjoberg/lurar/commit/1d6335a3e1b82eecdce72294782fa0f35cd231c5))</pre><p style="margin-top:1.5em;font-size:0.9em"><a href="https://github.com/lsjoberg/lurar/releases/tag/v0.5.0">View full release on GitHub →</a></p>]]></description>
+      <description><![CDATA[<h3 dir="auto">Bug Fixes</h3>
+<ul dir="auto">
+<li><strong>ci:</strong> pass GH_TOKEN to sign-appcast so /markdown renders notes (<a href="https://github.com/lsjoberg/lurar/commit/bfa2a6481325183e6bd0ca574ef5ba95df1d6e63">bfa2a64</a>)</li>
+</ul><p style="margin-top:1.5em;font-size:0.9em"><a href="https://github.com/lsjoberg/lurar/releases/tag/v0.5.1">View full release on GitHub →</a></p>]]></description>
       <enclosure
-        url="https://github.com/lsjoberg/lurar/releases/download/v0.5.0/Lurar-0.5.0.dmg"
-        length="2611593"
+        url="https://github.com/lsjoberg/lurar/releases/download/v0.5.1/Lurar-0.5.1.dmg"
+        length="2611585"
         type="application/octet-stream"
-        sparkle:edSignature="v6vcEPmBmPUFUkCRiwe2uSs4hX3pDnSN3vQyCVXx53ZIL4UGa+pIkh/Xd2DvsDt+DTAgQgySdANS+Vjf2WiFAw==" />
+        sparkle:edSignature="OzutBdGd0/Ax1ZLEUCH9wgxoqV7vlZ/uzjc7VZXE/kTHb/p5r4/Ol0AXqt+89OjI+YLUsvZll6dNPCxdhb3uBQ==" />
     </item>
   </channel>
 </rss>
