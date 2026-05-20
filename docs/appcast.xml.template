@@ -11,7 +11,7 @@
       <sparkle:version>${BUILD}</sparkle:version>
       <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>${MIN_OS}</sparkle:minimumSystemVersion>
-      <sparkle:releaseNotesLink>${RELEASE_NOTES_URL}</sparkle:releaseNotesLink>
+      <description><![CDATA[${NOTES_HTML}]]></description>
       <enclosure
         url="${URL}"
         length="${LENGTH}"
