@@ -90,6 +90,10 @@ jobs:
         run: scripts/notarize.sh
 
       - name: Sign Sparkle appcast
+        env:
+          # Needed for the script's gh api /markdown call to render release
+          # notes; without it gh auth status fails and we fall back to <pre>.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: scripts/sign-appcast.sh
 
       - name: Read built version
