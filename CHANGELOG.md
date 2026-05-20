@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.3](https://github.com/lsjoberg/lurar/compare/v0.4.2...v0.4.3) (2026-05-20)
+
+
+### Bug Fixes
+
+* **ci:** fall back through merge methods on appcast PR ([3a7ab04](https://github.com/lsjoberg/lurar/commit/3a7ab04c182fe72ddc664d15ab0ec1fa57c8f1d8))
+
 ## [0.4.2](https://github.com/lsjoberg/lurar/compare/v0.4.1...v0.4.2) (2026-05-20)
 
 
