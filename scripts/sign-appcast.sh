@@ -68,9 +68,42 @@ URL="https://github.com/${REPO_SLUG}/releases/download/v${VERSION}/Lurar-${VERSI
 RELEASE_NOTES_URL="${RELEASE_NOTES_URL:-https://github.com/${REPO_SLUG}/releases/tag/v${VERSION}}"
 PUBDATE=$(date -u "+%a, %d %b %Y %H:%M:%S +0000")
 
-export VERSION BUILD MIN_OS URL RELEASE_NOTES_URL PUBDATE ED_SIG LENGTH
+# Pull this version's section out of CHANGELOG.md and render it to HTML so
+# Sparkle can show it inline in the update dialog. Previously the appcast
+# pointed Sparkle at the GitHub release page via <sparkle:releaseNotesLink>
+# and the dialog rendered the entire GitHub UI chrome inside itself.
+NOTES_MD=""
+if [[ -f CHANGELOG.md ]]; then
+    NOTES_MD=$(awk -v ver="$VERSION" '
+        /^## \[/ {
+            if (started) exit
+            if (index($0, "## [" ver "]") == 1) { started = 1; next }
+        }
+        started { print }
+    ' CHANGELOG.md)
+fi
+
+if [[ -n "$NOTES_MD" ]] && command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+    echo "==> rendering CHANGELOG section for v${VERSION} via gh api /markdown"
+    NOTES_BODY=$(gh api /markdown \
+        --method POST \
+        --raw-field "text=${NOTES_MD}" \
+        --raw-field "mode=gfm" \
+        --raw-field "context=${REPO_SLUG}")
+elif [[ -n "$NOTES_MD" ]]; then
+    echo "==> gh not available, falling back to <pre> rendering"
+    NOTES_BODY="<pre>$(printf '%s' "$NOTES_MD" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')</pre>"
+else
+    echo "==> no CHANGELOG entry for v${VERSION}, linking out to GitHub"
+    NOTES_BODY="<p>See the <a href=\"${RELEASE_NOTES_URL}\">release on GitHub</a> for details.</p>"
+fi
+
+NOTES_HTML="${NOTES_BODY}<p style=\"margin-top:1.5em;font-size:0.9em\"><a href=\"${RELEASE_NOTES_URL}\">View full release on GitHub →</a></p>"
+
+export VERSION BUILD MIN_OS URL PUBDATE ED_SIG LENGTH NOTES_HTML
 
 echo "==> rendering docs/appcast.xml for v${VERSION}"
-envsubst < docs/appcast.xml.template > docs/appcast.xml
+envsubst '${VERSION} ${BUILD} ${MIN_OS} ${URL} ${PUBDATE} ${ED_SIG} ${LENGTH} ${NOTES_HTML}' \
+    < docs/appcast.xml.template > docs/appcast.xml
 
 echo "==> wrote docs/appcast.xml"
