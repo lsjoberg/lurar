@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/lsjoberg/lurar/compare/v0.5.0...v0.5.1) (2026-05-20)
+
+
+### Bug Fixes
+
+* **ci:** pass GH_TOKEN to sign-appcast so /markdown renders notes ([bfa2a64](https://github.com/lsjoberg/lurar/commit/bfa2a6481325183e6bd0ca574ef5ba95df1d6e63))
+
 ## [0.5.0](https://github.com/lsjoberg/lurar/compare/v0.4.3...v0.5.0) (2026-05-20)
 
 
