@@ -6,17 +6,17 @@
     <description>System-wide audio EQ for macOS.</description>
     <language>en</language>
     <item>
-      <title>Lurar 0.4.2</title>
-      <pubDate>Wed, 20 May 2026 11:31:16 +0000</pubDate>
-      <sparkle:version>21</sparkle:version>
-      <sparkle:shortVersionString>0.4.2</sparkle:shortVersionString>
+      <title>Lurar 0.4.3</title>
+      <pubDate>Wed, 20 May 2026 11:46:06 +0000</pubDate>
+      <sparkle:version>22</sparkle:version>
+      <sparkle:shortVersionString>0.4.3</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.2</sparkle:minimumSystemVersion>
-      <sparkle:releaseNotesLink>https://github.com/lsjoberg/lurar/releases/tag/v0.4.2</sparkle:releaseNotesLink>
+      <sparkle:releaseNotesLink>https://github.com/lsjoberg/lurar/releases/tag/v0.4.3</sparkle:releaseNotesLink>
       <enclosure
-        url="https://github.com/lsjoberg/lurar/releases/download/v0.4.2/Lurar-0.4.2.dmg"
-        length="2609527"
+        url="https://github.com/lsjoberg/lurar/releases/download/v0.4.3/Lurar-0.4.3.dmg"
+        length="2609578"
         type="application/octet-stream"
-        sparkle:edSignature="tVIwfy1uXR2SmH1REi0IFl8BHJzWbly9eGNCbvBB9Dy/PoXhzj6P+rJwLT5IwZpxJfY7DIafJUuRrC/gm+kKDg==" />
+        sparkle:edSignature="0+OBN0/UreYTpCnWLUcPOzgmFFv+5OOubSvOqhNmRQBW2YkPAVxTi8DUz7UUMcmh3ZILMfryB+uGksFf3W8wDA==" />
     </item>
   </channel>
 </rss>
