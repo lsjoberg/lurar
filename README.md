@@ -193,3 +193,7 @@ The release workflow also assumes:
 ### Permanence of the Sparkle feed URL
 
 `SUFeedURL` in `Lurar/Info.plist` (set to `https://lurar.app/appcast.xml`) is baked into every shipped binary. If the project ever gets renamed or moves off this domain, **this URL must keep serving a current appcast forever** — GitHub Pages does not support real HTTP redirects, so installed clients with old binaries will look for the file at this exact location indefinitely. Either keep `lurar.app` pointed at a Pages site serving the appcast, or update `SUFeedURL` *and* keep the old `appcast.xml` reachable at the prior URL.
+
+## License
+
+MIT — see [`LICENSE`](LICENSE).
