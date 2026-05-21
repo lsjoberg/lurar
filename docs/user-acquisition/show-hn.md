@@ -86,8 +86,7 @@ Happy to answer Core Audio / DSP / macOS audio questions.
 - [ ] `lurar.app/` works without JS and serves a working download link.
 - [ ] First-run experience is debugged on a clean machine: TCC prompt fires,
       audio comes through, no obvious bugs in the onboarding flow.
-- [ ] README has a license file. ("Open source" with no LICENSE will be the
-      top comment.)
+- [x] README has a license file. (MIT, added.)
 - [ ] You're available for the **first 2 hours** after posting. HN ranking
       heavily weights early engagement; answering comments fast keeps the
       post on the front page.

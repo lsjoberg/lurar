@@ -52,7 +52,7 @@ and the curve is live in one click.
 
 - Site & download: https://lurar.app/
 - Source: https://github.com/lsjoberg/lurar
-- License: (fill in once decided — e.g. MIT)
+- License: MIT
 - Platform: macOS 14.2 or later, Apple Silicon and Intel, signed + notarized
 
 Happy to adjust wording or location in the README.
@@ -60,9 +60,7 @@ Happy to adjust wording or location in the README.
 
 ## Before opening the PR — checklist
 
-- [ ] Pick a license and make sure `LICENSE` is in the repo root. AutoEq's
-      audience will ask, and "open source" with no `LICENSE` file reads as
-      sloppy.
+- [x] Pick a license and make sure `LICENSE` is in the repo root. (MIT, added.)
 - [ ] Confirm the entry slots into whatever the current section is actually
       called — re-read the live README.
 - [ ] If there's a `CONTRIBUTING.md` or PR template, follow it.
