@@ -38,10 +38,34 @@ Each release ships two DMGs that mean different things:
 | `update_downloads` | sum of the versioned DMGs (Sparkle updates + direct grabs) |
 | `latest_tag` | the current latest release |
 | `latest_new_install_downloads` | new-install downloads of the latest release so far |
+| `update_checks_7d` | appcast hits in the trailing 7 days (active-install heartbeat) |
+| `active_installs_est` | `update_checks_7d / 7` — rough daily-active installs |
+
+The last two columns are **optional** and come from the Cloudflare appcast
+counter (see below). They stay blank until it's deployed and the secrets are
+set — download metrics work fine without them.
 
 GitHub stores only the cumulative total, so the **trend** is the week-over-week
 *difference* between rows. Open either CSV in Sheets/Excel and chart
-`new_install_downloads` over `snapshot_date` to see adoption over time.
+`new_install_downloads` over `snapshot_date` to see adoption over time. Because
+the snapshot runs weekly, `update_checks_7d` is already a clean per-week
+active-use figure — chart it directly.
+
+## Folding in the active-install heartbeat (optional)
+
+To populate `update_checks_7d` / `active_installs_est`, deploy the
+[appcast counter](../cloudflare/appcast-counter/README.md), then add three repo
+secrets (Settings → Secrets and variables → Actions) so the workflow can read
+the aggregate counts from D1:
+
+| Secret | Where it comes from |
+| --- | --- |
+| `CF_API_TOKEN` | A Cloudflare API token scoped to **Account › D1** for your account only. Use Read if the query endpoint accepts it; Cloudflare may require Edit since the D1 query API runs SQL. Revoke/rotate anytime. |
+| `CF_ACCOUNT_ID` | `npx wrangler whoami`, or the Cloudflare dashboard URL. |
+| `CF_D1_DATABASE_ID` | The `database_id` from `wrangler d1 create` (same value as in `wrangler.toml`). |
+
+The query is a read-only `SELECT SUM(hits)` over the last 7 days — no per-user
+data leaves Cloudflare, and if the call fails the columns just stay blank.
 
 ## Caveats
 

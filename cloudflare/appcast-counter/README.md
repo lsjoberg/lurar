@@ -64,6 +64,10 @@ Or browse the table in the Cloudflare dashboard → Workers & Pages → D1 →
 `lurar-metrics`. Export to CSV and chart `hits` over `day` for the active-use
 trend.
 
+To roll this into the weekly download CSVs automatically (an `update_checks_7d`
+column in `summary.csv`), see
+[`metrics/README.md`](../../metrics/README.md#folding-in-the-active-install-heartbeat-optional).
+
 ## How it fits the bigger picture
 
 This completes a fully privacy-clean funnel, no user tracking anywhere:

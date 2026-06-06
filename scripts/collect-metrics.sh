@@ -61,7 +61,30 @@ latest_new_installs="$(jq -r --arg stable "$STABLE" '
     first(.[] | select(.prerelease | not))
     | [ .assets[]? | select(.name | test($stable)) | .downloads ] | add // 0' <<<"$releases")"
 
-[[ -f "$SUMMARY" ]] || echo 'snapshot_date,total_downloads,new_install_downloads,update_downloads,latest_tag,latest_new_install_downloads' > "$SUMMARY"
-echo "$DATE,$total,$new_installs,$updates,$latest_tag,$latest_new_installs" >> "$SUMMARY"
+# --- Optional: active-install heartbeat from the Cloudflare appcast counter ---
+# Reads the aggregate (day, country, hits) table in D1 via the Cloudflare API
+# and folds the trailing-7-day update-check volume into the summary. Stays blank
+# unless CF_API_TOKEN / CF_ACCOUNT_ID / CF_D1_DATABASE_ID are all set, so the
+# download metrics keep working with no Cloudflare setup at all.
+update_checks_7d=""
+active_installs_est=""
+if [[ -n "${CF_API_TOKEN:-}" && -n "${CF_ACCOUNT_ID:-}" && -n "${CF_D1_DATABASE_ID:-}" ]]; then
+    cf_sql="SELECT COALESCE(SUM(hits),0) AS hits FROM appcast_hits WHERE day >= date('now','-7 day')"
+    cf_resp="$(curl -fsS \
+        "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/d1/database/${CF_D1_DATABASE_ID}/query" \
+        -H "Authorization: Bearer ${CF_API_TOKEN}" \
+        -H "Content-Type: application/json" \
+        --data "$(jq -nc --arg sql "$cf_sql" '{sql: $sql}')" 2>/dev/null || true)"
+    hits="$(jq -r '.result[0].results[0].hits // empty' <<<"${cf_resp:-}" 2>/dev/null || true)"
+    if [[ "$hits" =~ ^[0-9]+$ ]]; then
+        update_checks_7d="$hits"
+        active_installs_est="$(( (hits + 3) / 7 ))" # rounded daily average
+    else
+        echo "==> Cloudflare heartbeat query returned no usable count; leaving it blank" >&2
+    fi
+fi
 
-echo "==> $DATE: $total total downloads ($new_installs new installs, $updates updates); latest $latest_tag at $latest_new_installs"
+[[ -f "$SUMMARY" ]] || echo 'snapshot_date,total_downloads,new_install_downloads,update_downloads,latest_tag,latest_new_install_downloads,update_checks_7d,active_installs_est' > "$SUMMARY"
+echo "$DATE,$total,$new_installs,$updates,$latest_tag,$latest_new_installs,$update_checks_7d,$active_installs_est" >> "$SUMMARY"
+
+echo "==> $DATE: $total total downloads ($new_installs new installs, $updates updates); latest $latest_tag at $latest_new_installs; update checks (7d): ${update_checks_7d:-n/a}"
