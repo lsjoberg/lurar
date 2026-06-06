@@ -696,12 +696,18 @@ final class EQEngine: ObservableObject {
         let tap = activeSampleRate ?? 0
         let deviceRate = (activeOutput?.id).flatMap { try? CoreAudioSampleRate.nominal(for: $0) } ?? 0
         let availableMs = hal > 0 ? Double(snapshot.available) * 1000.0 / hal : 0
+        // `dsp=idle` means the silence gate has tripped and the audio thread is
+        // skipping crossfeed + the EQ cascades (sustained silence); `dsp=active`
+        // means the full chain is running. `isIdle` is written on the audio
+        // thread and read here on the main thread — a benign Bool race that's
+        // fine for a diagnostic.
+        let dsp = silenceGate.isIdle ? "idle" : "active"
         if snapshot.reads > 0 {
             // Underrun → reader hit the empty edge of the ring; HAL got
             // zero-padded silence. Most likely cause of audible glitches.
-            log.info("DIAG: tap=\(Int(tap)) Hz hal=\(Int(hal)) Hz device=\(Int(deviceRate)) Hz ringFill=\(snapshot.available)f (~\(String(format: "%.1f", availableMs)) ms) underruns=\(snapshot.reads) worst=\(snapshot.worstShortfall)f")
+            log.info("DIAG: tap=\(Int(tap)) Hz hal=\(Int(hal)) Hz device=\(Int(deviceRate)) Hz dsp=\(dsp) ringFill=\(snapshot.available)f (~\(String(format: "%.1f", availableMs)) ms) underruns=\(snapshot.reads) worst=\(snapshot.worstShortfall)f")
         } else {
-            log.info("DIAG: tap=\(Int(tap)) Hz hal=\(Int(hal)) Hz device=\(Int(deviceRate)) Hz ringFill=\(snapshot.available)f (~\(String(format: "%.1f", availableMs)) ms)")
+            log.info("DIAG: tap=\(Int(tap)) Hz hal=\(Int(hal)) Hz device=\(Int(deviceRate)) Hz dsp=\(dsp) ringFill=\(snapshot.available)f (~\(String(format: "%.1f", availableMs)) ms)")
         }
         ringBuffer.resetUnderrunCount()
     }
