@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/lsjoberg/lurar/compare/v0.5.1...v0.5.2) (2026-06-06)
+
+
+### Performance Improvements
+
+* **engine:** cut idle CPU by pinning halSR to device rate, cheaper SRC, 1:1 passthrough ([b151235](https://github.com/lsjoberg/lurar/commit/b15123501d6268376a3b1130100925ff78a72935))
+
 ## [0.5.1](https://github.com/lsjoberg/lurar/compare/v0.5.0...v0.5.1) (2026-05-20)
 
 
