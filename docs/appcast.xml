@@ -6,20 +6,20 @@
     <description>System-wide audio EQ for macOS.</description>
     <language>en</language>
     <item>
-      <title>Lurar 0.5.1</title>
-      <pubDate>Wed, 20 May 2026 13:26:40 +0000</pubDate>
-      <sparkle:version>24</sparkle:version>
-      <sparkle:shortVersionString>0.5.1</sparkle:shortVersionString>
+      <title>Lurar 0.5.2</title>
+      <pubDate>Sat, 06 Jun 2026 09:59:27 +0000</pubDate>
+      <sparkle:version>25</sparkle:version>
+      <sparkle:shortVersionString>0.5.2</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.2</sparkle:minimumSystemVersion>
-      <description><![CDATA[<h3 dir="auto">Bug Fixes</h3>
+      <description><![CDATA[<h3 dir="auto">Performance Improvements</h3>
 <ul dir="auto">
-<li><strong>ci:</strong> pass GH_TOKEN to sign-appcast so /markdown renders notes (<a href="https://github.com/lsjoberg/lurar/commit/bfa2a6481325183e6bd0ca574ef5ba95df1d6e63">bfa2a64</a>)</li>
-</ul><p style="margin-top:1.5em;font-size:0.9em"><a href="https://github.com/lsjoberg/lurar/releases/tag/v0.5.1">View full release on GitHub →</a></p>]]></description>
+<li><strong>engine:</strong> cut idle CPU by pinning halSR to device rate, cheaper SRC, 1:1 passthrough (<a href="https://github.com/lsjoberg/lurar/commit/b15123501d6268376a3b1130100925ff78a72935">b151235</a>)</li>
+</ul><p style="margin-top:1.5em;font-size:0.9em"><a href="https://github.com/lsjoberg/lurar/releases/tag/v0.5.2">View full release on GitHub →</a></p>]]></description>
       <enclosure
-        url="https://github.com/lsjoberg/lurar/releases/download/v0.5.1/Lurar-0.5.1.dmg"
-        length="2611585"
+        url="https://github.com/lsjoberg/lurar/releases/download/v0.5.2/Lurar-0.5.2.dmg"
+        length="2611594"
         type="application/octet-stream"
-        sparkle:edSignature="OzutBdGd0/Ax1ZLEUCH9wgxoqV7vlZ/uzjc7VZXE/kTHb/p5r4/Ol0AXqt+89OjI+YLUsvZll6dNPCxdhb3uBQ==" />
+        sparkle:edSignature="KT7QszdvcDgzIvKL6+t0pBg1oX00cVAtyeNRnbK2tgezIyKwhCr7v44i+QcQ5NgoCXYca1njGnZZ1lleiHCGAw==" />
     </item>
   </channel>
 </rss>
