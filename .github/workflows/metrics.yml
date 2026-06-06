@@ -1,0 +1,62 @@
+name: Metrics snapshot
+
+# Weekly privacy-friendly popularity snapshot. Reads GitHub's own aggregate
+# download counters and appends them to CSVs on the `metrics` branch so a trend
+# builds up over time. No user tracking — nothing runs on users' machines.
+#
+# Output lives on a dedicated `metrics` branch (not main): this keeps the data
+# fully decoupled from the release pipeline, never triggers CI / Pages /
+# release-please, and sidesteps main's branch-protection rules.
+#
+# View the data:   https://github.com/lsjoberg/lurar/blob/metrics/summary.csv
+# Run on demand:   Actions -> Metrics snapshot -> Run workflow
+
+on:
+  schedule:
+    - cron: "17 6 * * 1" # Mondays 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: metrics
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Collect download snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          OUT_DIR: out
+        run: |
+          mkdir -p out
+          # Seed the working dir with the existing CSVs (if the metrics branch
+          # already exists) so the script appends rather than starting fresh.
+          if git fetch origin metrics --depth=1 2>/dev/null; then
+            for f in summary.csv downloads.csv; do
+              git show "FETCH_HEAD:$f" > "out/$f" 2>/dev/null || true
+            done
+          fi
+          bash scripts/collect-metrics.sh
+          cp metrics/README.md out/README.md 2>/dev/null || true
+
+      - name: Publish to metrics branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd out
+          git init -q
+          git checkout -q -b metrics
+          git add .
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -q -m "chore(metrics): download snapshot $(date -u +%F)"
+          git push -f \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            HEAD:metrics
