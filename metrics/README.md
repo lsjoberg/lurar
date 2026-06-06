@@ -49,6 +49,11 @@ A download is not the same as an install or an active user: people download on
 more than one Mac, crawlers and mirrors hit release URLs, and GitHub does not
 deduplicate. Read the numbers as order-of-magnitude trends, not exact headcounts.
 
+For an *active-install* signal (who kept the app and still runs it), see the
+Cloudflare appcast heartbeat in [`cloudflare/appcast-counter/`](../cloudflare/appcast-counter/README.md).
+Together they form a privacy-clean funnel: site visits → new installs (here) →
+active installs (the heartbeat).
+
 ## Running it manually
 
 Actions → **Metrics snapshot** → **Run workflow**. The first run creates the

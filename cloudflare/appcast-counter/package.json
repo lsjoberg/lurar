@@ -1,0 +1,17 @@
+{
+  "name": "lurar-appcast-counter",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "description": "Privacy-friendly active-install heartbeat for Lurar (Cloudflare Worker on lurar.app/appcast.xml).",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "db:init": "wrangler d1 execute lurar-metrics --remote --file schema.sql",
+    "stats": "wrangler d1 execute lurar-metrics --remote --command \"SELECT day, SUM(hits) AS hits FROM appcast_hits GROUP BY day ORDER BY day DESC LIMIT 30\"",
+    "stats:country": "wrangler d1 execute lurar-metrics --remote --command \"SELECT day, country, hits FROM appcast_hits ORDER BY day DESC, hits DESC LIMIT 60\""
+  },
+  "devDependencies": {
+    "wrangler": "^3"
+  }
+}

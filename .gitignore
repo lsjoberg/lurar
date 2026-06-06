@@ -17,3 +17,7 @@ Lurar.xcodeproj
 Packages/
 Package.resolved
 .build/
+
+## Node / Cloudflare Worker tooling
+node_modules/
+.wrangler/
