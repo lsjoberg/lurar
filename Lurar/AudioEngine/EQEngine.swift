@@ -15,7 +15,7 @@ final class EQEngine: ObservableObject {
     /// which only means the chain is built and driving the DAC (it stays true
     /// through a paused track, when the engine is pushing silence). Observers
     /// that care about real playback rather than engine uptime — e.g.
-    /// `BurnInTracker` — gate on this. Re-derived on the engine's ~3 s
+    /// `BurnInTracker` — gate on this. Re-derived on the engine's periodic
     /// diagnostic tick; see `pollPlayback`.
     @Published private(set) var isPlayingAudio: Bool = false
     @Published private(set) var statusMessage: String = "Idle"
@@ -106,10 +106,10 @@ final class EQEngine: ObservableObject {
     private var outputRateListener: AudioDevicePropertyListener?
     private var pendingRestart: DispatchWorkItem?
     private var restartCooldownUntil: Date = .distantPast
-    /// Periodic ~3 s tick while running. Dumps ring-buffer state (underruns,
-    /// drift, rate mismatches) *and* drives playback detection
-    /// (`pollPlayback`) off the same wakeup, so detection adds no idle-CPU
-    /// timer of its own.
+    /// Periodic tick while running (see `diagnosticInterval`). Dumps
+    /// ring-buffer state (underruns, drift, rate mismatches) *and* drives
+    /// playback detection (`pollPlayback`) off the same wakeup, so detection
+    /// adds no idle-CPU timer of its own.
     private var diagnosticTimer: Timer?
     /// Clip-meter frame count at the previous diagnostic tick. Compared
     /// against the next tick to tell whether the tap is still delivering
@@ -680,6 +680,12 @@ final class EQEngine: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
+    /// Cadence of the combined diagnostic + playback-detection tick. Kept
+    /// coarse (and paired with a wide tolerance below) because nothing it
+    /// drives is time-critical: the burn-in tally is hours-scale and the
+    /// `playbackHangover` is far longer than one tick.
+    private static let diagnosticInterval: TimeInterval = 10.0
+
     private func startDiagnosticTimer() {
         stopDiagnosticTimer()
         ringBuffer.resetUnderrunCount()
@@ -687,13 +693,18 @@ final class EQEngine: ObservableObject {
         // a clean baseline — the clip meter was just reset in `fullStart`.
         lastPlaybackFrames = clipMeter.snapshot().framesProcessed
         lastSignalAt = .distantPast
-        let timer = Timer(timeInterval: 3.0, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: Self.diagnosticInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
                 self.pollPlayback()
                 self.logDiagnosticSnapshot()
             }
         }
+        // Neither job is time-critical (debug logging + a coarse playback
+        // poll), so give the timer generous slack. macOS coalesces the wakeup
+        // with other timers instead of scheduling it tightly, which is what
+        // keeps a long-lived "just running" engine from nudging idle CPU.
+        timer.tolerance = Self.diagnosticInterval * 0.5
         RunLoop.main.add(timer, forMode: .common)
         diagnosticTimer = timer
     }
@@ -714,12 +725,13 @@ final class EQEngine: ObservableObject {
     private static let silenceFloorDB: Float = -70
     /// Keep `isPlayingAudio` true for this long after the signal last crossed
     /// the floor, so gaps between tracks and brief quiet passages don't churn
-    /// the flag (or the burn-in tally) off and back on. Comfortably longer
-    /// than the ~3 s tick that drives it.
-    private static let playbackHangover: TimeInterval = 12
+    /// the flag (or the burn-in tally) off and back on. Must stay comfortably
+    /// longer than `diagnosticInterval` (plus its tolerance) so a single tick
+    /// reading a momentary dip can't drop the flag mid-playback.
+    private static let playbackHangover: TimeInterval = 30
 
     /// Derive `isPlayingAudio` from the clip meter. Runs on the diagnostic
-    /// timer's ~3 s tick — no dedicated timer, so detection adds no idle-CPU
+    /// timer's tick — no dedicated timer, so detection adds no idle-CPU
     /// wakeups. Signal counts as present only when the tap actually advanced
     /// its frame counter since the last tick *and* the output peak is above
     /// the silence floor — the frame check catches setups that stop the IOProc
