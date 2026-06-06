@@ -74,6 +74,10 @@ struct EQPreset: Codable, Hashable, Identifiable {
         self.bands = try c.decode([EQBand].self, forKey: .bands)
         self.parentRef = try? c.decode(PresetParentRef.self, forKey: .parentRef)
     }
+
+    var isFlat: Bool {
+        return preamp == 0 && bands.allSatisfy { $0.gain == 0 }
+    }
 }
 
 extension EQPreset {

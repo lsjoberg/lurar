@@ -8,6 +8,11 @@ final class CrossfeedSettings: ObservableObject {
     private enum Keys {
         static let intensity = "crossfeed.intensity"
         static let cutoff = "crossfeed.cutoff"
+        static let isOn = "crossfeed.isOn"
+    }
+
+    @Published var isOn: Bool {
+        didSet { UserDefaults.standard.set(isOn, forKey: Keys.isOn) }
     }
 
     @Published var intensity: Float {
@@ -20,6 +25,11 @@ final class CrossfeedSettings: ObservableObject {
 
     init() {
         let defaults = UserDefaults.standard
+        if defaults.object(forKey: Keys.isOn) != nil {
+            self.isOn = defaults.bool(forKey: Keys.isOn)
+        } else {
+            self.isOn = false
+        }
         if defaults.object(forKey: Keys.intensity) != nil {
             self.intensity = defaults.float(forKey: Keys.intensity)
         } else {

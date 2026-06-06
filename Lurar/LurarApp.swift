@@ -117,7 +117,8 @@ struct LurarApp: App {
                 outputPreferences: outputPreferences,
                 updater: updater,
                 burnInTracker: burnInTracker,
-                deviceManager: deviceManager
+                deviceManager: deviceManager,
+                engine: engine
             )
         }
         .windowResizability(.contentSize)
@@ -145,7 +146,7 @@ struct LurarApp: App {
         store.migrateLegacyBuiltInsIfNeeded(into: _presetCatalog.wrappedValue)
         // Seed the engine with the persisted crossfeed settings so the first audio
         // callback (whenever the engine is started) already has the user's params.
-        engine.setCrossfeedIntensity(crossfeedSettings.intensity)
+        engine.setCrossfeedIntensity(crossfeedSettings.isOn ? crossfeedSettings.intensity : 0)
         engine.setCrossfeedCutoff(crossfeedSettings.cutoff)
         // Hand the engine a weak handle to the per-app exclusion list and have it
         // rebuild the tap whenever the user toggles a row. Without the onChange

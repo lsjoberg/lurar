@@ -18,6 +18,7 @@ final class SpectrumAnalyzer {
     private var ring: [Float]
     private var writeIdx: Int = 0
     private var lock = os_unfair_lock()
+    private var lastSnapshotTime: TimeInterval = 0
     private(set) var sampleRate: Double = 48_000
 
     // FFT setup and pre-computed Hann window.
@@ -67,6 +68,7 @@ final class SpectrumAnalyzer {
     /// thread — a dropped submission means the next callback's samples overwrite
     /// the same span, which the snapshot reader can't tell apart from normal flow.
     func submit(left: UnsafePointer<Float>, right: UnsafePointer<Float>, frames: Int) {
+        if ProcessInfo.processInfo.systemUptime - lastSnapshotTime > 1.0 { return }
         guard os_unfair_lock_trylock(&lock) else { return }
         defer { os_unfair_lock_unlock(&lock) }
 
@@ -86,6 +88,7 @@ final class SpectrumAnalyzer {
     /// window, FFT, return per-bin magnitudes in dBFS. Always succeeds — on a fresh
     /// engine the ring is zeros and the result is the noise floor.
     func snapshot() -> (magnitudes: [Float], sampleRate: Double) {
+        lastSnapshotTime = ProcessInfo.processInfo.systemUptime
         os_unfair_lock_lock(&lock)
         let sr = sampleRate
         let cap = ring.count

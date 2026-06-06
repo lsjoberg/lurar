@@ -37,6 +37,7 @@ struct EQEditorView: View {
     /// feel laggy on slower hardware or when many other apps are pulling on the
     /// main runloop. Persists across launches.
     @AppStorage("spectrum.enabled") private var spectrumEnabled: Bool = false
+    @State private var isWindowVisible: Bool = true
 
     private var visiblePresets: [EQPreset] {
         Lurar.visiblePresets(catalog: presetCatalog, store: presetStore)
@@ -325,6 +326,10 @@ struct EQEditorView: View {
             if changed {
                 win.setFrame(frame, display: true, animate: false)
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didChangeOcclusionStateNotification)) { notification in
+            guard let win = notification.object as? NSWindow, win == hostWindow else { return }
+            isWindowVisible = win.occlusionState.contains(.visible)
         }
         .onAppear {
             closeCoordinator.isDirty = isDirty
@@ -729,7 +734,7 @@ struct EQEditorView: View {
             .frame(minHeight: 220)
             .overlay {
                 if spectrumEnabled {
-                    SpectrumOverlayView(analyzer: engine.spectrumAnalyzer)
+                    SpectrumOverlayView(analyzer: engine.spectrumAnalyzer, isVisible: isWindowVisible)
                 }
             }
             .overlay(alignment: .topTrailing) {
@@ -861,8 +866,21 @@ struct EQEditorView: View {
             )
             .disabled(editsLocked)
             .help("Preamp \u{2014} master attenuation in dB (\u{2212}12 to 0). Click the value to type it.")
-            ClipMeterView(clipMeter: engine.clipMeter)
-                .padding(.top, 2)
+            HStack {
+                Toggle("Bypass", isOn: Binding(
+                    get: { engine.isBypassed },
+                    set: { engine.setBypassed($0) }
+                ))
+                .toggleStyle(.switch)
+                .labelsHidden()
+                .help("Bypass the entire EQ engine")
+                
+                ClipMeterView(clipMeter: engine.clipMeter, isVisible: isWindowVisible)
+                    .frame(width: 80)
+                    .padding(.leading, 8)
+                    
+                Spacer()
+            }
         }
     }
 

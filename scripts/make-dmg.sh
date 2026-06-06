@@ -34,6 +34,4 @@ create-dmg \
     "build/Lurar.dmg" \
     "$APP"
 
-cp "build/Lurar.dmg" "build/Lurar-${VERSION}.dmg"
-
-echo "==> wrote build/Lurar.dmg and build/Lurar-${VERSION}.dmg"
+echo "==> wrote build/Lurar.dmg"

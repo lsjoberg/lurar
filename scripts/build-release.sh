@@ -63,6 +63,10 @@ else
 
     mkdir -p build/export
     cp -R "$ARCHIVE_PATH/Products/Applications/Lurar.app" build/export/Lurar.app
+    
+    # Fix signatures for ad-hoc dry run
+    find build/export/Lurar.app -type d -name "*.framework" -exec codesign --force --sign - {} \;
+    codesign --force --sign - build/export/Lurar.app
 fi
 
 APP=build/export/Lurar.app

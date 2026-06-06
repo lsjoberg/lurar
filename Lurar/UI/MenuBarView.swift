@@ -663,6 +663,12 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 4) {
                 Text("Crossfeed").bold()
+                Toggle("", isOn: $crossfeedSettings.isOn)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .onChange(of: crossfeedSettings.isOn) { newValue in
+                        engine.setCrossfeedIntensity(newValue ? crossfeedSettings.intensity : 0)
+                    }
                 Button {
                     showCrossfeedHelp.toggle()
                 } label: {
@@ -675,7 +681,7 @@ struct MenuBarView: View {
                     crossfeedHelp
                 }
                 Spacer()
-                Text(crossfeedSettings.intensity <= 0
+                Text(!crossfeedSettings.isOn
                      ? "Off"
                      : String(format: "%.0f%%", crossfeedSettings.intensity * 100))
                     .monospacedDigit()
@@ -687,11 +693,14 @@ struct MenuBarView: View {
                     set: { newValue in
                         let v = Float(newValue)
                         crossfeedSettings.intensity = v
-                        engine.setCrossfeedIntensity(v)
+                        if crossfeedSettings.isOn {
+                            engine.setCrossfeedIntensity(v)
+                        }
                     }
                 ),
                 in: 0...1
             )
+            .disabled(!crossfeedSettings.isOn)
             .help("Crossfeed \u{2014} headphone-to-speaker imaging blend. 0% = off.")
         }
     }

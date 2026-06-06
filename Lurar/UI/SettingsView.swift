@@ -12,6 +12,7 @@ struct SettingsView: View {
     @ObservedObject var updater: UpdaterController
     @ObservedObject var burnInTracker: BurnInTracker
     @ObservedObject var deviceManager: DeviceManager
+    @ObservedObject var engine: EQEngine
 
     var body: some View {
         TabView {
@@ -19,7 +20,8 @@ struct SettingsView: View {
                 outputPreferences: outputPreferences,
                 updater: updater,
                 burnInTracker: burnInTracker,
-                deviceManager: deviceManager
+                deviceManager: deviceManager,
+                engine: engine
             )
                 .tabItem { Label("General", systemImage: "gearshape") }
                 .padding(20)
@@ -46,6 +48,7 @@ private struct GeneralSettingsTab: View {
     @ObservedObject var updater: UpdaterController
     @ObservedObject var burnInTracker: BurnInTracker
     @ObservedObject var deviceManager: DeviceManager
+    @ObservedObject var engine: EQEngine
 
     @State private var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled
 
@@ -122,6 +125,23 @@ private struct GeneralSettingsTab: View {
                 Text("Lurar checks for new releases automatically. You can also check manually.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+
+            Divider()
+
+
+
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Enable Crossfeed", isOn: Binding(
+                    get: { engine.crossfeedEnabled },
+                    set: { engine.setCrossfeedEnabled($0) }
+                ))
+                .toggleStyle(.switch)
+                .help("Enable Bauer-style crossfeed for headphone listening")
+                Text("Simulates the acoustic path of listening to speakers, reducing the 'in-head' stereo separation typical of headphones. Turn this off if you prefer the original stereo mix.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Divider()

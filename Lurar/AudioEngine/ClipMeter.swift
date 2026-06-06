@@ -30,6 +30,7 @@ final class ClipMeter {
     private static let dbFloor: Float = -120
 
     private var lock = os_unfair_lock()
+    private var lastSnapshotTime: TimeInterval = 0
     private(set) var sampleRate: Double = 48_000
 
     // Peak envelope state — read and written only under the lock (which the
@@ -88,6 +89,7 @@ final class ClipMeter {
     /// contention with a UI snapshot — the next callback will publish fresh
     /// values, which is indistinguishable from normal cadence at 30 Hz.
     func submit(left: UnsafePointer<Float>, right: UnsafePointer<Float>, frames: Int) {
+        if ProcessInfo.processInfo.systemUptime - lastSnapshotTime > 1.0 { return }
         guard frames > 0 else { return }
         guard os_unfair_lock_trylock(&lock) else { return }
         defer { os_unfair_lock_unlock(&lock) }
@@ -126,6 +128,7 @@ final class ClipMeter {
     /// Main-thread entry: always succeeds, returns the most recently
     /// published values.
     func snapshot() -> Snapshot {
+        lastSnapshotTime = ProcessInfo.processInfo.systemUptime
         os_unfair_lock_lock(&lock)
         defer { os_unfair_lock_unlock(&lock) }
         return Snapshot(peakDBL: publishedPeakDBL,

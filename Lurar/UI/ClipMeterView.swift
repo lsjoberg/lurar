@@ -16,6 +16,7 @@ import SwiftUI
 /// the next audio callback.
 struct ClipMeterView: View {
     let clipMeter: ClipMeter
+    let isVisible: Bool
     @State private var showHelp: Bool = false
 
     /// dBFS range the bar visualises. The bottom of the scale matches the
@@ -50,22 +51,33 @@ struct ClipMeterView: View {
                 Spacer()
             }
 
-            TimelineView(.periodic(from: .now, by: interval)) { timeline in
-                // `let _ = timeline.date` makes the body's dependency on the
-                // schedule explicit. SwiftUI's ViewBuilder rejects a bare
-                // `_ = expression` statement, so it has to be a declaration.
-                let _ = timeline.date
-                let snap = clipMeter.snapshot()
+            if isVisible {
+                TimelineView(.periodic(from: .now, by: interval)) { timeline in
+                    // `let _ = timeline.date` makes the body's dependency on the
+                    // schedule explicit. SwiftUI's ViewBuilder rejects a bare
+                    // `_ = expression` statement, so it has to be a declaration.
+                    let _ = timeline.date
+                    let snap = clipMeter.snapshot()
+                    HStack(alignment: .center, spacing: 8) {
+                        VStack(spacing: barSpacing) {
+                            channelMeter(label: "L", peakDB: Double(snap.peakDBL))
+                            channelMeter(label: "R", peakDB: Double(snap.peakDBR))
+                        }
+                        clipDot(active: snap.clipped)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture { clipMeter.clearClip() }
+                    .help("Click the meter to clear the sticky clip indicator.")
+                }
+            } else {
                 HStack(alignment: .center, spacing: 8) {
                     VStack(spacing: barSpacing) {
-                        channelMeter(label: "L", peakDB: Double(snap.peakDBL))
-                        channelMeter(label: "R", peakDB: Double(snap.peakDBR))
+                        channelMeter(label: "L", peakDB: minDB)
+                        channelMeter(label: "R", peakDB: minDB)
                     }
-                    clipDot(active: snap.clipped)
+                    clipDot(active: false)
                 }
                 .contentShape(Rectangle())
-                .onTapGesture { clipMeter.clearClip() }
-                .help("Click the meter to clear the sticky clip indicator.")
             }
         }
     }
