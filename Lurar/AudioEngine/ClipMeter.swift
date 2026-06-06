@@ -45,11 +45,20 @@ final class ClipMeter {
     private var publishedPeakDBL: Float = ClipMeter.dbFloor
     private var publishedPeakDBR: Float = ClipMeter.dbFloor
     private var publishedClipped: Bool = false
+    // Monotonic count of frames the audio thread has pushed through `submit`.
+    // Lets a main-thread poller tell "tap still delivering buffers" apart from
+    // "IOProc stopped" — when playback pauses, some setups keep the tap firing
+    // with silence (peak decays to the floor) while others stop it entirely
+    // (peak freezes at its last value). Reading whether this advanced between
+    // polls disambiguates the frozen-peak case. Wraps only after ~6M years at
+    // 48 kHz, so treat it as effectively unbounded.
+    private var publishedFramesProcessed: UInt64 = 0
 
     struct Snapshot {
         var peakDBL: Float
         var peakDBR: Float
         var clipped: Bool
+        var framesProcessed: UInt64
     }
 
     func configure(sampleRate: Double) {
@@ -70,6 +79,7 @@ final class ClipMeter {
         publishedPeakDBL = ClipMeter.dbFloor
         publishedPeakDBR = ClipMeter.dbFloor
         publishedClipped = false
+        publishedFramesProcessed = 0
         os_unfair_lock_unlock(&lock)
     }
 
@@ -110,6 +120,7 @@ final class ClipMeter {
         publishedPeakDBL = Self.dbFromLinear(peakL)
         publishedPeakDBR = Self.dbFromLinear(peakR)
         publishedClipped = clippedLatched
+        publishedFramesProcessed &+= UInt64(frames)
     }
 
     /// Main-thread entry: always succeeds, returns the most recently
@@ -119,7 +130,8 @@ final class ClipMeter {
         defer { os_unfair_lock_unlock(&lock) }
         return Snapshot(peakDBL: publishedPeakDBL,
                         peakDBR: publishedPeakDBR,
-                        clipped: publishedClipped)
+                        clipped: publishedClipped,
+                        framesProcessed: publishedFramesProcessed)
     }
 
     /// Clear the sticky-clip latch. Called when the user clicks the meters.
