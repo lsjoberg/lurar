@@ -1,0 +1,16 @@
+name = "lurar-appcast-counter"
+main = "src/worker.js"
+compatibility_date = "2026-06-06"
+
+# Run only on the appcast URL. Everything else on lurar.app is untouched.
+routes = [
+  { pattern = "lurar.app/appcast.xml", zone_name = "lurar.app" }
+]
+
+# Aggregate hit counts live in D1. Create the DB with:
+#   npx wrangler d1 create lurar-metrics
+# then paste the printed database_id below.
+[[d1_databases]]
+binding = "DB"
+database_name = "lurar-metrics"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
