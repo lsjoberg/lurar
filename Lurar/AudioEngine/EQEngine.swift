@@ -52,6 +52,10 @@ final class EQEngine: ObservableObject {
     private let tapInput = ProcessTapInput()
     private let eqProcessor = EQProcessor()
     private let crossfeed = Crossfeed()
+    /// Detects sustained silence on the tap input so the audio thread can skip
+    /// crossfeed + the biquad cascades while nothing is playing — the bulk of
+    /// the remaining idle-CPU cost after the resampler work in #101.
+    private let silenceGate = SilenceGate()
     let spectrumAnalyzer = SpectrumAnalyzer()
     let clipMeter = ClipMeter()
     private let ringBuffer = StereoFloatRingBuffer(capacityFrames: 96_000) // ~2 s @ 48k stereo
@@ -371,13 +375,27 @@ final class EQEngine: ObservableObject {
         spectrumAnalyzer.configure(sampleRate: tapSampleRate)
         clipMeter.reset()
         clipMeter.configure(sampleRate: tapSampleRate)
+        silenceGate.reset()
+        silenceGate.configure(sampleRate: tapSampleRate)
 
         // 4. Start the tap IOProc. Its callback runs on the audio thread:
         //    crossfeed → EQ → analyzer/clip-meter → SRC → ring buffer write.
         do {
-            try tapInput.start { [eqProcessor, crossfeed, spectrumAnalyzer, clipMeter, ringBuffer, resampler] left, right, frames in
-                crossfeed.process(left: left, right: right, frames: frames)
-                eqProcessor.process(left: left, right: right, frames: frames)
+            try tapInput.start { [eqProcessor, crossfeed, spectrumAnalyzer, clipMeter, ringBuffer, resampler, silenceGate] left, right, frames in
+                // Skip the heavy DSP (crossfeed + biquad cascades) once the
+                // input has been silent long enough that the filter tails have
+                // decayed to ~0 — at that point processing more zeros is a
+                // no-op, so this is bit-exact, not lossy. The gate releases on
+                // the first non-silent block, so resuming audio isn't clipped.
+                if silenceGate.shouldProcess(left: left, right: right, frames: frames) {
+                    crossfeed.process(left: left, right: right, frames: frames)
+                    eqProcessor.process(left: left, right: right, frames: frames)
+                }
+                // Meters always see the (silent or processed) buffer so the UI
+                // reads correctly; both are a single cheap vDSP peak scan. The
+                // resampler also always runs — it's a memcpy passthrough at
+                // unity rate, and keeping it fed avoids ring-buffer underruns —
+                // so the DAC continues to receive clean silence while idle.
                 spectrumAnalyzer.submit(left: left, right: right, frames: frames)
                 // Post-loudness, pre-output: this is the last point at which we
                 // can measure what the user actually hears before the ring
@@ -702,6 +720,7 @@ final class EQEngine: ObservableObject {
         crossfeed.configure(sampleRate: newSR)
         spectrumAnalyzer.configure(sampleRate: newSR)
         clipMeter.configure(sampleRate: newSR)
+        silenceGate.configure(sampleRate: newSR)
         resampler?.configure(inputSampleRate: newSR)
     }
 
