@@ -41,7 +41,7 @@ final class DeviceManager: ObservableObject {
 
     func refresh(initial: Bool) {
         let all = CoreAudioDevices.all()
-        // Lurar's own private aggregate (created in ProcessTapInput) is
+        // Lurar's own private aggregate (created in ProcessTapIO) is
         // visible to its creating process even with isPrivate=true. Hide it
         // from the picker — selecting it as the output would loop the tap
         // back through itself.

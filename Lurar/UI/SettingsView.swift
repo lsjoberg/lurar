@@ -98,8 +98,8 @@ private struct GeneralSettingsTab: View {
             VStack(alignment: .leading, spacing: 6) {
                 Toggle("Mute briefly on output rate change", isOn: $muteOnDeviceRateChange)
                     .toggleStyle(.switch)
-                    .help("Fade audio out for ~150 ms when the output device's sample rate changes, to mask the resampler transient")
-                Text("Apple Music and other hi-res sources can change your DAC's sample rate between tracks. Fading briefly hides the audible pitch glitch as Core Audio's internal sample-rate converter re-tunes. Turn this off if you'd rather hear the unmasked transition.")
+                    .help("Fade audio out briefly when the output device's sample rate changes, to mask the transition")
+                Text("Apple Music and other hi-res sources can change your DAC's sample rate between tracks. Fading briefly hides the audible glitch while Lurar's audio pipeline re-tunes to the new rate. Turn this off if you'd rather hear the unmasked transition.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

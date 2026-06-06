@@ -169,8 +169,8 @@ struct LurarApp: App {
 
 /// Intercepts `NSApp.terminate(_:)` (Cmd+Q, "Quit Lurar" menu item, or
 /// any other route) so the engine can fade audio out before the process
-/// dies. Without this, the HAL Output AU gets cut mid-buffer and the
-/// DAC emits a click as macOS reroutes audio back to its default
+/// dies. Without this, the tap aggregate's IOProc gets cut mid-buffer and
+/// the DAC emits a click as macOS reroutes audio back to its default
 /// destination.
 @MainActor
 final class LurarAppDelegate: NSObject, NSApplicationDelegate {

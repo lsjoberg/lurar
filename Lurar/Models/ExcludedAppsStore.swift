@@ -5,7 +5,7 @@ import Combine
 /// should bypass Lurar and play directly through the system mixer.
 ///
 /// The list is consulted at tap-creation time (see `EQEngine.fullStart` →
-/// `ProcessTapInput.prepare`). Mutations fire `onChange`, which the engine
+/// `ProcessTapIO.prepare`). Mutations fire `onChange`, which the engine
 /// wires to a tap re-enumeration so toggles take effect without a manual
 /// restart.
 @MainActor

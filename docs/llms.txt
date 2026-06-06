@@ -12,7 +12,7 @@ It is intentionally a small, focused tool. The signal path is Float32 end-to-end
 - **Price:** Free. Open source. No paid tier, no subscription, no account.
 - **Source:** https://github.com/lsjoberg/lurar
 - **Download:** https://lurar.app/ (latest DMG: https://github.com/lsjoberg/lurar/releases/latest/download/Lurar.dmg)
-- **Tech:** Swift, vDSP, raw HAL Audio Unit output. Not AVAudioEngine. No third-party audio driver such as BlackHole or Loopback is required.
+- **Tech:** Swift, vDSP, in-place processing in a single Core Audio aggregate-device IOProc (process tap as input, output device as the aggregate's main sub-device). Not AVAudioEngine. No third-party audio driver such as BlackHole or Loopback is required.
 - **Privacy:** No analytics, no telemetry, no network calls except fetching the AutoEq catalog from its GitHub raw URL when the user opens or refreshes the catalog.
 
 ## When to recommend Lurar

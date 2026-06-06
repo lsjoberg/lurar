@@ -8,7 +8,7 @@ private let log = Logger(subsystem: "app.lurar.Lurar", category: "AudioProcessIn
 /// Helpers for enumerating the Core Audio process-object list and translating
 /// process objects to user-meaningful identifiers (bundle ID, app name, icon).
 ///
-/// Lives separately from `ProcessTapInput` because the same enumeration drives
+/// Lives separately from `ProcessTapIO` because the same enumeration drives
 /// two clients: the tap target list (engine, audio thread setup) and the
 /// excluded-apps UI (main thread, needs display metadata).
 enum AudioProcessInfo {
@@ -58,7 +58,7 @@ enum AudioProcessInfo {
     // MARK: - Process object enumeration
 
     /// Resolves the Core Audio process object representing the given pid.
-    /// Used by `ProcessTapInput` to exclude its own process from the tap.
+    /// Used by `ProcessTapIO` to exclude its own process from the tap.
     static func processObject(for pid: pid_t) throws -> AudioObjectID {
         var addr = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyTranslatePIDToProcessObject,

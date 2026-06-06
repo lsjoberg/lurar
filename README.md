@@ -1,6 +1,6 @@
 # Lurar
 
-A macOS menu bar parametric EQ for headphone listening. Captures every app's audio via a Core Audio Process Tap, runs it through a 10-band vDSP biquad EQ, and plays the result through your DAC via a raw HAL Audio Unit (no AVAudioEngine, no BlackHole, no virtual loopback driver).
+A macOS menu bar parametric EQ for headphone listening. Captures every app's audio via a Core Audio Process Tap, runs it through a 10-band vDSP biquad EQ, and plays the result straight back to your DAC from a single aggregate-device IOProc (no AVAudioEngine, no BlackHole, no virtual loopback driver, no resampler or ring buffer in the steady state).
 
 **[Download for macOS →](https://lurar.app/)**
 
@@ -33,7 +33,7 @@ In a second terminal, tail OSLog output:
 1. Lurar menu bar → set **Output** to the device you actually want to listen on (e.g. **HIFIMAN-EF500**). Lurar takes care of routing — you don't need to change anything in System Settings → Sound.
 2. Pick a preset. Lurar ships with a **Flat** preset; choose **Add more presets…** in the picker to browse the AutoEq catalog (Oratory1990 measurements for HiFiMan Arya Stealth et al.) and add ones for your headphones.
 3. Toggle the engine **ON** and accept the audio-capture prompt the first time.
-4. Play audio in any app — it flows: app → process tap → Lurar DSP → HALOutput → DAC → headphones.
+4. Play audio in any app — it flows: app → process tap → Lurar DSP (in place) → DAC → headphones.
 
 Tap *Open Editor…* for live band tweaking. Edits apply to the running engine instantly. Built-in presets are read-only — use **Tweak…** to fork one into your library; the original stays visible as a dashed reference curve, and **Reset to Original** beside the "Derived from …" chip undoes your divergence. **New preset…** in the preset dropdown creates a fully custom preset from scratch (10 log-spaced bands at unity gain). **Save** persists edits, **Discard Changes** throws away unsaved edits, and **Delete** removes a preset.
 
