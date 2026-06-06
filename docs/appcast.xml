@@ -6,20 +6,24 @@
     <description>System-wide audio EQ for macOS.</description>
     <language>en</language>
     <item>
-      <title>Lurar 0.5.2</title>
-      <pubDate>Sat, 06 Jun 2026 09:59:27 +0000</pubDate>
-      <sparkle:version>25</sparkle:version>
-      <sparkle:shortVersionString>0.5.2</sparkle:shortVersionString>
+      <title>Lurar 0.5.3</title>
+      <pubDate>Sat, 06 Jun 2026 11:01:09 +0000</pubDate>
+      <sparkle:version>26</sparkle:version>
+      <sparkle:shortVersionString>0.5.3</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.2</sparkle:minimumSystemVersion>
-      <description><![CDATA[<h3 dir="auto">Performance Improvements</h3>
+      <description><![CDATA[<h3 dir="auto">Bug Fixes</h3>
 <ul dir="auto">
-<li><strong>engine:</strong> cut idle CPU by pinning halSR to device rate, cheaper SRC, 1:1 passthrough (<a href="https://github.com/lsjoberg/lurar/commit/b15123501d6268376a3b1130100925ff78a72935">b151235</a>)</li>
-</ul><p style="margin-top:1.5em;font-size:0.9em"><a href="https://github.com/lsjoberg/lurar/releases/tag/v0.5.2">View full release on GitHub →</a></p>]]></description>
+<li><strong>burn-in:</strong> only count time while audio is actually playing (<a href="https://github.com/lsjoberg/lurar/commit/beb9a9e09affdca471d4facb7d8dbca37ceeff31">beb9a9e</a>)</li>
+</ul>
+<h3 dir="auto">Performance Improvements</h3>
+<ul dir="auto">
+<li><strong>engine:</strong> lengthen the diagnostic tick and give it timer slack (<a href="https://github.com/lsjoberg/lurar/commit/647a99cab2c72c9758190698f1e58760b0267726">647a99c</a>)</li>
+</ul><p style="margin-top:1.5em;font-size:0.9em"><a href="https://github.com/lsjoberg/lurar/releases/tag/v0.5.3">View full release on GitHub →</a></p>]]></description>
       <enclosure
-        url="https://github.com/lsjoberg/lurar/releases/download/v0.5.2/Lurar-0.5.2.dmg"
-        length="2611594"
+        url="https://github.com/lsjoberg/lurar/releases/download/v0.5.3/Lurar-0.5.3.dmg"
+        length="2613222"
         type="application/octet-stream"
-        sparkle:edSignature="KT7QszdvcDgzIvKL6+t0pBg1oX00cVAtyeNRnbK2tgezIyKwhCr7v44i+QcQ5NgoCXYca1njGnZZ1lleiHCGAw==" />
+        sparkle:edSignature="tPc17hxC5PPOiR6b8vcxrl5tyz9rvAoUT8ygPgX0XadIL/zcFILF6O3nGahliDRrKp+V8VWVSfCNK7lrRiRXCQ==" />
     </item>
   </channel>
 </rss>
