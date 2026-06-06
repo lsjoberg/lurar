@@ -705,9 +705,9 @@ final class EQEngine: ObservableObject {
         if snapshot.reads > 0 {
             // Underrun → reader hit the empty edge of the ring; HAL got
             // zero-padded silence. Most likely cause of audible glitches.
-            log.info("DIAG: tap=\(Int(tap)) Hz hal=\(Int(hal)) Hz device=\(Int(deviceRate)) Hz dsp=\(dsp) ringFill=\(snapshot.available)f (~\(String(format: "%.1f", availableMs)) ms) underruns=\(snapshot.reads) worst=\(snapshot.worstShortfall)f")
+            log.info("DIAG: tap=\(Int(tap)) Hz hal=\(Int(hal)) Hz device=\(Int(deviceRate)) Hz dsp=\(dsp, privacy: .public) ringFill=\(snapshot.available)f (~\(availableMs, format: .fixed(precision: 1), privacy: .public) ms) underruns=\(snapshot.reads) worst=\(snapshot.worstShortfall)f")
         } else {
-            log.info("DIAG: tap=\(Int(tap)) Hz hal=\(Int(hal)) Hz device=\(Int(deviceRate)) Hz dsp=\(dsp) ringFill=\(snapshot.available)f (~\(String(format: "%.1f", availableMs)) ms)")
+            log.info("DIAG: tap=\(Int(tap)) Hz hal=\(Int(hal)) Hz device=\(Int(deviceRate)) Hz dsp=\(dsp, privacy: .public) ringFill=\(snapshot.available)f (~\(availableMs, format: .fixed(precision: 1), privacy: .public) ms)")
         }
         ringBuffer.resetUnderrunCount()
     }
