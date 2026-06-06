@@ -4,14 +4,17 @@ import OSLog
 
 private let log = Logger(subsystem: "app.lurar.Lurar", category: "BurnInTracker")
 
-/// Per-output-device runtime counter. Subscribes to the engine's
-/// `isRunning` / `activeOutput` pair and accumulates wall-clock seconds
-/// into a UserDefaults-backed `[deviceUID: { name, seconds }]` map. The
-/// stored value reflects everything flushed up to `current.lastFlushedAt`;
-/// while a run is active, `entries()` adds the live tail from
-/// `lastFlushedAt → now` so the UI sees a moving total without us having
-/// to write to disk every tick. A 60 s timer flushes incremental progress
-/// so an unexpected exit only loses up to a minute.
+/// Per-output-device playback counter. Subscribes to the engine's
+/// `isRunning` / `activeOutput` / `isPlayingAudio` triple and accumulates
+/// wall-clock seconds *while audio is actually playing* into a
+/// UserDefaults-backed `[deviceUID: { name, seconds }]` map — a paused or
+/// silent engine doesn't add to the tally, matching the burn-in tradition
+/// of counting hours of audio played through a device. The stored value
+/// reflects everything flushed up to `current.lastFlushedAt`; while a run
+/// is active, `entries()` adds the live tail from `lastFlushedAt → now` so
+/// the UI sees a moving total without us having to write to disk every
+/// tick. A 60 s timer flushes incremental progress so an unexpected exit
+/// only loses up to a minute.
 @MainActor
 final class BurnInTracker: ObservableObject {
     static let defaultsKey = "lurar.burnInByDevice"
@@ -46,10 +49,12 @@ final class BurnInTracker: ObservableObject {
     /// replaces the prior subscriptions and keeps a single live counter.
     func observe(engine: EQEngine) {
         cancellables.removeAll()
-        Publishers.CombineLatest(engine.$isRunning, engine.$activeOutput)
-            .sink { [weak self] running, output in
+        Publishers.CombineLatest3(engine.$isRunning, engine.$activeOutput, engine.$isPlayingAudio)
+            .sink { [weak self] running, output, playing in
                 Task { @MainActor in
-                    self?.update(running: running, device: output)
+                    // Only count while the engine is up *and* audio is actually
+                    // playing — a running-but-silent engine shouldn't burn in.
+                    self?.update(active: running && playing, device: output)
                 }
             }
             .store(in: &cancellables)
@@ -75,17 +80,17 @@ final class BurnInTracker: ObservableObject {
 
     // MARK: - Internal
 
-    private func update(running: Bool, device: AudioDevice?) {
+    private func update(active: Bool, device: AudioDevice?) {
         let shouldEnd: Bool = {
             guard let run = current else { return false }
-            return !running || device?.uid != run.uid
+            return !active || device?.uid != run.uid
         }()
         if shouldEnd {
             flush()
             current = nil
             stopFlushTimer()
         }
-        if running, let device, current == nil {
+        if active, let device, current == nil {
             current = ActiveRun(uid: device.uid, name: device.name, lastFlushedAt: Date())
             startFlushTimer()
             log.info("Burn-in: counting started for \(device.name, privacy: .public) (\(device.uid, privacy: .public))")

@@ -10,6 +10,14 @@ private let log = Logger(subsystem: "app.lurar.Lurar", category: "EQEngine")
 @MainActor
 final class EQEngine: ObservableObject {
     @Published private(set) var isRunning: Bool = false
+    /// True while audio is actually flowing — the tap is delivering buffers and
+    /// the output peak is above the silence floor. Distinct from `isRunning`,
+    /// which only means the chain is built and driving the DAC (it stays true
+    /// through a paused track, when the engine is pushing silence). Observers
+    /// that care about real playback rather than engine uptime — e.g.
+    /// `BurnInTracker` — gate on this. Re-derived on the engine's ~3 s
+    /// diagnostic tick; see `pollPlayback`.
+    @Published private(set) var isPlayingAudio: Bool = false
     @Published private(set) var statusMessage: String = "Idle"
     @Published private(set) var currentPreset: EQPreset?
     /// True while the EQ is running the A/B comparison slot mode (two presets
@@ -98,10 +106,19 @@ final class EQEngine: ObservableObject {
     private var outputRateListener: AudioDevicePropertyListener?
     private var pendingRestart: DispatchWorkItem?
     private var restartCooldownUntil: Date = .distantPast
-    /// Periodic ring-buffer state dump, ~every 3 s while running.
-    /// Surfaces underruns (HAL reading from empty ring), drift, and
-    /// rate mismatches we can't catch from the listeners alone.
+    /// Periodic ~3 s tick while running. Dumps ring-buffer state (underruns,
+    /// drift, rate mismatches) *and* drives playback detection
+    /// (`pollPlayback`) off the same wakeup, so detection adds no idle-CPU
+    /// timer of its own.
     private var diagnosticTimer: Timer?
+    /// Clip-meter frame count at the previous diagnostic tick. Compared
+    /// against the next tick to tell whether the tap is still delivering
+    /// buffers at all (playback detection — see `pollPlayback`).
+    private var lastPlaybackFrames: UInt64 = 0
+    /// Wall-clock time the output signal last crossed the silence floor while
+    /// the tap was live. `isPlayingAudio` stays true for `playbackHangover`
+    /// seconds past this so brief gaps between tracks don't stop the tally.
+    private var lastSignalAt: Date = .distantPast
 
     /// Last-known nominal sample rate of the active output device. Used
     /// by the output-rate listener to tell a real device-rate move apart
@@ -251,6 +268,11 @@ final class EQEngine: ObservableObject {
         }
 
         tearDownListeners()
+        // Clear playback state across the rebuild; the diagnostic-timer poll
+        // re-derives it once samples flow again, so a failed start leaves
+        // `isPlayingAudio` false rather than stuck at its pre-teardown value.
+        isPlayingAudio = false
+        lastSignalAt = .distantPast
         try? tapInput.stop()
         // Snap the ring buffer's output gain to silence before the audio
         // chain starts producing samples. The fade-in below ramps from
@@ -492,6 +514,7 @@ final class EQEngine: ObservableObject {
         // before the fade completes. The audio chain keeps running (now
         // ramping toward silence) until the deferred teardown.
         isRunning = false
+        isPlayingAudio = false
         statusMessage = "Stopped"
 
         pendingStopWork?.cancel()
@@ -534,6 +557,7 @@ final class EQEngine: ObservableObject {
         activeSampleRate = nil
         halSampleRate = nil
         isRunning = false
+        isPlayingAudio = false
         statusMessage = "Stopped"
     }
 
@@ -659,8 +683,16 @@ final class EQEngine: ObservableObject {
     private func startDiagnosticTimer() {
         stopDiagnosticTimer()
         ringBuffer.resetUnderrunCount()
+        // Prime playback detection so the first tick measures advancement from
+        // a clean baseline — the clip meter was just reset in `fullStart`.
+        lastPlaybackFrames = clipMeter.snapshot().framesProcessed
+        lastSignalAt = .distantPast
         let timer = Timer(timeInterval: 3.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.logDiagnosticSnapshot() }
+            Task { @MainActor in
+                guard let self else { return }
+                self.pollPlayback()
+                self.logDiagnosticSnapshot()
+            }
         }
         RunLoop.main.add(timer, forMode: .common)
         diagnosticTimer = timer
@@ -669,6 +701,43 @@ final class EQEngine: ObservableObject {
     private func stopDiagnosticTimer() {
         diagnosticTimer?.invalidate()
         diagnosticTimer = nil
+    }
+
+    // MARK: - Playback detection
+
+    /// Output peak below which we treat the signal as silence. Paused apps
+    /// deliver digital zeros, which read at the meter's ~−120 dBFS floor, so
+    /// the bar sits well below any real playback. We measure post-loudness /
+    /// post-preamp (what the user actually hears), so heavy loudness
+    /// compensation can attenuate quiet music by tens of dB — −70 keeps that
+    /// margin and still never mistakes true silence for playback.
+    private static let silenceFloorDB: Float = -70
+    /// Keep `isPlayingAudio` true for this long after the signal last crossed
+    /// the floor, so gaps between tracks and brief quiet passages don't churn
+    /// the flag (or the burn-in tally) off and back on. Comfortably longer
+    /// than the ~3 s tick that drives it.
+    private static let playbackHangover: TimeInterval = 12
+
+    /// Derive `isPlayingAudio` from the clip meter. Runs on the diagnostic
+    /// timer's ~3 s tick — no dedicated timer, so detection adds no idle-CPU
+    /// wakeups. Signal counts as present only when the tap actually advanced
+    /// its frame counter since the last tick *and* the output peak is above
+    /// the silence floor — the frame check catches setups that stop the IOProc
+    /// on pause (which would otherwise freeze the peak at its last, possibly
+    /// loud, value). A hangover bridges brief dips so we don't flap.
+    private func pollPlayback() {
+        guard isRunning else {
+            if isPlayingAudio { isPlayingAudio = false }
+            return
+        }
+        let snap = clipMeter.snapshot()
+        let tapAdvanced = snap.framesProcessed != lastPlaybackFrames
+        lastPlaybackFrames = snap.framesProcessed
+        if tapAdvanced && max(snap.peakDBL, snap.peakDBR) > Self.silenceFloorDB {
+            lastSignalAt = Date()
+        }
+        let playing = Date().timeIntervalSince(lastSignalAt) <= Self.playbackHangover
+        if playing != isPlayingAudio { isPlayingAudio = playing }
     }
 
     private func logDiagnosticSnapshot() {

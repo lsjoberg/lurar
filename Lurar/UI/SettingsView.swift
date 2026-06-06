@@ -324,7 +324,7 @@ private struct BurnInSection: View {
     private var burnInHelp: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Burn-in counter").font(.headline)
-            Text("How many hours the EQ engine has spent driving each output device. It\u{2019}s just a tally \u{2014} Lurar doesn\u{2019}t change anything about how it processes audio based on this number.")
+            Text("How many hours of audio Lurar has actually played through each output device \u{2014} paused or silent time doesn\u{2019}t count. It\u{2019}s just a tally \u{2014} Lurar doesn\u{2019}t change anything about how it processes audio based on this number.")
                 .fixedSize(horizontal: false, vertical: true)
             Text("The name is a nod to the audiophile tradition of \u{201C}burning in\u{201D} new headphones by playing audio through them for tens or hundreds of hours, in the belief that the diaphragms loosen up and the sound improves. The evidence is contested at best; Lurar takes no position.")
                 .foregroundStyle(.secondary)
