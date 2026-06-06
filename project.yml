@@ -14,7 +14,7 @@ packages:
     from: "2.6.0"
 settings:
   base:
-    MARKETING_VERSION: "0.5.2" # x-release-please-version
+    MARKETING_VERSION: "0.5.3" # x-release-please-version
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "5.9"
     ENABLE_HARDENED_RUNTIME: YES

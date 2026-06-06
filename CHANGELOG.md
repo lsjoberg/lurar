@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.3](https://github.com/lsjoberg/lurar/compare/v0.5.2...v0.5.3) (2026-06-06)
+
+
+### Bug Fixes
+
+* **burn-in:** only count time while audio is actually playing ([beb9a9e](https://github.com/lsjoberg/lurar/commit/beb9a9e09affdca471d4facb7d8dbca37ceeff31))
+
+
+### Performance Improvements
+
+* **engine:** lengthen the diagnostic tick and give it timer slack ([647a99c](https://github.com/lsjoberg/lurar/commit/647a99cab2c72c9758190698f1e58760b0267726))
+
 ## [0.5.2](https://github.com/lsjoberg/lurar/compare/v0.5.1...v0.5.2) (2026-06-06)
 
 
