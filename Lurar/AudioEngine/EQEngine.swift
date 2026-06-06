@@ -205,18 +205,30 @@ final class EQEngine: ObservableObject {
     }
 
     /// Pick the HAL Output AU's pinned client rate for the given device.
-    /// Strategy: use the device's *maximum* supported rate (capped at 192
-    /// kHz for sanity) so the AU's internal SRC only ever has to downsample
-    /// to match a device that's currently running below its max, and our
-    /// resampler only ever upsamples typical tap content. Falls back to
-    /// the device's current nominal rate if we can't enumerate ranges.
+    /// Strategy: pin to the device's *current nominal* rate, NOT its maximum.
+    ///
+    /// The earlier design pinned to the device max (capped at 192 kHz) on the
+    /// theory that our resampler should "only ever upsample." But upsampling
+    /// every buffer to 192 kHz with a long mastering-quality filter — plus
+    /// moving 4× the samples through the ring buffer and HAL render callback —
+    /// is the *expensive* direction, and it runs continuously even on silence.
+    /// That was the dominant contributor to high idle CPU (issue #101).
+    ///
+    /// Pinning to the current rate makes the common case (tap 48k → hal 48k) a
+    /// 1:1 passthrough with no SRC cost at all. If the device rate later moves
+    /// (a hi-res app switching tracks on a DAC that follows the system
+    /// default), the HAL Output AU's own internal SRC bridges halSR → device
+    /// rate; we don't re-pin mid-run. Falls back to the max supported rate
+    /// (capped at 192 kHz) only if the nominal rate can't be read.
     private static func preferredHalSR(for deviceID: AudioDeviceID) -> Double? {
+        if let nominal = try? CoreAudioSampleRate.nominal(for: deviceID), nominal > 0 {
+            return nominal
+        }
         let ranges = CoreAudioSampleRate.available(for: deviceID)
-        let maxFromRanges = ranges.map(\.upperBound).max()
-        if let m = maxFromRanges, m > 0 {
+        if let m = ranges.map(\.upperBound).max(), m > 0 {
             return min(m, 192_000)
         }
-        return try? CoreAudioSampleRate.nominal(for: deviceID)
+        return nil
     }
 
     private func fullStart(output: AudioDevice) {
@@ -288,16 +300,12 @@ final class EQEngine: ObservableObject {
             return
         }
 
-        // Pin halSR = device's *max* supported rate (capped at 192 kHz),
-        // not its current rate. Reasoning:
-        //   - Hi-res streaming apps move the device's nominal rate per
-        //     track. Pinning to the rate at engine start would force the
-        //     HAL Output AU into a permanent upsample-then-downsample
-        //     bottleneck whenever the device runs above that pinned rate.
-        //   - Pinning to the max means our resampler only ever upsamples
-        //     typical tap content (44.1 / 48 → halSR) and the AU's
-        //     internal SRC only ever downsamples (halSR → currentDevice),
-        //     both of which are the cheap directions.
+        // Pin halSR = device's *current nominal* rate (see `preferredHalSR`).
+        // This keeps the steady-state pipeline at the device rate — typically
+        // 48 kHz — so the resampler runs 1:1 (or not at all) instead of
+        // upsampling every buffer to the device max. If a hi-res app later
+        // moves the device rate mid-run, the HAL Output AU's internal SRC
+        // bridges the halSR → device-rate gap; we don't re-pin.
         guard let halSR = Self.preferredHalSR(for: output.id) else {
             try? tapInput.stop()
             try? halOutput.stop()

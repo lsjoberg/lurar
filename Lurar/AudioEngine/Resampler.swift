@@ -24,6 +24,17 @@ final class StereoResampler {
     private var converter: AudioConverterRef?
     private var lock = os_unfair_lock()
 
+    /// True when the configured input rate matches the output rate, so the
+    /// converter can be bypassed. Read on the audio thread; `inputSampleRate`
+    /// is only mutated from `configure()` under the lock, and an aligned
+    /// 8-byte `Double` read is atomic on the platforms we target, so this
+    /// gate is taken lock-free. A momentarily stale read across a rate change
+    /// is harmless: it just routes one buffer through the (correct) slow path
+    /// or vice versa for a single callback.
+    private var isUnityRate: Bool {
+        inputSampleRate > 0 && abs(inputSampleRate - outputSampleRate) < 0.5
+    }
+
     /// Pre-allocated output scratch sized for the worst-case `tapSR → halSR`
     /// expansion (e.g. 44.1 → 192 kHz over a max 4096-frame tap callback ≈
     /// 17.4k frames). Caller-provided destinations would force callers to
@@ -94,17 +105,21 @@ final class StereoResampler {
             log.error("AudioConverterNew failed: \(status) (\(Int(inputSampleRate)) → \(Int(self.outputSampleRate)))")
             return
         }
-        // Mastering-quality polyphase SRC — adds a few ms of group delay but
-        // produces an alias-free conversion suitable for a high-fidelity EQ
-        // signal path.
-        var quality: UInt32 = kAudioConverterQuality_Max
+        // High-quality (not mastering) polyphase SRC. Mastering complexity at
+        // Max quality is the most CPU-intensive converter Core Audio offers and
+        // it ran on every buffer — even silence — which was a major contributor
+        // to high idle CPU (issue #101). For a real-time headphone-monitoring
+        // path, Normal complexity at High quality is audibly transparent at a
+        // fraction of the cost. (Most buffers now skip the converter entirely
+        // via the 1:1 passthrough in `processIntoRingBuffer` anyway.)
+        var quality: UInt32 = kAudioConverterQuality_High
         _ = AudioConverterSetProperty(
             newConverter!,
             kAudioConverterSampleRateConverterQuality,
             UInt32(MemoryLayout<UInt32>.size),
             &quality
         )
-        var complexity: UInt32 = kAudioConverterSampleRateConverterComplexity_Mastering
+        var complexity: UInt32 = kAudioConverterSampleRateConverterComplexity_Normal
         _ = AudioConverterSetProperty(
             newConverter!,
             kAudioConverterSampleRateConverterComplexity,
@@ -138,6 +153,14 @@ final class StereoResampler {
         frames: Int,
         ringBuffer: StereoFloatRingBuffer
     ) -> Int {
+        // 1:1 fast path: when the tap rate already equals the output rate there
+        // is nothing to convert. Skip the AudioConverter entirely and write the
+        // (already-EQ'd) input straight through. With halSR now pinned to the
+        // device's current nominal rate, this is the common steady-state path,
+        // so the SRC cost on silence drops to zero.
+        if isUnityRate {
+            return ringBuffer.write(left: left, right: right, frames: frames)
+        }
         let outFrames = process(
             inLeft: left,
             inRight: right,
