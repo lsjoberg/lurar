@@ -6,24 +6,24 @@
     <description>System-wide audio EQ for macOS.</description>
     <language>en</language>
     <item>
-      <title>Lurar 0.5.3</title>
-      <pubDate>Sat, 06 Jun 2026 11:01:09 +0000</pubDate>
-      <sparkle:version>26</sparkle:version>
-      <sparkle:shortVersionString>0.5.3</sparkle:shortVersionString>
+      <title>Lurar 0.6.0</title>
+      <pubDate>Sun, 07 Jun 2026 18:22:49 +0000</pubDate>
+      <sparkle:version>27</sparkle:version>
+      <sparkle:shortVersionString>0.6.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.2</sparkle:minimumSystemVersion>
-      <description><![CDATA[<h3 dir="auto">Bug Fixes</h3>
+      <description><![CDATA[<h3 dir="auto">Features</h3>
 <ul dir="auto">
-<li><strong>burn-in:</strong> only count time while audio is actually playing (<a href="https://github.com/lsjoberg/lurar/commit/beb9a9e09affdca471d4facb7d8dbca37ceeff31">beb9a9e</a>)</li>
+<li><strong>menubar:</strong> on/off toggles for crossfeed and loudness (<a href="https://github.com/lsjoberg/lurar/commit/6a0ab6892be6febbb78deb4c4c97c3c2fdbf18a0">6a0ab68</a>)</li>
 </ul>
 <h3 dir="auto">Performance Improvements</h3>
 <ul dir="auto">
-<li><strong>engine:</strong> lengthen the diagnostic tick and give it timer slack (<a href="https://github.com/lsjoberg/lurar/commit/647a99cab2c72c9758190698f1e58760b0267726">647a99c</a>)</li>
-</ul><p style="margin-top:1.5em;font-size:0.9em"><a href="https://github.com/lsjoberg/lurar/releases/tag/v0.5.3">View full release on GitHub →</a></p>]]></description>
+<li><strong>ui:</strong> pause spectrum/clip visualisers when the editor window is hidden (<a href="https://github.com/lsjoberg/lurar/commit/20fc9a742977f915326a0ac968b61066ca683897">20fc9a7</a>)</li>
+</ul><p style="margin-top:1.5em;font-size:0.9em"><a href="https://github.com/lsjoberg/lurar/releases/tag/v0.6.0">View full release on GitHub →</a></p>]]></description>
       <enclosure
-        url="https://github.com/lsjoberg/lurar/releases/download/v0.5.3/Lurar-0.5.3.dmg"
-        length="2613222"
+        url="https://github.com/lsjoberg/lurar/releases/download/v0.6.0/Lurar-0.6.0.dmg"
+        length="2631937"
         type="application/octet-stream"
-        sparkle:edSignature="tPc17hxC5PPOiR6b8vcxrl5tyz9rvAoUT8ygPgX0XadIL/zcFILF6O3nGahliDRrKp+V8VWVSfCNK7lrRiRXCQ==" />
+        sparkle:edSignature="vP6p11Cx34a+s5Z3T3z8OLfCPXjWNhdNJsx0kAG4L8QuZbEoAq3oAdZs7ZB4eiM4dFVXaHukvIhk+e9BzN6iCQ==" />
     </item>
   </channel>
 </rss>
