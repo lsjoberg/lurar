@@ -125,7 +125,7 @@ struct LurarApp: App {
     }
 
     init() {
-        bootLog.info("[lurar] Booted: Process Tap + vDSP biquad EQ + HAL output (no AVAudioEngine)")
+        bootLog.info("[lurar] Booted: Process Tap + AVAudioEngine (AVAudioUnitEQ) output")
         // DeviceManager needs the user's output preferences (last-used UID,
         // follow mode) at init time so its first refresh restores the right
         // device. Construct prefs eagerly and share the same instance with

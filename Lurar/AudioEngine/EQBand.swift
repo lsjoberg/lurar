@@ -1,4 +1,5 @@
 import Foundation
+import AVFAudio
 
 struct EQBand: Codable, Hashable, Identifiable {
     enum FilterType: String, Codable, CaseIterable, Identifiable {
@@ -13,6 +14,14 @@ struct EQBand: Codable, Hashable, Identifiable {
             case .lowShelf:  return "Low shelf"
             case .peak:      return "Peak"
             case .highShelf: return "High shelf"
+            }
+        }
+        
+        var avType: AVAudioUnitEQFilterType {
+            switch self {
+            case .lowShelf: return .lowShelf
+            case .peak: return .parametric
+            case .highShelf: return .highShelf
             }
         }
     }
@@ -48,6 +57,17 @@ struct EQBand: Codable, Hashable, Identifiable {
         try c.encode(frequency, forKey: .frequency)
         try c.encode(gain, forKey: .gain)
         try c.encode(q, forKey: .q)
+    }
+
+    /// Convert bandwidth in octaves to Q factor
+    static func octavesToQ(_ bw: Float) -> Float {
+        let p = powf(2, bw)
+        return sqrtf(p) / (p - 1)
+    }
+
+    /// Convert Q factor to bandwidth in octaves.
+    static func qToOctaves(_ q: Float) -> Float {
+        return 2 * asinh(1 / (2 * q)) / logf(2)
     }
 }
 

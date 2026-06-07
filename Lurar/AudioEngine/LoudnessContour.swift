@@ -123,19 +123,6 @@ enum LoudnessContour {
     /// Number of biquad sections in the fitted loudness cascade.
     static let sectionCount = 6
 
-    /// Flat coefficient buffer (5 doubles × `sectionCount`) for an identity
-    /// cascade. Used to prime the cascade when loudness is inactive so the
-    /// activation transition starts from clean coefficients.
-    static let identityCoefficients: [Double] = {
-        var flat: [Double] = []
-        flat.reserveCapacity(5 * sectionCount)
-        for _ in 0..<sectionCount {
-            let c = BiquadCoefficients.identity
-            flat.append(contentsOf: [c.0, c.1, c.2, c.3, c.4])
-        }
-        return flat
-    }()
-
     /// Fit the six-biquad cascade to the compensation curve at `offsetDB`.
     /// Returns the flat coefficient buffer (5 doubles × 6 sections) ready for
     /// `BiquadCascade.setCoefficients(...)`, plus the headroom (dB ≥ 0) the
@@ -152,23 +139,15 @@ enum LoudnessContour {
     /// ISO curve at each integer offset 0 to −40 dB. At runtime we linearly
     /// interpolate between adjacent entries. Worst-case fit error across
     /// sample rate × offset combinations: ≤ 0.85 dB.
-    static func fitBiquads(offsetDB: Double, sampleRate: Double) -> (coefficients: [Double], headroomDB: Double) {
+    static func loudnessBands(offsetDB: Double) -> (bands: [EQBand], headroomDB: Double) {
         if abs(offsetDB) < 0.01 {
-            return (identityCoefficients, 0)
+            let emptyBands = designBands.map { EQBand(type: $0.type, frequency: Float($0.frequency), gain: 0, q: Float($0.q)) }
+            return (emptyBands, 0)
         }
         let gains = interpolatedGains(absOffsetDB: abs(offsetDB))
 
-        var flat: [Double] = []
-        flat.reserveCapacity(5 * sectionCount)
-        for (i, band) in designBands.enumerated() {
-            let c = BiquadCoefficients.make(
-                type: band.type,
-                frequency: Float(band.frequency),
-                gainDB: Float(gains[i]),
-                q: Float(band.q),
-                sampleRate: sampleRate
-            )
-            flat.append(contentsOf: [c.0, c.1, c.2, c.3, c.4])
+        let bands = designBands.enumerated().map { i, band in
+            EQBand(type: band.type, frequency: Float(band.frequency), gain: Float(gains[i]), q: Float(band.q))
         }
 
         // Headroom = peak of the fitted cascade across 20 Hz – 20 kHz. We
@@ -183,13 +162,6 @@ enum LoudnessContour {
         }
 
         #if DEBUG
-        // Self-test: the fitted cascade must track the analytic ISO target
-        // within 1.0 dB across the audible band. The empirical fit error of
-        // the chosen 6-band topology is ≤ 0.85 dB across [−40, 0] dB and
-        // the supported SR range; the 1.0 dB threshold catches topology
-        // regressions before they ship while leaving headroom for the
-        // slight bilinear-transform shifts between the table's reference SR
-        // (96 kHz) and the runtime SR.
         var maxErr = 0.0
         for i in 0..<100 {
             let t = Double(i) / 99.0
@@ -202,7 +174,7 @@ enum LoudnessContour {
                "LoudnessContour fit exceeded 1.0 dB at offset \(offsetDB) dB: max err \(maxErr) dB")
         #endif
 
-        return (flat, max(0, peakDB))
+        return (bands, max(0, peakDB))
     }
 
     /// Linearly interpolate the gain vector for an arbitrary `absOffsetDB`
