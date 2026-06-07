@@ -16,6 +16,10 @@ import SwiftUI
 /// the next audio callback.
 struct ClipMeterView: View {
     let clipMeter: ClipMeter
+    /// When false (window closed, minimised, or fully occluded) the periodic
+    /// redraw loop is torn down and the meter shows a static floor reading so
+    /// the view costs ~0% CPU in the background.
+    let isVisible: Bool
     @State private var showHelp: Bool = false
 
     /// dBFS range the bar visualises. The bottom of the scale matches the
@@ -50,24 +54,35 @@ struct ClipMeterView: View {
                 Spacer()
             }
 
-            TimelineView(.periodic(from: .now, by: interval)) { timeline in
-                // `let _ = timeline.date` makes the body's dependency on the
-                // schedule explicit. SwiftUI's ViewBuilder rejects a bare
-                // `_ = expression` statement, so it has to be a declaration.
-                let _ = timeline.date
-                let snap = clipMeter.snapshot()
-                HStack(alignment: .center, spacing: 8) {
-                    VStack(spacing: barSpacing) {
-                        channelMeter(label: "L", peakDB: Double(snap.peakDBL))
-                        channelMeter(label: "R", peakDB: Double(snap.peakDBR))
-                    }
-                    clipDot(active: snap.clipped)
+            if isVisible {
+                TimelineView(.periodic(from: .now, by: interval)) { timeline in
+                    // `let _ = timeline.date` makes the body's dependency on the
+                    // schedule explicit. SwiftUI's ViewBuilder rejects a bare
+                    // `_ = expression` statement, so it has to be a declaration.
+                    let _ = timeline.date
+                    let snap = clipMeter.snapshot()
+                    meterRow(peakDBL: Double(snap.peakDBL),
+                             peakDBR: Double(snap.peakDBR),
+                             clipped: snap.clipped)
                 }
-                .contentShape(Rectangle())
-                .onTapGesture { clipMeter.clearClip() }
-                .help("Click the meter to clear the sticky clip indicator.")
+            } else {
+                // No TimelineView while hidden — render a static floor reading.
+                meterRow(peakDBL: minDB, peakDBR: minDB, clipped: false)
             }
         }
+    }
+
+    private func meterRow(peakDBL: Double, peakDBR: Double, clipped: Bool) -> some View {
+        HStack(alignment: .center, spacing: 8) {
+            VStack(spacing: barSpacing) {
+                channelMeter(label: "L", peakDB: peakDBL)
+                channelMeter(label: "R", peakDB: peakDBR)
+            }
+            clipDot(active: clipped)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { clipMeter.clearClip() }
+        .help("Click the meter to clear the sticky clip indicator.")
     }
 
     private func channelMeter(label: String, peakDB: Double) -> some View {
