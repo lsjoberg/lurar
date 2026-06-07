@@ -16,6 +16,10 @@ import SwiftUI
 /// way that prevents clean teardown. `.periodic` is just a wall-clock timer.
 struct SpectrumOverlayView: View {
     let analyzer: SpectrumAnalyzer
+    /// When false (window closed, minimised, or fully occluded) the periodic
+    /// redraw loop is torn down entirely so the overlay costs ~0% CPU in the
+    /// background. Driven by the editor's occlusion-state observer.
+    let isVisible: Bool
 
     /// dBFS range for the overlay. Pink-noise floor around -80 dB stays at the
     /// bottom; peaking sinusoid near 0 dB hits the top.
@@ -30,21 +34,28 @@ struct SpectrumOverlayView: View {
     private let interval: TimeInterval = 1.0 / 30.0
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: interval)) { timeline in
-            // Capture `timeline.date` inside the Canvas renderer so SwiftUI sees the
-            // closure as "changed" each tick and re-invokes it. Without this, the
-            // Canvas's renderer captures only `analyzer` (a constant class reference),
-            // SwiftUI considers the output cacheable, and the overlay stays frozen on
-            // its first frame — i.e. invisible because the ring buffer is empty then.
-            let date = timeline.date
-            Canvas { ctx, size in
-                _ = date
-                let snap = analyzer.snapshot()
-                draw(ctx: &ctx, size: size,
-                     magnitudes: snap.magnitudes, sampleRate: snap.sampleRate)
+        Group {
+            if isVisible {
+                TimelineView(.periodic(from: .now, by: interval)) { timeline in
+                    // Capture `timeline.date` inside the Canvas renderer so SwiftUI sees the
+                    // closure as "changed" each tick and re-invokes it. Without this, the
+                    // Canvas's renderer captures only `analyzer` (a constant class reference),
+                    // SwiftUI considers the output cacheable, and the overlay stays frozen on
+                    // its first frame — i.e. invisible because the ring buffer is empty then.
+                    let date = timeline.date
+                    Canvas { ctx, size in
+                        _ = date
+                        let snap = analyzer.snapshot()
+                        draw(ctx: &ctx, size: size,
+                             magnitudes: snap.magnitudes, sampleRate: snap.sampleRate)
+                    }
+                }
+            } else {
+                // No TimelineView while hidden — nothing schedules a redraw.
+                Canvas { _, _ in }
             }
-            .allowsHitTesting(false)
         }
+        .allowsHitTesting(false)
     }
 
     private func draw(ctx: inout GraphicsContext, size: CGSize,
