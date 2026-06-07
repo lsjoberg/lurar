@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.0](https://github.com/lsjoberg/lurar/compare/v0.5.3...v0.6.0) (2026-06-07)
+
+
+### Features
+
+* **menubar:** on/off toggles for crossfeed and loudness ([6a0ab68](https://github.com/lsjoberg/lurar/commit/6a0ab6892be6febbb78deb4c4c97c3c2fdbf18a0))
+
+
+### Performance Improvements
+
+* **ui:** pause spectrum/clip visualisers when the editor window is hidden ([20fc9a7](https://github.com/lsjoberg/lurar/commit/20fc9a742977f915326a0ac968b61066ca683897))
+
 ## [0.5.3](https://github.com/lsjoberg/lurar/compare/v0.5.2...v0.5.3) (2026-06-06)
 
 
