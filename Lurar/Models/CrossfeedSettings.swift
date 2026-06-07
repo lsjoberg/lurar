@@ -8,6 +8,15 @@ final class CrossfeedSettings: ObservableObject {
     private enum Keys {
         static let intensity = "crossfeed.intensity"
         static let cutoff = "crossfeed.cutoff"
+        static let isOn = "crossfeed.isOn"
+    }
+
+    /// Master on/off for crossfeed. The single source of truth for whether
+    /// crossfeed is active — when off, the engine is driven with an effective
+    /// intensity of 0 while `intensity` retains the user's last setting so the
+    /// slider position is remembered across toggles.
+    @Published var isOn: Bool {
+        didSet { UserDefaults.standard.set(isOn, forKey: Keys.isOn) }
     }
 
     @Published var intensity: Float {
@@ -20,15 +29,25 @@ final class CrossfeedSettings: ObservableObject {
 
     init() {
         let defaults = UserDefaults.standard
+        let storedIntensity: Float
         if defaults.object(forKey: Keys.intensity) != nil {
-            self.intensity = defaults.float(forKey: Keys.intensity)
+            storedIntensity = defaults.float(forKey: Keys.intensity)
         } else {
-            self.intensity = 0
+            storedIntensity = 0
         }
+        self.intensity = storedIntensity
         if defaults.object(forKey: Keys.cutoff) != nil {
             self.cutoff = defaults.float(forKey: Keys.cutoff)
         } else {
             self.cutoff = 700
+        }
+        // Migration: users from before the on/off toggle existed only had an
+        // intensity. Treat any non-zero stored intensity as "on" so their
+        // crossfeed doesn't silently switch off after updating.
+        if defaults.object(forKey: Keys.isOn) != nil {
+            self.isOn = defaults.bool(forKey: Keys.isOn)
+        } else {
+            self.isOn = storedIntensity > 0
         }
     }
 }

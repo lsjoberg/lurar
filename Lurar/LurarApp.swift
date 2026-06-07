@@ -145,7 +145,9 @@ struct LurarApp: App {
         store.migrateLegacyBuiltInsIfNeeded(into: _presetCatalog.wrappedValue)
         // Seed the engine with the persisted crossfeed settings so the first audio
         // callback (whenever the engine is started) already has the user's params.
-        engine.setCrossfeedIntensity(crossfeedSettings.intensity)
+        // When crossfeed is toggled off the engine runs at an effective intensity
+        // of 0 while the stored slider value is preserved.
+        engine.setCrossfeedIntensity(crossfeedSettings.isOn ? crossfeedSettings.intensity : 0)
         engine.setCrossfeedCutoff(crossfeedSettings.cutoff)
         // Hand the engine a weak handle to the per-app exclusion list and have it
         // rebuild the tap whenever the user toggles a row. Without the onChange
