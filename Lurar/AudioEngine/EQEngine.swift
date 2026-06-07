@@ -166,15 +166,24 @@ final class EQEngine: ObservableObject {
     func start(output: AudioDevice) {
         log.info("start output=\(output.name)/\(output.uid) prev=\(self.activeOutput?.uid ?? "nil") running=\(self.isRunning)")
 
-        // Fast path: engine is already running and only the output device is changing.
-        // The tap + aggregate + input AU don't depend on the output, so leave them up
-        // and only re-bind HALOutput. Rebuilding the tap takes ~hundreds of ms and
-        // would hang the picker.
+        // If the engine is running but the requested output is different from
+        // the active one, we MUST do a full restart. The macOS ProcessTap API
+        // often silently fails or loses capture exclusivity when the underlying
+        // system hardware topology changes. Rebinding just the output leaves
+        // the broken tap in place, causing audio to bypass Lurar.
+        if isRunning, activeOutput?.id != output.id {
+            log.info("Output device changed; forcing full tap rebuild.")
+            fullStart(output: output)
+            return
+        }
+
+        // Fast path: engine is already running and the output device is the SAME.
+        // This handles spurious "start" calls (e.g. from picker re-selections)
+        // without bouncing the whole engine.
         if isRunning, tapInput.deviceID != 0 {
             if rebindOutput(output: output) {
                 return
             }
-            log.info("Fast-path output rebind failed; falling back to full restart")
         }
 
         fullStart(output: output)
