@@ -16,6 +16,9 @@ struct MenuBarView: View {
     @State private var selectedPresetID: UUID?
     @State private var showCrossfeedHelp: Bool = false
     @State private var showLoudnessHelp: Bool = false
+    /// Remembered loudness offset (dB) so toggling loudness off and back on
+    /// restores the user's last amount instead of resetting to a default.
+    @AppStorage("lurar.loudnessLastOffset") private var loudnessLastOffset: Double = -20
     /// TCC state, lazily read at body time so the first popover open after
     /// onboarding doesn't briefly render the pre-consent gate.
     ///
@@ -478,6 +481,12 @@ struct MenuBarView: View {
     /// the body font without truncation.
     private let labelColumnWidth: CGFloat = 56
 
+    /// Track tint for a slider whose control is switched off. A muted grey —
+    /// `.secondary` reads almost white against the dark popover, so we use a
+    /// fixed mid grey that recedes and clearly differs from the accent fill
+    /// shown when the control is on.
+    private let offTrackTint = Color(white: 0.4)
+
     /// Width of the dropdown chrome. `Picker` (NSPopUpButton) ignores `.frame`,
     /// so we use `Menu` instead and constrain its label — Menu *does* honor it.
     private let pickerWidth: CGFloat = 232
@@ -594,15 +603,24 @@ struct MenuBarView: View {
                 Text(loudnessValueLabel)
                     .monospacedDigit()
                     .font(.callout)
+                sectionPowerToggle(isOn: loudnessIsOn, name: "loudness compensation", action: toggleLoudness)
             }
             Slider(
                 value: Binding(
                     get: { Double(engine.loudnessOffsetDB) },
-                    set: { engine.setLoudnessOffset(Float($0)) }
+                    set: { newValue in
+                        // Dragging the slider implicitly enables loudness (any
+                        // non-zero offset), and turns it off at 0 dB.
+                        engine.setLoudnessOffset(Float(newValue))
+                        // Remember the last meaningful amount so the toggle can
+                        // restore it after an off/on cycle.
+                        if newValue <= -0.5 { loudnessLastOffset = newValue }
+                    }
                 ),
                 in: Double(EQEngine.loudnessOffsetRange.lowerBound)...Double(EQEngine.loudnessOffsetRange.upperBound)
             )
-            .help("Loudness compensation \u{2014} ISO 226 contour boost for quiet listening. 0 dB = off.")
+            .tint(loudnessIsOn ? Color.accentColor : offTrackTint)
+            .help("Loudness compensation \u{2014} ISO 226 contour boost for quiet listening.")
         }
     }
 
@@ -657,6 +675,35 @@ struct MenuBarView: View {
         .font(.callout)
     }
 
+    /// Power-style on/off toggle matching the engine toggle in `statusRow`, so
+    /// the crossfeed and loudness controls read as a consistent set with it.
+    /// Placed at the trailing edge of each row's header line so all three
+    /// on/off controls align down the right edge of the popover.
+    private func sectionPowerToggle(isOn: Bool, name: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: isOn ? "power.circle.fill" : "power.circle")
+                .foregroundStyle(isOn ? Color.green : Color.secondary)
+                .imageScale(.large)
+        }
+        .buttonStyle(.plain)
+        .help(isOn ? "Turn \(name) off" : "Turn \(name) on")
+    }
+
+    /// Loudness is "on" whenever the offset is meaningfully below 0 dB. The
+    /// `< -0.5` threshold matches `loudnessValueLabel` so the toggle, the
+    /// readout, and the slider's enabled state all agree.
+    private var loudnessIsOn: Bool { engine.loudnessOffsetDB <= -0.5 }
+
+    private func toggleLoudness() {
+        if loudnessIsOn {
+            loudnessLastOffset = Double(engine.loudnessOffsetDB)
+            engine.setLoudnessOffset(0)
+        } else {
+            let restore = loudnessLastOffset <= -0.5 ? loudnessLastOffset : -20
+            engine.setLoudnessOffset(Float(restore))
+        }
+    }
+
     /// Global crossfeed amount. Sits in the menu bar rather than the EQ editor
     /// because it applies on top of every preset, not as part of one.
     private var crossfeedRow: some View {
@@ -675,11 +722,18 @@ struct MenuBarView: View {
                     crossfeedHelp
                 }
                 Spacer()
-                Text(crossfeedSettings.intensity <= 0
-                     ? "Off"
-                     : String(format: "%.0f%%", crossfeedSettings.intensity * 100))
+                Text(crossfeedSettings.isOn
+                     ? String(format: "%.0f%%", crossfeedSettings.intensity * 100)
+                     : "Off")
                     .monospacedDigit()
                     .font(.callout)
+                sectionPowerToggle(isOn: crossfeedSettings.isOn, name: "crossfeed") {
+                    let newValue = !crossfeedSettings.isOn
+                    crossfeedSettings.isOn = newValue
+                    // Off drives the engine with an effective intensity of 0
+                    // while the stored intensity (slider position) is kept.
+                    engine.setCrossfeedIntensity(newValue ? crossfeedSettings.intensity : 0)
+                }
             }
             Slider(
                 value: Binding(
@@ -687,12 +741,16 @@ struct MenuBarView: View {
                     set: { newValue in
                         let v = Float(newValue)
                         crossfeedSettings.intensity = v
+                        // Dragging the slider implicitly enables crossfeed;
+                        // dragging it back to 0 turns it off.
+                        crossfeedSettings.isOn = v > 0
                         engine.setCrossfeedIntensity(v)
                     }
                 ),
                 in: 0...1
             )
-            .help("Crossfeed \u{2014} headphone-to-speaker imaging blend. 0% = off.")
+            .tint(crossfeedSettings.isOn ? Color.accentColor : offTrackTint)
+            .help("Crossfeed \u{2014} headphone-to-speaker imaging blend.")
         }
     }
 
