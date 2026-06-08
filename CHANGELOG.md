@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0](https://github.com/lsjoberg/lurar/compare/v0.6.0...v0.7.0) (2026-06-08)
+
+
+### Features
+
+* **devices:** opt-in auto-switch to newly connected output ([070bf99](https://github.com/lsjoberg/lurar/commit/070bf9900c7462bebe873dd93529a29343b4ce2a))
+* **editor:** label header fields and extend preamp floor ([be40d4c](https://github.com/lsjoberg/lurar/commit/be40d4ccce4e7a7c90674dcde0f79df53758464d))
+
 ## [0.6.0](https://github.com/lsjoberg/lurar/compare/v0.5.3...v0.6.0) (2026-06-07)
 
 
