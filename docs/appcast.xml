@@ -6,21 +6,20 @@
     <description>System-wide audio EQ for macOS.</description>
     <language>en</language>
     <item>
-      <title>Lurar 0.7.0</title>
-      <pubDate>Mon, 08 Jun 2026 08:27:15 +0000</pubDate>
-      <sparkle:version>28</sparkle:version>
-      <sparkle:shortVersionString>0.7.0</sparkle:shortVersionString>
+      <title>Lurar 0.8.0</title>
+      <pubDate>Mon, 08 Jun 2026 20:02:58 +0000</pubDate>
+      <sparkle:version>29</sparkle:version>
+      <sparkle:shortVersionString>0.8.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.2</sparkle:minimumSystemVersion>
       <description><![CDATA[<h3 dir="auto">Features</h3>
 <ul dir="auto">
-<li><strong>devices:</strong> opt-in auto-switch to newly connected output (<a href="https://github.com/lsjoberg/lurar/commit/070bf9900c7462bebe873dd93529a29343b4ce2a">070bf99</a>)</li>
-<li><strong>editor:</strong> label header fields and extend preamp floor (<a href="https://github.com/lsjoberg/lurar/commit/be40d4ccce4e7a7c90674dcde0f79df53758464d">be40d4c</a>)</li>
-</ul><p style="margin-top:1.5em;font-size:0.9em"><a href="https://github.com/lsjoberg/lurar/releases/tag/v0.7.0">View full release on GitHub →</a></p>]]></description>
+<li><strong>editor:</strong> group preset metadata fields into a details card (<a href="https://github.com/lsjoberg/lurar/commit/5a504b7dc4bcdbe534ac554a04f06edf7ec93a6d">5a504b7</a>)</li>
+</ul><p style="margin-top:1.5em;font-size:0.9em"><a href="https://github.com/lsjoberg/lurar/releases/tag/v0.8.0">View full release on GitHub →</a></p>]]></description>
       <enclosure
-        url="https://github.com/lsjoberg/lurar/releases/download/v0.7.0/Lurar-0.7.0.dmg"
-        length="2647858"
+        url="https://github.com/lsjoberg/lurar/releases/download/v0.8.0/Lurar-0.8.0.dmg"
+        length="2648783"
         type="application/octet-stream"
-        sparkle:edSignature="Q2JJ5xW6WEDSqx37SC7zrzb8sw2VvgPsyfGn3KB1N8WVrUBJRUg6kNMIpJEMJDLSL+L7MZLGVcYiiCe4TLywBw==" />
+        sparkle:edSignature="MYwJ32+Z9tUYopWXgpixf7kpA55xHtTpF+DE0z8vaUBRhDzxTnt9neBOkMZdcGa2bZRDCfmh1sYDd3eicIZUCQ==" />
     </item>
   </channel>
 </rss>
