@@ -43,6 +43,14 @@ struct EQEditorView: View {
     /// observer corrects it as soon as the window reports its state.
     @State private var isWindowVisible: Bool = true
 
+    /// Preamp slider/label bounds. The engine itself doesn't clamp preamp
+    /// (`EQEngine.setPreamp` just converts dB→linear), so this range is purely
+    /// the editor's floor. Extended below the old −12 dB so presets with large
+    /// positive band gains — or users stacking loudness on top — have room to
+    /// pull the master down further before the cascade clips. The 0 dB ceiling
+    /// stays: preamp only ever attenuates.
+    static let preampRange: ClosedRange<Float> = -24...0
+
     private var visiblePresets: [EQPreset] {
         Lurar.visiblePresets(catalog: presetCatalog, store: presetStore)
     }
@@ -433,26 +441,31 @@ struct EQEditorView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                TextField("Preset name", text: $draft.name)
-                    .font(.title2.weight(.semibold))
-                    .textFieldStyle(.plain)
-                    .disabled(isBuiltIn)
-                if isBuiltIn {
-                    Text("Built-in")
-                        .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.secondary.opacity(0.15), in: Capsule())
-                        .foregroundStyle(.secondary)
-                } else if isDirty {
-                    Text("Unsaved")
-                        .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.orange.opacity(0.18), in: Capsule())
-                        .foregroundStyle(.orange)
+        VStack(alignment: .leading, spacing: 8) {
+            // Caption above the title makes the heading-styled name field read
+            // as an editable field rather than a static label (#118).
+            VStack(alignment: .leading, spacing: 1) {
+                fieldCaption("Preset name")
+                HStack(spacing: 8) {
+                    TextField("Untitled preset", text: $draft.name)
+                        .font(.title2.weight(.semibold))
+                        .textFieldStyle(.plain)
+                        .disabled(isBuiltIn)
+                    if isBuiltIn {
+                        Text("Built-in")
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.secondary.opacity(0.15), in: Capsule())
+                            .foregroundStyle(.secondary)
+                    } else if isDirty {
+                        Text("Unsaved")
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.orange.opacity(0.18), in: Capsule())
+                            .foregroundStyle(.orange)
+                    }
                 }
             }
             if !isBuiltIn, let ref = draft.parentRef {
@@ -464,15 +477,44 @@ struct EQEditorView: View {
                     Spacer()
                 }
             }
-            HStack(spacing: 8) {
-                TextField("Headphone", text: $draft.headphone)
-                    .textFieldStyle(.roundedBorder)
-                    .disabled(isBuiltIn)
-                TextField("Source", text: $draft.source)
-                    .textFieldStyle(.roundedBorder)
-                    .disabled(isBuiltIn)
+            HStack(alignment: .top, spacing: 12) {
+                labeledTextField(
+                    caption: "Headphone",
+                    placeholder: "e.g. Sennheiser HD 600",
+                    text: $draft.headphone
+                )
+                labeledTextField(
+                    caption: "Source",
+                    placeholder: "e.g. oratory1990",
+                    text: $draft.source
+                )
             }
-            .font(.callout)
+        }
+    }
+
+    /// Small gray caption that labels a header field. Clarifies what each of
+    /// the three editable fields is for — and, above the title, signals that
+    /// the heading-styled name is itself editable (#118).
+    private func fieldCaption(_ text: String) -> some View {
+        Text(text)
+            .font(.caption2.weight(.medium))
+            .foregroundStyle(.secondary)
+    }
+
+    /// Captioned, bordered text field used for the Headphone/Source metadata.
+    /// The caption stays visible after the field is filled, where the
+    /// placeholder would have disappeared.
+    private func labeledTextField(
+        caption: String,
+        placeholder: String,
+        text: Binding<String>
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            fieldCaption(caption)
+            TextField(placeholder, text: text)
+                .textFieldStyle(.roundedBorder)
+                .font(.callout)
+                .disabled(isBuiltIn)
         }
     }
 
@@ -851,7 +893,7 @@ struct EQEditorView: View {
                 Spacer()
                 EditableValueLabel(
                     value: $draft.preamp,
-                    range: -12...0,
+                    range: Self.preampRange,
                     format: { String(format: "%+.1f dB", $0) },
                     parse: Self.parseDecibels,
                     step: { _ in 0.1 },
@@ -867,11 +909,11 @@ struct EQEditorView: View {
                         engine.setPreamp(Float(newValue))
                     }
                 ),
-                in: -12...0,
+                in: Double(Self.preampRange.lowerBound)...Double(Self.preampRange.upperBound),
                 onEditingChanged: sliderEditingChanged
             )
             .disabled(editsLocked)
-            .help("Preamp \u{2014} master attenuation in dB (\u{2212}12 to 0). Click the value to type it.")
+            .help("Preamp \u{2014} master attenuation in dB (\u{2212}\(Int(-Self.preampRange.lowerBound)) to 0). Click the value to type it.")
             ClipMeterView(clipMeter: engine.clipMeter, isVisible: isWindowVisible)
                 .padding(.top, 2)
         }
