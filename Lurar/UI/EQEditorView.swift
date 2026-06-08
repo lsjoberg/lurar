@@ -42,6 +42,10 @@ struct EQEditorView: View {
     /// closed, minimised, or fully occluded. Starts true; the occlusion-state
     /// observer corrects it as soon as the window reports its state.
     @State private var isWindowVisible: Bool = true
+    /// Drives the preset-name field's focus chrome — the border brightens to
+    /// the accent colour while editing, and the trailing pencil hint hides so
+    /// it doesn't crowd the cursor (#118).
+    @FocusState private var nameFieldFocused: Bool
 
     /// Preamp slider/label bounds. The engine itself doesn't clamp preamp
     /// (`EQEngine.setPreamp` just converts dB→linear), so this range is purely
@@ -442,32 +446,11 @@ struct EQEditorView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Caption above the title makes the heading-styled name field read
-            // as an editable field rather than a static label (#118).
-            VStack(alignment: .leading, spacing: 1) {
-                fieldCaption("Preset name")
-                HStack(spacing: 8) {
-                    TextField("Untitled preset", text: $draft.name)
-                        .font(.title2.weight(.semibold))
-                        .textFieldStyle(.plain)
-                        .disabled(isBuiltIn)
-                    if isBuiltIn {
-                        Text("Built-in")
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.secondary.opacity(0.15), in: Capsule())
-                            .foregroundStyle(.secondary)
-                    } else if isDirty {
-                        Text("Unsaved")
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.orange.opacity(0.18), in: Capsule())
-                            .foregroundStyle(.orange)
-                    }
-                }
-            }
+            detailsCard
+            // Lineage + Reset describe the *curve's* provenance, not the
+            // editable text metadata, so they sit below the field group now
+            // instead of wedging between the name and the headphone/source
+            // fields the way they used to (#118).
             if !isBuiltIn, let ref = draft.parentRef {
                 HStack(spacing: 8) {
                     parentChip(ref: ref)
@@ -477,6 +460,16 @@ struct EQEditorView: View {
                     Spacer()
                 }
             }
+        }
+    }
+
+    /// The three editable metadata fields — name, headphone, source — grouped
+    /// into one bordered card so they read as a related set of inputs rather
+    /// than three loose elements, and so the heading-styled name clearly sits
+    /// inside an editable container (#118).
+    private var detailsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            nameField
             HStack(alignment: .top, spacing: 12) {
                 labeledTextField(
                     caption: "Headphone",
@@ -490,6 +483,81 @@ struct EQEditorView: View {
                 )
             }
         }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.secondary.opacity(0.06))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(.separator, lineWidth: 1)
+        )
+    }
+
+    /// Preset-name input. Keeps the large title type for prominence, but for
+    /// editable presets wraps it in a focusable, bordered field so it no
+    /// longer reads as a static heading: the caption above, the border, and
+    /// the trailing pencil all signal it's editable, and the border lights up
+    /// in the accent colour while focused. Built-in presets, whose name is
+    /// read-only, drop the input chrome and show the "Built-in" pill (#118).
+    private var nameField: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            fieldCaption("Preset name")
+            HStack(spacing: 8) {
+                TextField("Untitled preset", text: $draft.name)
+                    .font(.title2.weight(.semibold))
+                    .textFieldStyle(.plain)
+                    .focused($nameFieldFocused)
+                    .disabled(isBuiltIn)
+                if isBuiltIn {
+                    builtInBadge
+                } else {
+                    if isDirty { unsavedBadge }
+                    if !nameFieldFocused {
+                        Image(systemName: "pencil")
+                            .imageScale(.small)
+                            .foregroundStyle(.tertiary)
+                            .help("Click to rename this preset")
+                    }
+                }
+            }
+            .padding(.horizontal, isBuiltIn ? 0 : 8)
+            .padding(.vertical, isBuiltIn ? 0 : 7)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isBuiltIn ? Color.clear : Color.primary.opacity(0.05))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(nameFieldBorder, lineWidth: nameFieldFocused ? 1.5 : 1)
+            )
+            .animation(.easeInOut(duration: 0.12), value: nameFieldFocused)
+        }
+    }
+
+    /// Accent border while the name field is focused, a faint resting border
+    /// otherwise, and no border at all for read-only built-ins.
+    private var nameFieldBorder: Color {
+        if isBuiltIn { return .clear }
+        return nameFieldFocused ? .accentColor : .secondary.opacity(0.25)
+    }
+
+    private var builtInBadge: some View {
+        Text("Built-in")
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Color.secondary.opacity(0.15), in: Capsule())
+            .foregroundStyle(.secondary)
+    }
+
+    private var unsavedBadge: some View {
+        Text("Unsaved")
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Color.orange.opacity(0.18), in: Capsule())
+            .foregroundStyle(.orange)
     }
 
     /// Small gray caption that labels a header field. Clarifies what each of
