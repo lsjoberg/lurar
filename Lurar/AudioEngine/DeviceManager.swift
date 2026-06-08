@@ -49,12 +49,33 @@ final class DeviceManager: ObservableObject {
             .filter(\.hasOutput)
             .filter { !$0.uid.hasPrefix("app.lurar.Lurar.aggregate.") }
             .sorted { $0.name.localizedCompare($1.name) == .orderedAscending }
+
+        // Snapshot the previous visible set before overwriting it — used both
+        // for the material-change gate and to spot devices that just appeared.
+        let previousUIDs = lastVisibleUIDs
+        let newUIDs = outs.map(\.uid)
+        let addedUIDs = Set(newUIDs).subtracting(previousUIDs)
+
         self.outputDevices = outs
 
-        // Output policy: keep current selection if still around; otherwise
-        // restore the last-used UID; otherwise fall back to the current system
-        // default; otherwise the first device.
-        if let sel = selectedOutput, let still = outs.first(where: { $0.uid == sel.uid }) {
+        // Opt-in auto-switch: when a brand-new output device connects — e.g. a
+        // USB DAC that macOS detects but doesn't promote to system default —
+        // move Lurar's output to it. Only on real topology changes (never the
+        // initial population) and only when the user enabled the toggle. The
+        // aggregate filter above keeps our own tap churn out of `addedUIDs`, so
+        // this fires on genuine, user-visible plug-ins. When it doesn't apply
+        // we fall through to the normal keep/restore policy below.
+        let newlyConnected = (!initial && preferences.autoSwitchToNewDevices)
+            ? outs.first(where: { addedUIDs.contains($0.uid) })
+            : nil
+
+        // Output policy: jump to a just-connected device if auto-switch claimed
+        // one; otherwise keep the current selection if it's still around;
+        // otherwise restore the last-used UID; otherwise fall back to the
+        // current system default; otherwise the first device.
+        if let newlyConnected {
+            selectedOutput = newlyConnected
+        } else if let sel = selectedOutput, let still = outs.first(where: { $0.uid == sel.uid }) {
             selectedOutput = still
         } else {
             let remembered = preferences.lastOutputUID
@@ -71,11 +92,10 @@ final class DeviceManager: ObservableObject {
         // notification still fires here, and firing `onTopologyChange`
         // would force a redundant engine restart for something the user
         // can't see.
-        let newUIDs = outs.map(\.uid)
-        let materialChange = newUIDs != lastVisibleUIDs
+        let materialChange = newUIDs != previousUIDs
         lastVisibleUIDs = newUIDs
 
-        log.info("Refresh — output=\(self.selectedOutput?.name ?? "nil") initial=\(initial) materialChange=\(materialChange)")
+        log.info("Refresh — output=\(self.selectedOutput?.name ?? "nil") initial=\(initial) materialChange=\(materialChange) autoSwitched=\(newlyConnected != nil)")
 
         if !initial && materialChange { onTopologyChange?() }
     }

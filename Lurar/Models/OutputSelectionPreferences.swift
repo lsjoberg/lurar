@@ -8,6 +8,10 @@ import Combine
 ///    rather than a hardcoded fallback.
 /// 2. `followMode` — how Lurar reacts when the macOS system default output
 ///    changes mid-session (e.g. AirPods connect). See `FollowMode`.
+/// 3. `autoSwitchToNewDevices` — whether to move Lurar's output to a device
+///    the moment it connects, even if macOS keeps its own default unchanged
+///    (e.g. plugging in a USB DAC). Off by default — it's an intrusive
+///    behavior change, so it's opt-in.
 ///
 /// Tiny scalar state — backed by `UserDefaults` directly so it lives across
 /// launches without an extra file or schema.
@@ -22,6 +26,7 @@ final class OutputSelectionPreferences: ObservableObject {
 
     static let lastOutputUIDKey = "lurar.lastOutputDeviceUID"
     static let followModeKey = "lurar.followSystemDefaultMode"
+    static let autoSwitchToNewDevicesKey = "lurar.autoSwitchToNewlyConnectedDevices"
 
     private let defaults: UserDefaults
 
@@ -48,6 +53,16 @@ final class OutputSelectionPreferences: ObservableObject {
         }
         set {
             defaults.set(newValue.rawValue, forKey: Self.followModeKey)
+            objectWillChange.send()
+        }
+    }
+
+    /// Defaults to `false` (the `UserDefaults.bool` default for an unset key),
+    /// which is what we want — auto-switching is opt-in.
+    var autoSwitchToNewDevices: Bool {
+        get { defaults.bool(forKey: Self.autoSwitchToNewDevicesKey) }
+        set {
+            defaults.set(newValue, forKey: Self.autoSwitchToNewDevicesKey)
             objectWillChange.send()
         }
     }

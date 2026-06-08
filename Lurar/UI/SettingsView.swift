@@ -96,6 +96,21 @@ private struct GeneralSettingsTab: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 6) {
+                Toggle("Switch to newly connected devices", isOn: Binding(
+                    get: { outputPreferences.autoSwitchToNewDevices },
+                    set: { outputPreferences.autoSwitchToNewDevices = $0 }
+                ))
+                .toggleStyle(.switch)
+                .help("Move Lurar's output to a device the moment it's connected")
+                Text("When a new output connects \u{2014} like a USB DAC \u{2014} Lurar switches its output to it automatically, even when macOS leaves its own default unchanged.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
                 Toggle("Mute briefly on output rate change", isOn: $muteOnDeviceRateChange)
                     .toggleStyle(.switch)
                     .help("Fade audio out for ~150 ms when the output device's sample rate changes, to mask the resampler transient")
