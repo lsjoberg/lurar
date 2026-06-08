@@ -51,6 +51,7 @@ private struct GeneralSettingsTab: View {
 
     @AppStorage("startEngineOnLaunch") private var startEngineOnLaunch: Bool = true
     @AppStorage(EQEngine.muteOnDeviceRateChangeKey) private var muteOnDeviceRateChange: Bool = true
+    @AppStorage(EQEngine.releaseDeviceWhenIdleKey) private var releaseDeviceWhenIdle: Bool = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -98,6 +99,18 @@ private struct GeneralSettingsTab: View {
                     .help("How Lurar reacts when an output device connects or the system default changes")
                 }
                 Text(outputPreferences.switchPolicy.detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Release the output device when nothing is playing", isOn: $releaseDeviceWhenIdle)
+                    .toggleStyle(.switch)
+                    .help("Tear down the audio chain while the Mac is silent so Lurar doesn't hold your output device active")
+                Text("While nothing is playing, Lurar holds no audio device and spins up the moment audio starts. This stops Lurar from pulling AirPods (or other auto-switching headphones) to the Mac when you wake it with no sound playing. Turning it off keeps the engine engaged for the whole session, which can add a brief delay or click at the start of playback.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

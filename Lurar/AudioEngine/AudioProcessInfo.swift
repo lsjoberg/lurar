@@ -41,6 +41,26 @@ enum AudioProcessInfo {
         return value.isEmpty ? nil : value
     }
 
+    /// Reads `kAudioProcessPropertyIsRunningOutput` — whether this process is
+    /// currently running an *output* IO (i.e. actively producing audio). Lurar
+    /// uses this, summed over every process object except its own, to tell
+    /// whether any other app is playing — the cue for spinning the engine up or
+    /// letting it go idle. Reading it is independent of any tap, so it's a clean
+    /// signal even while Lurar itself is processing (we just exclude our own
+    /// process object). Input-only processes (a recorder with no playback) read
+    /// false here, so they never wake the engine.
+    static func isRunningOutput(_ processObject: AudioObjectID) -> Bool {
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioProcessPropertyIsRunningOutput,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var value: UInt32 = 0
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        let status = AudioObjectGetPropertyData(processObject, &addr, 0, nil, &size, &value)
+        return status == noErr && value != 0
+    }
+
     /// Reads `kAudioProcessPropertyPID` from a Core Audio process object.
     /// Used to look up an `NSRunningApplication` for display name / icon.
     static func pid(for processObject: AudioObjectID) -> pid_t? {

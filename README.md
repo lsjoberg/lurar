@@ -67,6 +67,7 @@ Lurar persists state in three places. Each is independently resettable; pick wha
 | `lurar.presets.migratedBuiltIns_v1` | One-shot migration done |
 | `lurar.lastPresetByDevice` | `[deviceUID: presetUUID]` map for per-device auto-recall |
 | `lurar.suggestionsDismissedDevices` | Device UIDs you said *Not now* to in the auto-detect banner |
+| `lurar.releaseDeviceWhenIdle` | When set (default on), the engine tears its audio chain down while nothing is playing so Lurar doesn't hold your output device active — stops AirPods being pulled to the Mac on a silent wake |
 | `crossfeed.intensity`, `crossfeed.cutoff` | Crossfeed settings |
 | `spectrum.enabled` | Spectrum overlay toggle in the editor |
 | `lurar.burnInByDevice` | `[deviceUID: {name, seconds}]` engine runtime tally for the Settings → General "Burn-in" section |

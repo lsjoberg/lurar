@@ -9,6 +9,13 @@ private let log = Logger(subsystem: "app.lurar.Lurar", category: "EQEngine")
 
 @MainActor
 final class EQEngine: ObservableObject {
+    /// The user has the engine turned **on**. This is the menu-bar / status-bar
+    /// "engine is on" flag the UI binds to. It does *not* mean the audio chain
+    /// is currently built: while the Mac is silent and `releaseDeviceWhenIdle`
+    /// is on, the chain (tap + DSP + HAL output) is torn down so Lurar isn't
+    /// holding the output device — e.g. AirPods — active on the Mac. The chain
+    /// is rebuilt automatically the moment another app starts playing. See
+    /// `chainActive` for "is the audio chain actually up right now".
     @Published private(set) var isRunning: Bool = false
     /// True while audio is actually flowing — the tap is delivering buffers and
     /// the output peak is above the silence floor. Distinct from `isRunning`,
@@ -89,6 +96,51 @@ final class EQEngine: ObservableObject {
     /// without polling.
     @Published private(set) var activeOutput: AudioDevice?
 
+    /// True while the audio chain (tap + DSP + HAL output) is actually built
+    /// and driving the DAC. Distinct from `isRunning` (armed): when the engine
+    /// is armed but the Mac is silent we tear the chain down — `isRunning`
+    /// stays true, `chainActive` goes false — so we don't hold the output
+    /// device (AirPods) active during silence. All the chain-only guards
+    /// (rate listeners, diagnostic timer, restart paths) gate on this, not on
+    /// `isRunning`.
+    private var chainActive = false
+    /// The output device the user selected. Held even while idle so the chain
+    /// can be rebuilt on the right device when playback resumes.
+    private var armedOutput: AudioDevice?
+
+    // Idle-gating state (don't hold the output device during silence).
+
+    /// Lurar's own Core Audio process object, cached so the activity poll can
+    /// exclude our own output when deciding whether *another* app is playing.
+    private var ownProcessObject: AudioObjectID?
+    /// Repeating timer (only while armed) that watches whether any other app is
+    /// producing audio output, to build the chain on first playback and release
+    /// it after silence. Cheap: a process-object enumeration on the main thread.
+    private var activityTimer: Timer?
+    /// Fires when an app starts/stops registering audio — nudges the activity
+    /// check immediately so wake-from-idle doesn't wait for the next poll tick.
+    private var processListListener: AudioProcessListChangeListener?
+    /// Wall-clock of the last activity tick where audio was present (another app
+    /// running output, or our own clip meter still hearing signal). Drives the
+    /// idle grace period.
+    private var lastAudioPresentAt: Date = .distantPast
+
+    /// User-defaults key for the "release the output device while nothing is
+    /// playing" behaviour. Defaults on. With it off, the engine builds its
+    /// chain immediately on start and holds it for the whole session (the
+    /// pre-0.x behaviour), which can pull AirPods to the Mac during silence.
+    static let releaseDeviceWhenIdleKey = "lurar.releaseDeviceWhenIdle"
+    private var releaseDeviceWhenIdle: Bool {
+        UserDefaults.standard.object(forKey: Self.releaseDeviceWhenIdleKey) as? Bool ?? true
+    }
+    /// How often the activity watcher polls. Snappy enough that audio starts
+    /// within ~a second of pressing play, cheap enough to leave running.
+    private static let activityPollInterval: TimeInterval = 1.0
+    /// Extra silence past the clip-meter `playbackHangover` before the chain is
+    /// torn down. Short because `playbackHangover` already bridges track gaps;
+    /// this just keeps a single quiet poll tick from collapsing the chain.
+    private static let idleGraceSeconds: TimeInterval = 3
+
     /// User's per-app exclusion list. Read at tap-creation time in `fullStart`
     /// and after every change via `reEnumerateTapTargets`. Weak because the
     /// store is owned by the App (same lifetime as the engine, so this is just
@@ -163,21 +215,46 @@ final class EQEngine: ObservableObject {
 
     // MARK: - Lifecycle
 
+    /// Arm the engine on `output`. "Armed" (`isRunning`) means the user wants
+    /// Lurar on; whether the audio chain is actually built underneath depends on
+    /// the idle gate (see `releaseDeviceWhenIdle`). When idle-release is off this
+    /// behaves exactly as before: build the chain immediately and hold it.
     func start(output: AudioDevice) {
-        log.info("start output=\(output.name)/\(output.uid) prev=\(self.activeOutput?.uid ?? "nil") running=\(self.isRunning)")
+        log.info("start output=\(output.name)/\(output.uid) prev=\(self.activeOutput?.uid ?? "nil") armed=\(self.isRunning) chainActive=\(self.chainActive)")
+        armedOutput = output
+        isRunning = true
 
-        // Fast path: engine is already running and only the output device is changing.
-        // The tap + aggregate + input AU don't depend on the output, so leave them up
-        // and only re-bind HALOutput. Rebuilding the tap takes ~hundreds of ms and
-        // would hang the picker.
-        if isRunning, tapInput.deviceID != 0 {
+        // Fast path: the chain is already up and only the output device is
+        // changing. The tap + aggregate + input AU don't depend on the output,
+        // so leave them up and only re-bind HALOutput. Rebuilding the tap takes
+        // ~hundreds of ms and would hang the picker.
+        if chainActive, tapInput.deviceID != 0 {
             if rebindOutput(output: output) {
                 return
             }
             log.info("Fast-path output rebind failed; falling back to full restart")
+            fullStart(output: output)
+            return
         }
 
-        fullStart(output: output)
+        // Idle gate off → legacy behaviour: build the chain now and keep it for
+        // the whole session.
+        guard releaseDeviceWhenIdle else {
+            fullStart(output: output)
+            return
+        }
+
+        // Armed with the idle gate on. Start the activity watcher (idempotent)
+        // and build the chain only if another app is already playing; otherwise
+        // stay idle so we don't pull the output device (AirPods) to the Mac
+        // while it's silent. The watcher builds the chain when playback starts.
+        startActivityWatcher()
+        if anyOtherAppRunningOutput() {
+            fullStart(output: output)
+        } else {
+            statusMessage = "Waiting for audio"
+            log.info("Armed but Mac is silent — holding no audio device until playback starts")
+        }
     }
 
     private func rebindOutput(output: AudioDevice) -> Bool {
@@ -291,10 +368,7 @@ final class EQEngine: ObservableObject {
         //    Without it the tap silently delivers zero buffers. Prompt the user if
         //    not yet authorized.
         if !AudioCapturePermission.ensureAuthorized() {
-            try? halOutput.stop()
-            ringBuffer.reset()
-            isRunning = false
-            statusMessage = "Audio capture permission denied. Grant in System Settings → Privacy & Security."
+            abortChainBuild("Audio capture permission denied. Grant in System Settings → Privacy & Security.")
             log.error("Engine start aborted: TCC audio capture not authorized")
             return
         }
@@ -313,11 +387,7 @@ final class EQEngine: ObservableObject {
             tapSampleRate = prepared.sampleRate
             activeSampleRate = tapSampleRate
         } catch {
-            try? tapInput.stop()
-            try? halOutput.stop()
-            ringBuffer.reset()
-            isRunning = false
-            statusMessage = "Error: \(String(describing: error))"
+            abortChainBuild("Error: \(String(describing: error))")
             log.error("Tap setup failed: \(String(describing: error))")
             return
         }
@@ -329,11 +399,7 @@ final class EQEngine: ObservableObject {
         // moves the device rate mid-run, the HAL Output AU's internal SRC
         // bridges the halSR → device-rate gap; we don't re-pin.
         guard let halSR = Self.preferredHalSR(for: output.id) else {
-            try? tapInput.stop()
-            try? halOutput.stop()
-            ringBuffer.reset()
-            isRunning = false
-            statusMessage = "Error: could not read output device sample rate"
+            abortChainBuild("Error: could not read output device sample rate")
             log.error("Could not read output device rate")
             return
         }
@@ -358,9 +424,7 @@ final class EQEngine: ObservableObject {
             channels: 2,
             interleaved: false
         ) else {
-            try? tapInput.stop()
-            try? halOutput.stop()
-            statusMessage = "Error: could not build client format"
+            abortChainBuild("Error: could not build client format")
             return
         }
         log.info("Client format: \(clientFormat)")
@@ -374,9 +438,7 @@ final class EQEngine: ObservableObject {
         resampler?.configure(inputSampleRate: tapSampleRate)
         resampler?.reset()
         guard let resampler else {
-            try? tapInput.stop()
-            try? halOutput.stop()
-            statusMessage = "Error: could not build resampler"
+            abortChainBuild("Error: could not build resampler")
             return
         }
 
@@ -415,8 +477,12 @@ final class EQEngine: ObservableObject {
             }
 
             activeOutput = output
-            isRunning = true
-            log.info("Engine started: tap=\(Int(tapSampleRate)) Hz → \(output.name) @ \(Int(halSR)) Hz halBounced=\(!canKeepHAL)")
+            chainActive = true
+            // Seed the idle grace so the activity watcher doesn't immediately
+            // collapse a chain we just built (the tap hasn't delivered its first
+            // peak yet, so "no audio present" would otherwise read true).
+            lastAudioPresentAt = Date()
+            log.info("Engine chain up: tap=\(Int(tapSampleRate)) Hz → \(output.name) @ \(Int(halSR)) Hz halBounced=\(!canKeepHAL)")
 
             // Hold the output muted for ~150 ms before fading in, then ramp
             // up over the standard fade-in window. On a cold engine start,
@@ -435,12 +501,25 @@ final class EQEngine: ObservableObject {
             installListeners(inputDeviceID: inputDeviceID, outputDeviceID: output.id)
             startDiagnosticTimer()
         } catch {
-            isRunning = false
-            statusMessage = "Error: \(String(describing: error))"
+            abortChainBuild("Error: \(String(describing: error))")
             log.error("Engine start failed: \(String(describing: error))")
-            try? tapInput.stop()
-            try? halOutput.stop()
         }
+    }
+
+    /// A chain build failed irrecoverably (permission denied, tap/format
+    /// error). Disarm fully — leaving the engine "armed" would let the activity
+    /// watcher retry `fullStart` every poll tick and spin on the same failure —
+    /// and surface `message` to the UI.
+    private func abortChainBuild(_ message: String) {
+        try? tapInput.stop()
+        try? halOutput.stop()
+        ringBuffer.reset()
+        chainActive = false
+        isRunning = false
+        armedOutput = nil
+        isPlayingAudio = false
+        stopActivityWatcher()
+        statusMessage = message
     }
 
     // Fade-in is longer than fade-out because there's usually a brief gap
@@ -476,7 +555,7 @@ final class EQEngine: ObservableObject {
         let work = DispatchWorkItem { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
-                guard self.isRunning else { return }
+                guard self.chainActive else { return }
                 let sr = self.halSampleRate ?? halSR
                 self.ringBuffer.setOutputGain(1, rampFrames: Int(Self.fadeInSeconds * sr))
                 self.pendingStartFadeInWork = nil
@@ -486,14 +565,21 @@ final class EQEngine: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.startupMuteHoldSeconds, execute: work)
     }
 
-    /// Stop the engine, fading audio to silence before tearing down the
-    /// audio chain so the DAC doesn't get cut mid-buffer. UI state
-    /// (`isRunning`, `statusMessage`) updates eagerly; audio teardown
-    /// happens after the fade completes. `completion` fires once the
-    /// teardown is done — used by the app delegate to gate
-    /// `applicationShouldTerminate`'s reply on the fade finishing.
+    /// Disarm the engine (user turned it off), fading audio to silence before
+    /// tearing down the chain so the DAC doesn't get cut mid-buffer. UI state
+    /// (`isRunning`, `statusMessage`) updates eagerly; audio teardown happens
+    /// after the fade completes. `completion` fires once teardown is done —
+    /// used by the app delegate to gate `applicationShouldTerminate`'s reply on
+    /// the fade finishing.
     func stop(completion: (() -> Void)? = nil) {
-        guard isRunning, halSampleRate != nil else {
+        // Disarm first and stop the idle watcher so it can't rebuild the chain
+        // behind us between here and the deferred teardown.
+        isRunning = false
+        armedOutput = nil
+        stopActivityWatcher()
+
+        // No chain up (idle, or it never built) → nothing to fade; finalize now.
+        guard chainActive, halSampleRate != nil else {
             finishStopSynchronously()
             completion?()
             return
@@ -510,10 +596,9 @@ final class EQEngine: ObservableObject {
         tearDownListeners()
         stopDiagnosticTimer()
 
-        // Flip UI state immediately so the menu bar reflects "Stopped"
-        // before the fade completes. The audio chain keeps running (now
-        // ramping toward silence) until the deferred teardown.
-        isRunning = false
+        // Flip remaining UI state immediately so the menu bar reflects
+        // "Stopped" before the fade completes. The audio chain keeps running
+        // (now ramping toward silence) until the deferred teardown.
         isPlayingAudio = false
         statusMessage = "Stopped"
 
@@ -533,11 +618,11 @@ final class EQEngine: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
-    /// Synchronously tear down listeners, the diagnostic timer, the tap,
-    /// the HAL Output AU, and reset the ring buffer. Called either
-    /// directly when the engine wasn't running, or from the deferred
-    /// stop completion after the fade.
-    private func finishStopSynchronously() {
+    /// Tear down the audio chain (tap, HAL Output AU, listeners, diagnostic
+    /// timer, ring buffer) while leaving the engine's *armed* state (`isRunning`,
+    /// `armedOutput`, the activity watcher) untouched. Shared by the disarm path
+    /// (`stop` → `finishStopSynchronously`) and the idle gate (`goIdle`).
+    private func teardownChain() {
         pendingStopWork?.cancel()
         pendingStopWork = nil
         tearDownListeners()
@@ -556,9 +641,119 @@ final class EQEngine: ObservableObject {
         activeOutput = nil
         activeSampleRate = nil
         halSampleRate = nil
-        isRunning = false
+        chainActive = false
         isPlayingAudio = false
+    }
+
+    /// Finalize a disarm: tear the chain down and report "Stopped". Called
+    /// directly when the engine wasn't actively processing, or from the
+    /// deferred stop completion after the fade.
+    private func finishStopSynchronously() {
+        teardownChain()
         statusMessage = "Stopped"
+    }
+
+    // MARK: - Idle gating (don't hold the output device during silence)
+
+    /// Start watching whether any other app is producing audio output, so the
+    /// chain can be built on first playback and released after silence.
+    /// Idempotent. Only meaningful while armed with `releaseDeviceWhenIdle` on.
+    private func startActivityWatcher() {
+        if ownProcessObject == nil {
+            ownProcessObject = try? AudioProcessInfo.processObject(for: getpid())
+        }
+        if processListListener == nil {
+            // An app starting/stopping audio registration is the most common
+            // trigger for "playback started" — react to it immediately rather
+            // than waiting up to one poll interval.
+            processListListener = AudioProcessListChangeListener { [weak self] in
+                Task { @MainActor in self?.evaluateActivity() }
+            }
+        }
+        guard activityTimer == nil else { return }
+        let timer = Timer(timeInterval: Self.activityPollInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.evaluateActivity() }
+        }
+        // Some slack so macOS can coalesce the wakeup; sub-second precision is
+        // not needed for a play/pause-grained decision.
+        timer.tolerance = Self.activityPollInterval * 0.3
+        RunLoop.main.add(timer, forMode: .common)
+        activityTimer = timer
+    }
+
+    private func stopActivityWatcher() {
+        activityTimer?.invalidate()
+        activityTimer = nil
+        processListListener = nil
+    }
+
+    /// True if any audio process *other than Lurar* is currently running an
+    /// output IO. Reading the per-process flag (rather than a device-level
+    /// "running somewhere") lets us exclude our own output, so the answer is
+    /// meaningful whether or not Lurar's own chain is up.
+    private func anyOtherAppRunningOutput() -> Bool {
+        let objects = (try? AudioProcessInfo.allProcessObjects()) ?? []
+        let own = ownProcessObject
+        for obj in objects {
+            if let own, obj == own { continue }
+            if AudioProcessInfo.isRunningOutput(obj) { return true }
+        }
+        return false
+    }
+
+    /// The activity FSM, run on the watcher timer (and on process-list changes)
+    /// while armed:
+    ///   • another app is producing output → build the chain if it isn't up
+    ///   • nothing else is producing output, and our own clip meter has gone
+    ///     quiet, for `idleGraceSeconds` → release the chain so we stop holding
+    ///     the output device (AirPods) active.
+    ///
+    /// Going idle requires *both* "no other app running output" and "clip meter
+    /// silent": the clip meter is ground truth for audio actually flowing
+    /// through Lurar, so even if a tapped app's `IsRunningOutput` reads
+    /// unexpectedly while we're capturing it, we won't collapse the chain
+    /// mid-playback. Waking relies only on the per-process flag, which is
+    /// reliable because our tap is down while idle.
+    private func evaluateActivity() {
+        guard isRunning else { return }
+        // Feature turned off mid-session: build the chain if it isn't up (so we
+        // don't strand the engine idle) and stop watching — the legacy
+        // hold-for-the-session behaviour takes over from here.
+        guard releaseDeviceWhenIdle else {
+            if !chainActive, let output = armedOutput { fullStart(output: output) }
+            stopActivityWatcher()
+            return
+        }
+
+        let othersActive = anyOtherAppRunningOutput()
+        let clipActive = chainActive && isPlayingAudio
+        if othersActive || clipActive {
+            lastAudioPresentAt = Date()
+        }
+
+        if othersActive {
+            if !chainActive, let output = armedOutput {
+                log.info("Idle gate: another app started output — building chain")
+                fullStart(output: output)
+            }
+            return
+        }
+
+        // Nothing else is playing. Release the chain once we've been quiet long
+        // enough (past the clip-meter hangover plus a small grace).
+        if chainActive,
+           !isPlayingAudio,
+           Date().timeIntervalSince(lastAudioPresentAt) >= Self.idleGraceSeconds {
+            goIdle()
+        }
+    }
+
+    /// Tear the chain down but stay armed, returning to the silent waiting
+    /// state. The activity watcher rebuilds it when playback resumes.
+    private func goIdle() {
+        log.info("Idle gate: Mac is silent — releasing audio chain, holding no output device")
+        teardownChain()
+        statusMessage = "Waiting for audio"
     }
 
     // MARK: - Runtime change handling
@@ -601,7 +796,7 @@ final class EQEngine: ObservableObject {
     /// place. The tap, the ring buffer, and the HAL Output AU all keep
     /// running, so the DAC stays locked and audio is continuous.
     private func handleTapRateNotification(deviceID: AudioDeviceID) {
-        guard isRunning else { return }
+        guard chainActive else { return }
         guard let actual = try? CoreAudioSampleRate.nominal(for: deviceID) else {
             log.info("Tap rate notification fired but rate read failed")
             return
@@ -622,7 +817,7 @@ final class EQEngine: ObservableObject {
     /// moved and the toggle is enabled, ride the resulting SRC-retune
     /// transient with a brief fade-mute on the ring buffer.
     private func handleOutputRateNotification(deviceID: AudioDeviceID) {
-        guard isRunning else { return }
+        guard chainActive else { return }
         let actual = (try? CoreAudioSampleRate.nominal(for: deviceID)) ?? -1
         let previous = lastDeviceRate
         if abs(actual - previous) < 0.5 {
@@ -669,7 +864,7 @@ final class EQEngine: ObservableObject {
         let work = DispatchWorkItem { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
-                guard self.isRunning else { return }
+                guard self.chainActive else { return }
                 let srNow = self.halSampleRate ?? 48000
                 self.ringBuffer.setOutputGain(1, rampFrames: Int(Self.deviceRateFadeInSeconds * srNow))
                 self.pendingFadeInWork = nil
@@ -738,7 +933,7 @@ final class EQEngine: ObservableObject {
     /// on pause (which would otherwise freeze the peak at its last, possibly
     /// loud, value). A hangover bridges brief dips so we don't flap.
     private func pollPlayback() {
-        guard isRunning else {
+        guard chainActive else {
             if isPlayingAudio { isPlayingAudio = false }
             return
         }
@@ -753,7 +948,7 @@ final class EQEngine: ObservableObject {
     }
 
     private func logDiagnosticSnapshot() {
-        guard isRunning else { return }
+        guard chainActive else { return }
         let snapshot = ringBuffer.underrunSnapshot()
         let hal = halSampleRate ?? 0
         let tap = activeSampleRate ?? 0
@@ -798,7 +993,7 @@ final class EQEngine: ObservableObject {
     }
 
     private func scheduleRestart(reason: String, force: Bool = false) {
-        guard isRunning, activeOutput != nil else { return }
+        guard chainActive, activeOutput != nil else { return }
         if !force, Date() < restartCooldownUntil {
             log.info("Ignoring \(reason) during cooldown")
             return
@@ -815,7 +1010,7 @@ final class EQEngine: ObservableObject {
         let work = DispatchWorkItem { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
-                guard self.isRunning, let output = self.activeOutput else { return }
+                guard self.chainActive, let output = self.activeOutput else { return }
                 // SR changed: the input AU's client format is stale, so a fast-path
                 // output-only rebind is not enough. Force a full teardown + rebuild.
                 self.fullStart(output: output)
@@ -832,12 +1027,16 @@ final class EQEngine: ObservableObject {
     /// Bypasses `restartCooldownUntil` because this is user-initiated; the
     /// cooldown exists to suppress restart loops from system events.
     func reEnumerateTapTargets() {
-        guard isRunning else { return }
+        // Nothing to rebuild while idle — the next chain build reads the
+        // exclusion list fresh in `fullStart`.
+        guard chainActive else { return }
         scheduleRestart(reason: "excluded apps changed", force: true)
     }
 
     func reportStartFailure(_ message: String) {
         isRunning = false
+        armedOutput = nil
+        stopActivityWatcher()
         statusMessage = message
         log.error("Start blocked: \(message)")
     }
@@ -989,7 +1188,9 @@ final class EQEngine: ObservableObject {
         if on == isBypassed { return }
         if isInComparisonMode { return }
         if on {
-            guard isRunning, let preset = currentPreset else { return }
+            // Bypass manipulates the live cascade slots, so it only applies
+            // while the chain is actually up — a no-op while armed-but-idle.
+            guard chainActive, let preset = currentPreset else { return }
             let flat = EQPreset.flat
             let (gA, gB) = LoudnessMatcher.equalAttenuationsDB(presetA: preset, presetB: flat)
             eqProcessor.loadSlots(
