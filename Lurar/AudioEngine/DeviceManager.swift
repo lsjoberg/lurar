@@ -65,7 +65,7 @@ final class DeviceManager: ObservableObject {
         // aggregate filter above keeps our own tap churn out of `addedUIDs`, so
         // this fires on genuine, user-visible plug-ins. When it doesn't apply
         // we fall through to the normal keep/restore policy below.
-        let newlyConnected = (!initial && preferences.autoSwitchToNewDevices)
+        let newlyConnected = (!initial && preferences.switchesToNewDevices)
             ? outs.first(where: { addedUIDs.contains($0.uid) })
             : nil
 
@@ -118,12 +118,11 @@ final class DeviceManager: ObservableObject {
             return
         }
         if resolved.uid == selectedOutput?.uid { return }
-        switch preferences.followMode {
-        case .autoFollow:
-            log.info("System default changed → \(resolved.name, privacy: .public); auto-follow on")
+        if preferences.followsSystemDefault {
+            log.info("System default changed → \(resolved.name, privacy: .public); following")
             selectedOutput = resolved
-        case .ignore:
-            log.info("System default changed → \(resolved.name, privacy: .public); ignore mode — no action")
+        } else {
+            log.info("System default changed → \(resolved.name, privacy: .public); policy is stay — no action")
         }
     }
 }
