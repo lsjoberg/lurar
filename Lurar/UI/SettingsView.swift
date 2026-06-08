@@ -81,28 +81,23 @@ private struct GeneralSettingsTab: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 6) {
-                Toggle("Follow the system default output", isOn: Binding(
-                    get: { outputPreferences.followMode == .autoFollow },
-                    set: { outputPreferences.followMode = $0 ? .autoFollow : .ignore }
-                ))
-                .toggleStyle(.switch)
-                .help("Switch Lurar's output when macOS changes its default output device")
-                Text("When AirPods or another device connects, macOS may change its default output. With this on, Lurar follows along.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Divider()
-
-            VStack(alignment: .leading, spacing: 6) {
-                Toggle("Switch to newly connected devices", isOn: Binding(
-                    get: { outputPreferences.autoSwitchToNewDevices },
-                    set: { outputPreferences.autoSwitchToNewDevices = $0 }
-                ))
-                .toggleStyle(.switch)
-                .help("Move Lurar's output to a device the moment it's connected")
-                Text("When a new output connects \u{2014} like a USB DAC \u{2014} Lurar switches its output to it automatically, even when macOS leaves its own default unchanged.")
+                HStack {
+                    Text("When devices change")
+                    Spacer()
+                    Picker("", selection: Binding(
+                        get: { outputPreferences.switchPolicy },
+                        set: { outputPreferences.switchPolicy = $0 }
+                    )) {
+                        ForEach(OutputSelectionPreferences.SwitchPolicy.allCases) { policy in
+                            Text(policy.title).tag(policy)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .fixedSize()
+                    .help("How Lurar reacts when an output device connects or the system default changes")
+                }
+                Text(outputPreferences.switchPolicy.detail)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
