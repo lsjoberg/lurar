@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/lsjoberg/lurar/compare/v0.7.0...v0.8.0) (2026-06-08)
+
+
+### Features
+
+* **editor:** group preset metadata fields into a details card ([5a504b7](https://github.com/lsjoberg/lurar/commit/5a504b7dc4bcdbe534ac554a04f06edf7ec93a6d))
+
 ## [0.7.0](https://github.com/lsjoberg/lurar/compare/v0.6.0...v0.7.0) (2026-06-08)
 
 
