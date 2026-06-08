@@ -166,24 +166,30 @@ final class EQEngine: ObservableObject {
     func start(output: AudioDevice) {
         log.info("start output=\(output.name)/\(output.uid) prev=\(self.activeOutput?.uid ?? "nil") running=\(self.isRunning)")
 
-        // If the engine is running but the requested output is different from
-        // the active one, we MUST do a full restart. The macOS ProcessTap API
-        // often silently fails or loses capture exclusivity when the underlying
-        // system hardware topology changes. Rebinding just the output leaves
-        // the broken tap in place, causing audio to bypass Lurar.
-        if isRunning, activeOutput?.id != output.id {
+        // If the engine is running but the requested output is a different
+        // device, we MUST do a full restart. The process tap rides a private
+        // aggregate whose MainSubDevice is the system default output, captured
+        // at tap-creation time (see ProcessTapInput.prepare). When the
+        // underlying hardware topology changes, the tap silently loses its
+        // ability to mute and capture target processes; rebinding just the
+        // output leaves that broken tap in place, so audio bypasses Lurar.
+        // Compare by UID, not the recyclable AudioDeviceID — an unplug/replug
+        // can hand a device a fresh ID, and DeviceManager already treats UID
+        // as the stable device identity everywhere.
+        if isRunning, activeOutput?.uid != output.uid {
             log.info("Output device changed; forcing full tap rebuild.")
             fullStart(output: output)
             return
         }
 
         // Fast path: engine is already running and the output device is the SAME.
-        // This handles spurious "start" calls (e.g. from picker re-selections)
-        // without bouncing the whole engine.
+        // This handles spurious "start" calls (e.g. topology notifications that
+        // preserve the selection) without bouncing the whole engine.
         if isRunning, tapInput.deviceID != 0 {
             if rebindOutput(output: output) {
                 return
             }
+            log.info("Fast-path output rebind failed; falling back to full restart")
         }
 
         fullStart(output: output)
@@ -265,7 +271,7 @@ final class EQEngine: ObservableObject {
         // toggle, same-rate spurious notification) into a near-silent
         // transition.
         let previousHalSampleRate = halSampleRate
-        let outputUnchanged = (activeOutput?.id == output.id)
+        let outputUnchanged = (activeOutput?.uid == output.uid)
         let halWasRunning = (halOutput.deviceID != 0)
 
         // If a fade-then-stop was in flight, finalize it synchronously so the
