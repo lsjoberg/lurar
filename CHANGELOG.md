@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/lsjoberg/lurar/compare/v0.9.0...v0.9.1) (2026-06-10)
+
+
+### Bug Fixes
+
+* **editor:** unclip the editor window and fix sluggish slider drags ([ab68c19](https://github.com/lsjoberg/lurar/commit/ab68c195a211350c3ad0713f259bc0395535bdb8))
+
 ## [0.9.0](https://github.com/lsjoberg/lurar/compare/v0.8.0...v0.9.0) (2026-06-10)
 
 
