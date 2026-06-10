@@ -16,9 +16,28 @@ final class PresetCatalog: ObservableObject {
         case failed(String)
     }
 
-    @Published private(set) var entries: [CatalogEntry] = []
-    @Published private(set) var enabledIDs: Set<UUID> = []
-    @Published private(set) var hydratedPresets: [UUID: EQPreset] = [:]
+    @Published private(set) var entries: [CatalogEntry] = [] {
+        didSet {
+            entryIDs = Set(entries.map(\.id))
+            enabledPresetsCache = nil
+        }
+    }
+    @Published private(set) var enabledIDs: Set<UUID> = [] {
+        didSet { enabledPresetsCache = nil }
+    }
+    @Published private(set) var hydratedPresets: [UUID: EQPreset] = [:] {
+        didSet { enabledPresetsCache = nil }
+    }
+
+    /// Mirror of `entries`' IDs for O(1) `isBuiltIn` lookups. The editor asks
+    /// "is this a catalog preset?" many times per render — once per band strip
+    /// plus the header/toolbar — and a linear scan of the full AutoEq index
+    /// (thousands of rows) per call made slider drags visibly sluggish.
+    private var entryIDs: Set<UUID> = []
+    /// Memoised `enabledPresets`. Rebuilding it walks the whole index; the
+    /// editor and menu bar read it on every render, so it's cached until one
+    /// of the three source collections above changes.
+    private var enabledPresetsCache: [EQPreset]?
     @Published private(set) var indexState: IndexState = .idle
     /// Catalog IDs whose ParametricEQ fetch is currently running.
     @Published private(set) var inFlight: Set<UUID> = []
@@ -78,10 +97,13 @@ final class PresetCatalog: ObservableObject {
     /// Presets currently visible to the rest of the app: enabled, hydrated entries
     /// in the order they appear in the catalog.
     var enabledPresets: [EQPreset] {
-        entries.compactMap { entry in
+        if let cached = enabledPresetsCache { return cached }
+        let computed = entries.compactMap { entry -> EQPreset? in
             guard enabledIDs.contains(entry.id) else { return nil }
             return hydratedPresets[entry.id]
         }
+        enabledPresetsCache = computed
+        return computed
     }
 
     func isEnabled(_ id: UUID) -> Bool { enabledIDs.contains(id) }
@@ -90,7 +112,7 @@ final class PresetCatalog: ObservableObject {
     /// Tweak… flow, which forks a copy into the user's presets and stamps a
     /// `parentRef` so the original can still be shown as a dashed reference.
     func isBuiltIn(_ id: UUID) -> Bool {
-        entries.contains(where: { $0.id == id })
+        entryIDs.contains(id)
     }
 
     /// Add `id` to enabled IDs and synchronously persist; kicks off a fetch if the
