@@ -399,7 +399,7 @@ final class EQEngine: ObservableObject {
         //    the first input callback fires. Crossfeed and the spectrum analyzer are
         //    configured against the tap's native rate so their per-sample math (ITD
         //    delay, FFT bin → Hz mapping) is correct relative to what was captured.
-        if let preset = currentPreset {
+        if let preset = effectivePreset {
             eqProcessor.configure(preset: preset, sampleRate: tapSampleRate)
         }
         crossfeed.reset()
@@ -792,7 +792,7 @@ final class EQEngine: ObservableObject {
     private func softReconfigureForTapSR(_ newSR: Double) {
         log.info("Soft reconfig: tap \(self.activeSampleRate ?? 0) → \(newSR) Hz (halSR \(self.halSampleRate ?? 0) Hz)")
         activeSampleRate = newSR
-        if let preset = currentPreset {
+        if let preset = effectivePreset {
             eqProcessor.configure(preset: preset, sampleRate: newSR)
         }
         crossfeed.configure(sampleRate: newSR)
@@ -859,6 +859,39 @@ final class EQEngine: ObservableObject {
 
     // MARK: - Preset / band updates
 
+    /// True while the editor is dragging a band/preamp slider or a curve
+    /// badge. Per-tick `updateBand`/`setPreamp` calls still hit the DSP
+    /// immediately, but the `currentPreset` mirror is staged in
+    /// `liveEditPreset` and published once, in `endLiveEdit` — publishing on
+    /// every mouse-move invalidated every view observing the engine (the
+    /// editor window included) at drag rate, which made the sliders sluggish.
+    private var isLiveEditing = false
+    /// Pending `currentPreset` value accumulated during a live edit. Non-nil
+    /// only between `beginLiveEdit` and `endLiveEdit` (when a preset is set).
+    private var liveEditPreset: EQPreset?
+
+    /// Freshest preset including any staged live-edit ticks. Internal readers
+    /// that (re)configure the cascade mid-run must use this rather than
+    /// `currentPreset`, which is intentionally stale during a drag.
+    private var effectivePreset: EQPreset? { liveEditPreset ?? currentPreset }
+
+    /// Bracket a continuous gesture (slider drag, curve-badge drag). Safe to
+    /// call redundantly: `begin` is a no-op while a live edit is already open,
+    /// and `end` is a no-op when none is.
+    func beginLiveEdit() {
+        guard !isLiveEditing else { return }
+        isLiveEditing = true
+        liveEditPreset = currentPreset
+    }
+
+    func endLiveEdit() {
+        guard isLiveEditing else { return }
+        isLiveEditing = false
+        guard let pending = liveEditPreset else { return }
+        liveEditPreset = nil
+        if pending != currentPreset { currentPreset = pending }
+    }
+
     func apply(preset: EQPreset) {
         if isInComparisonMode {
             // The user picked a preset somewhere (menu bar / editor dropdown) —
@@ -875,6 +908,9 @@ final class EQEngine: ObservableObject {
             isBypassed = false
         }
         currentPreset = preset
+        // An apply landing mid-drag (preset switch from the menu bar) must
+        // not be clobbered by the staged copy when the drag ends.
+        if isLiveEditing { liveEditPreset = preset }
         eqProcessor.configure(preset: preset, sampleRate: activeSampleRate ?? 48_000)
     }
 
@@ -886,7 +922,11 @@ final class EQEngine: ObservableObject {
         // would silently desync `currentPreset` from what unbypass will play.
         guard !isInComparisonMode, !isBypassed else { return }
         eqProcessor.updateBand(index: index, band: band)
-        if var p = currentPreset, p.bands.indices.contains(index) {
+        if isLiveEditing {
+            if liveEditPreset?.bands.indices.contains(index) == true {
+                liveEditPreset?.bands[index] = band
+            }
+        } else if var p = currentPreset, p.bands.indices.contains(index) {
             p.bands[index] = band
             currentPreset = p
         }
@@ -895,7 +935,9 @@ final class EQEngine: ObservableObject {
     func setPreamp(_ dB: Float) {
         guard !isInComparisonMode, !isBypassed else { return }
         eqProcessor.setPreamp(dB: dB)
-        if var p = currentPreset {
+        if isLiveEditing {
+            liveEditPreset?.preamp = dB
+        } else if var p = currentPreset {
             p.preamp = dB
             currentPreset = p
         }
@@ -974,7 +1016,7 @@ final class EQEngine: ObservableObject {
         guard isInComparisonMode else { return }
         eqProcessor.exitSlotMode()
         isInComparisonMode = false
-        if let preset = currentPreset {
+        if let preset = effectivePreset {
             eqProcessor.configure(preset: preset, sampleRate: activeSampleRate ?? 48_000)
         }
     }
@@ -1004,7 +1046,7 @@ final class EQEngine: ObservableObject {
         if on == isBypassed { return }
         if isInComparisonMode { return }
         if on {
-            guard isRunning, let preset = currentPreset else { return }
+            guard isRunning, let preset = effectivePreset else { return }
             let flat = EQPreset.flat
             let (gA, gB) = LoudnessMatcher.equalAttenuationsDB(presetA: preset, presetB: flat)
             eqProcessor.loadSlots(
@@ -1016,7 +1058,7 @@ final class EQEngine: ObservableObject {
             )
             eqProcessor.setActiveSlot(.b)
             isBypassed = true
-        } else if let preset = currentPreset {
+        } else if let preset = effectivePreset {
             // apply(preset:) handles `exitSlotMode` + `configure` + flag reset.
             apply(preset: preset)
         } else {

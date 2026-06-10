@@ -46,6 +46,19 @@ struct EQEditorView: View {
     /// the accent colour while editing, and the trailing pencil hint hides so
     /// it doesn't crowd the cursor (#118).
     @FocusState private var nameFieldFocused: Bool
+    /// Natural height of the editor content (the padded VStack), measured by
+    /// the GeometryReader background in `body`. The sections all have fixed
+    /// minimum heights, so when the window's content area is shorter than
+    /// this the stack can't compress — it overflows and clips at the top and
+    /// bottom edges. `enforceWindowFloor` watches for that and adopts the
+    /// measurement as the window's real height floor.
+    @State private var measuredContentHeight: CGFloat = 0
+    /// Largest `measuredContentHeight` observed while the content was
+    /// actually overflowing its window — i.e. the learned true minimum
+    /// height. Sticky so the floor survives once the window has grown past
+    /// it (at which point the content stretches and the measurement stops
+    /// being a minimum).
+    @State private var learnedMinContentHeight: CGFloat?
 
     /// Preamp slider/label bounds. The engine itself doesn't clamp preamp
     /// (`EQEngine.setPreamp` just converts dB→linear), so this range is purely
@@ -184,6 +197,15 @@ struct EQEditorView: View {
             preampRow
         }
         .padding(16)
+        .background(
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { measuredContentHeight = proxy.size.height }
+                    .onChange(of: proxy.size.height) { _, newHeight in
+                        measuredContentHeight = newHeight
+                    }
+            }
+        )
         .frame(minWidth: 980)
         .background(hiddenEditorShortcuts)
         .toolbar {
@@ -320,28 +342,16 @@ struct EQEditorView: View {
         .onChange(of: hostWindow) { _, win in
             guard let win else { return }
             win.delegate = closeCoordinator
-            // Editor needs room for 10 strip columns (≈88 px each) under
-            // the curve. `.frame(minWidth:)` on the SwiftUI content isn't
-            // always honoured at first open if the window restored a
-            // smaller frame from a previous session — set the floor on
-            // the NSWindow directly and grow if we're below it.
-            let minSize = NSSize(width: 1000, height: 640)
-            win.contentMinSize = minSize
-            var frame = win.frame
-            let chrome = frame.height - win.contentLayoutRect.height
-            let neededHeight = minSize.height + chrome
-            var changed = false
-            if frame.width < minSize.width {
-                frame.size.width = minSize.width
-                changed = true
-            }
-            if frame.height < neededHeight {
-                frame.size.height = neededHeight
-                changed = true
-            }
-            if changed {
-                win.setFrame(frame, display: true, animate: false)
-            }
+            enforceWindowFloor(win)
+        }
+        .onChange(of: measuredContentHeight) { _, _ in
+            if let win = hostWindow { enforceWindowFloor(win) }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEndLiveResizeNotification)) { notification in
+            // A live resize can shrink the window below the content floor
+            // before the floor has been learned — re-check once the drag ends.
+            guard let win = notification.object as? NSWindow, win == hostWindow else { return }
+            enforceWindowFloor(win)
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didChangeOcclusionStateNotification)) { notification in
             // Only react to our own editor window — the notification fires for
@@ -363,6 +373,59 @@ struct EQEditorView: View {
         // or measurement app — bring Lurar into the dock + Cmd+Tab so they
         // can get back without having to click the menu-bar icon again.
         .showsInDockWhileVisible()
+    }
+
+    // MARK: - Window sizing
+
+    /// Editor needs room for 10 strip columns (≈88 px each) under the curve,
+    /// plus the full column of sections above the preamp/output meters.
+    /// `.frame(minWidth:)` on the SwiftUI content isn't always honoured at
+    /// first open if the window restored a smaller frame from a previous
+    /// session — set the floor on the NSWindow directly and grow if we're
+    /// below it.
+    ///
+    /// The height floor is partly learned at runtime: the static constant
+    /// below is a safe lower bound, and whenever the measured content height
+    /// exceeds the area the window actually gives the content (i.e. the
+    /// layout is clipping the top dropdown / bottom output meters), the
+    /// measurement becomes the new floor. That keeps the floor correct
+    /// across font-metric differences and future layout changes without
+    /// hand-tuning a constant that silently goes stale.
+    private func enforceWindowFloor(_ win: NSWindow) {
+        var minContent = NSSize(width: 1000, height: 760)
+        if measuredContentHeight > win.contentLayoutRect.height + 0.5 {
+            learnedMinContentHeight = max(learnedMinContentHeight ?? 0, measuredContentHeight)
+        }
+        if let learned = learnedMinContentHeight {
+            minContent.height = max(minContent.height, learned)
+        }
+
+        // `contentMinSize` is in content-rect coordinates (frame minus title
+        // bar), but the SwiftUI content is laid out in `contentLayoutRect`,
+        // which also excludes the toolbar — add the toolbar band so AppKit's
+        // own resize clamping protects the actual layout area.
+        let toolbarHeight = win.contentRect(forFrameRect: win.frame).height - win.contentLayoutRect.height
+        win.contentMinSize = NSSize(width: minContent.width, height: minContent.height + toolbarHeight)
+
+        // Don't fight the user's drag mid-gesture; the contentMinSize set
+        // above clamps further shrinking, and the didEndLiveResize hook
+        // re-runs this to snap back if they got below the floor first.
+        guard !win.inLiveResize else { return }
+        var frame = win.frame
+        let chrome = frame.height - win.contentLayoutRect.height
+        let neededHeight = minContent.height + chrome
+        var changed = false
+        if frame.width < minContent.width {
+            frame.size.width = minContent.width
+            changed = true
+        }
+        if frame.height < neededHeight {
+            frame.size.height = neededHeight
+            changed = true
+        }
+        if changed {
+            win.setFrame(frame, display: true, animate: false)
+        }
     }
 
     // MARK: - Shortcuts
@@ -790,11 +853,18 @@ struct EQEditorView: View {
     /// releases on drag end so the curve re-renders exactly twice per
     /// interaction (once frozen at drag-start state, once when the freeze
     /// lifts) instead of once per drag tick.
+    ///
+    /// Also brackets the engine's live-edit mode for the same window: while
+    /// the drag is in flight, `updateBand`/`setPreamp` update the DSP but
+    /// defer the `@Published currentPreset` mirror, so this view (which
+    /// observes the engine) isn't invalidated a second time per drag tick.
     private func sliderEditingChanged(_ editing: Bool) {
         if editing {
             frozenBands = draft.bands
             frozenPreamp = draft.preamp
+            engine.beginLiveEdit()
         } else {
+            engine.endLiveEdit()
             frozenBands = nil
             frozenPreamp = nil
         }
