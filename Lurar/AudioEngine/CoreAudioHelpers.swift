@@ -221,6 +221,58 @@ enum CoreAudioSampleRate {
     }
 }
 
+// MARK: - Output volume
+
+/// Reads the output device's own hardware volume so the menu bar can mirror
+/// the system volume indicator. There's no DSP here — this is the device's
+/// `kAudioDevicePropertyVolumeScalar`, the same value the macOS volume keys
+/// and Control Center drive. Display-only: no setter (see issue #118).
+enum CoreAudioVolume {
+    /// Current output volume as 0...1, or `nil` when the device exposes no
+    /// software volume control (HDMI, optical, many pro interfaces and fixed
+    /// line-outs). Tries the main element first, then averages the per-channel
+    /// scalars — some devices only publish volume per channel, not on main.
+    static func scalar(for id: AudioDeviceID) -> Float? {
+        if let main = channelScalar(for: id, element: kAudioObjectPropertyElementMain) {
+            return main
+        }
+        // Fall back to per-channel (typically elements 1 and 2 for stereo).
+        var values: [Float] = []
+        for element in UInt32(1)...UInt32(2) {
+            if let v = channelScalar(for: id, element: element) { values.append(v) }
+        }
+        guard !values.isEmpty else { return nil }
+        return values.reduce(0, +) / Float(values.count)
+    }
+
+    /// Whether the output device is muted. Absent mute property ⇒ not muted.
+    static func isMuted(for id: AudioDeviceID) -> Bool {
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyMute,
+            mScope: kAudioObjectPropertyScopeOutput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        guard AudioObjectHasProperty(id, &addr) else { return false }
+        var muted: UInt32 = 0
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        guard AudioObjectGetPropertyData(id, &addr, 0, nil, &size, &muted) == noErr else { return false }
+        return muted != 0
+    }
+
+    private static func channelScalar(for id: AudioDeviceID, element: AudioObjectPropertyElement) -> Float? {
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyVolumeScalar,
+            mScope: kAudioObjectPropertyScopeOutput,
+            mElement: element
+        )
+        guard AudioObjectHasProperty(id, &addr) else { return nil }
+        var value: Float32 = 0
+        var size = UInt32(MemoryLayout<Float32>.size)
+        guard AudioObjectGetPropertyData(id, &addr, 0, nil, &size, &value) == noErr else { return nil }
+        return Float(value)
+    }
+}
+
 // MARK: - HAL AU helpers
 
 enum AUHAL {

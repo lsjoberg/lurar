@@ -127,6 +127,41 @@ extension LurarMark {
         image.isTemplate = true
         return image
     }
+
+    /// Brand mark with the output device's volume drawn beside it, baked into
+    /// one template NSImage. Used when the "show volume in menu bar" setting is
+    /// on (issue #118): the speaker sits *next to* the mark, so Lurar keeps its
+    /// identity instead of being replaced by a generic volume icon.
+    ///
+    /// Baked into a single image for the same reason as `statusBarImage` —
+    /// SwiftUI views render unreliably as menu bar labels. The speaker is a
+    /// variable-value SF Symbol whose wave arcs fill in proportion to `volume`
+    /// (0...1), matching the native macOS look. Callers pass a non-nil volume;
+    /// for devices without a volume control they should fall back to
+    /// `statusBarImage` (the plain mark).
+    @MainActor
+    static func statusBarImageWithVolume(
+        filled: Bool,
+        volume: Float,
+        isMuted: Bool,
+        pointSize: CGFloat = 18
+    ) -> NSImage {
+        let symbol = isMuted ? "speaker.slash.fill" : "speaker.wave.3.fill"
+        let glyph = Image(systemName: symbol, variableValue: isMuted ? nil : Double(volume))
+            .font(.system(size: pointSize * 0.72))
+            .foregroundStyle(.black)
+        let renderer = ImageRenderer(
+            content: HStack(spacing: pointSize * 0.2) {
+                LurarMark(face: false, filled: filled, primary: .black)
+                    .frame(width: pointSize, height: pointSize)
+                glyph
+            }
+        )
+        renderer.scale = NSScreen.main?.backingScaleFactor ?? 2.0
+        let image = renderer.nsImage ?? statusBarImage(filled: filled, pointSize: pointSize)
+        image.isTemplate = true
+        return image
+    }
 }
 
 #Preview {

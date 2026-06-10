@@ -51,6 +51,7 @@ private struct GeneralSettingsTab: View {
 
     @AppStorage("startEngineOnLaunch") private var startEngineOnLaunch: Bool = true
     @AppStorage(EQEngine.muteOnDeviceRateChangeKey) private var muteOnDeviceRateChange: Bool = true
+    @AppStorage("lurar.menuBarShowVolume") private var menuBarShowVolume: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -98,6 +99,18 @@ private struct GeneralSettingsTab: View {
                     .help("How Lurar reacts when an output device connects or the system default changes")
                 }
                 Text(outputPreferences.switchPolicy.detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Show output volume in the menu bar", isOn: $menuBarShowVolume)
+                    .toggleStyle(.switch)
+                    .help("Show a speaker glyph next to the Lurar icon that mirrors the output device's volume")
+                Text("Adds a speaker glyph beside the Lurar mark that tracks your output volume, so you can remove the system volume item from the menu bar. Outputs without a volume control (HDMI, optical) show just the Lurar mark.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

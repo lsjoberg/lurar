@@ -19,6 +19,7 @@ struct LurarApp: App {
     @StateObject private var devicePresetMemory = DevicePresetMemory()
     @StateObject private var updater = UpdaterController()
     @StateObject private var burnInTracker = BurnInTracker()
+    @StateObject private var outputVolumeMonitor = OutputVolumeMonitor()
 
     @Environment(\.openWindow) private var openWindow
 
@@ -39,7 +40,8 @@ struct LurarApp: App {
                 presetStore: presetStore,
                 presetCatalog: presetCatalog,
                 devicePresetMemory: devicePresetMemory,
-                burnInTracker: burnInTracker
+                burnInTracker: burnInTracker,
+                outputVolumeMonitor: outputVolumeMonitor
             )
         }
         .menuBarExtraStyle(.window)
@@ -216,8 +218,14 @@ private struct MenuBarLabel: View {
     @ObservedObject var presetCatalog: PresetCatalog
     @ObservedObject var devicePresetMemory: DevicePresetMemory
     @ObservedObject var burnInTracker: BurnInTracker
+    @ObservedObject var outputVolumeMonitor: OutputVolumeMonitor
 
     @Environment(\.openWindow) private var openWindow
+
+    /// Opt-in (issue #118): show the output device's volume as a speaker glyph
+    /// next to the brand mark. Off by default — the menu bar item stays the
+    /// plain mark until the user enables it in Settings.
+    @AppStorage("lurar.menuBarShowVolume") private var menuBarShowVolume: Bool = false
 
     /// `true` by default — the new flow assumes Lurar "just runs" once it has
     /// permission. Settings exposes a toggle for users who'd rather start it
@@ -235,9 +243,25 @@ private struct MenuBarLabel: View {
     /// every toggle.
     @State private var didRunLaunchCoordinator: Bool = false
 
+    /// The plain brand mark, or the mark with the output volume beside it when
+    /// the opt-in setting is on and the device actually exposes a volume.
+    private var statusImage: NSImage {
+        if menuBarShowVolume, let volume = outputVolumeMonitor.volume {
+            return LurarMark.statusBarImageWithVolume(
+                filled: engine.isRunning,
+                volume: volume,
+                isMuted: outputVolumeMonitor.isMuted
+            )
+        }
+        return LurarMark.statusBarImage(filled: engine.isRunning)
+    }
+
     var body: some View {
-        Image(nsImage: LurarMark.statusBarImage(filled: engine.isRunning))
+        Image(nsImage: statusImage)
             .task {
+                // Seed the volume monitor on the first device (onChange covers
+                // later switches). Cheap no-op once bound.
+                outputVolumeMonitor.rebind(to: deviceManager.selectedOutput?.id)
                 guard !didRunLaunchCoordinator else { return }
                 didRunLaunchCoordinator = true
                 // Hand the app delegate a weak ref to the engine so it can
@@ -262,6 +286,9 @@ private struct MenuBarLabel: View {
                 runLaunchCoordinator()
             }
             .onChange(of: deviceManager.selectedOutput) { _, newOut in
+                // Re-point the volume monitor at the new device so the menu bar
+                // glyph tracks the right output (listeners are keyed by device ID).
+                outputVolumeMonitor.rebind(to: newOut?.id)
                 // Three cases:
                 // 1. We were waiting for any device to materialize at launch
                 //    (pendingAutostart) — start the engine on the first one
