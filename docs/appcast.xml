@@ -6,20 +6,20 @@
     <description>System-wide audio EQ for macOS.</description>
     <language>en</language>
     <item>
-      <title>Lurar 0.9.0</title>
-      <pubDate>Wed, 10 Jun 2026 09:36:35 +0000</pubDate>
-      <sparkle:version>30</sparkle:version>
-      <sparkle:shortVersionString>0.9.0</sparkle:shortVersionString>
+      <title>Lurar 0.9.1</title>
+      <pubDate>Wed, 10 Jun 2026 17:16:19 +0000</pubDate>
+      <sparkle:version>31</sparkle:version>
+      <sparkle:shortVersionString>0.9.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.2</sparkle:minimumSystemVersion>
-      <description><![CDATA[<h3 dir="auto">Features</h3>
+      <description><![CDATA[<h3 dir="auto">Bug Fixes</h3>
 <ul dir="auto">
-<li><strong>menu-bar:</strong> show output volume beside the brand mark (opt-in) (<a href="https://github.com/lsjoberg/lurar/commit/ad6b05ab00c332527b1a613e8f1b97a9925734e4">ad6b05a</a>)</li>
-</ul><p style="margin-top:1.5em;font-size:0.9em"><a href="https://github.com/lsjoberg/lurar/releases/tag/v0.9.0">View full release on GitHub →</a></p>]]></description>
+<li><strong>editor:</strong> unclip the editor window and fix sluggish slider drags (<a href="https://github.com/lsjoberg/lurar/commit/ab68c195a211350c3ad0713f259bc0395535bdb8">ab68c19</a>)</li>
+</ul><p style="margin-top:1.5em;font-size:0.9em"><a href="https://github.com/lsjoberg/lurar/releases/tag/v0.9.1">View full release on GitHub →</a></p>]]></description>
       <enclosure
-        url="https://github.com/lsjoberg/lurar/releases/download/v0.9.0/Lurar-0.9.0.dmg"
-        length="2661932"
+        url="https://github.com/lsjoberg/lurar/releases/download/v0.9.1/Lurar-0.9.1.dmg"
+        length="2675120"
         type="application/octet-stream"
-        sparkle:edSignature="+bn37my6nWB2sfj4TDQPA8KjTpEuWYCLqRUFX1XZ8wdwnLfCdo5AoATUc6dWM/7yHDJo/V8B0W/pbbk32IHmCw==" />
+        sparkle:edSignature="6Arez0ORWqDmPd0XYN2wG/Olr7PVxr0HeKT3L6rvB+7C1jrSsPEweqgdJajTyOO0Uf5pq7MLsieNRNDEAII3DQ==" />
     </item>
   </channel>
 </rss>
