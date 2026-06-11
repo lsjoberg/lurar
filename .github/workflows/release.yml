@@ -123,6 +123,45 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
 
+      - name: Bump Homebrew cask
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          # PAT with push access to lsjoberg/homebrew-lurar. Falls back to the
+          # release PAT, which works if it's a classic token with `repo` scope.
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN || secrets.RELEASE_PLEASE_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          # Push the new version + sha256 to the homebrew-lurar tap so
+          # `brew install --cask lsjoberg/lurar/lurar` serves the latest release.
+          # Sparkle still handles in-place updates for installed copies; this
+          # only refreshes the installer metadata for fresh installs.
+          if [[ -z "${TAP_TOKEN:-}" ]]; then
+            echo "::error::HOMEBREW_TAP_TOKEN (or RELEASE_PLEASE_TOKEN) with push access to homebrew-lurar is required."
+            exit 1
+          fi
+
+          SHA=$(shasum -a 256 "build/Lurar-${VERSION}.dmg" | awk '{print $1}')
+          echo "==> Lurar ${VERSION} sha256 ${SHA}"
+
+          TAP="$RUNNER_TEMP/homebrew-lurar"
+          git clone --depth 1 \
+            "https://x-access-token:${TAP_TOKEN}@github.com/lsjoberg/homebrew-lurar" "$TAP"
+          CASK="$TAP/Casks/lurar.rb"
+          sed -i '' -E "s/^  version \".*\"/  version \"${VERSION}\"/" "$CASK"
+          sed -i '' -E "s/^  sha256 \".*\"/  sha256 \"${SHA}\"/" "$CASK"
+
+          if git -C "$TAP" diff --quiet -- Casks/lurar.rb; then
+            echo "cask already at ${VERSION} — nothing to push"
+            exit 0
+          fi
+
+          git -C "$TAP" config user.name "github-actions[bot]"
+          git -C "$TAP" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$TAP" commit -am "lurar ${VERSION}"
+          git -C "$TAP" push origin HEAD:main
+
       - name: Open PR for updated appcast.xml
         if: startsWith(github.ref, 'refs/tags/v') && env.SPARKLE_ED_PRIVATE_KEY != ''
         env:
