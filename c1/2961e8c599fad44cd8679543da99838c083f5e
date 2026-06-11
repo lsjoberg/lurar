@@ -1,0 +1,25 @@
+docs/llms.txt
+  s_1d78f8b64e2b6b::t_c2a0c6dcf92789 15
+README.md
+  s_1d78f8b64e2b6b::t_c2a0c6dcf92789 7-12
+docs/style.css
+  s_1d78f8b64e2b6b::t_c2a0c6dcf92789 191-263
+docs/index.html
+  s_1d78f8b64e2b6b::t_c2a0c6dcf92789 11-12,14,17-19,21-23,103-109,113-118,357-368,453-466
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "c12961e8c599fad44cd8679543da99838c083f5e",
+  "prompts": {},
+  "sessions": {
+    "s_1d78f8b64e2b6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "366df4c9-6588-4562-8ac3-f814faa24467",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Linus Sjöberg <linus.sjoberg@tradera.com>"
+    }
+  }
+}
