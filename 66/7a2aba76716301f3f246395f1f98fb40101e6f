@@ -1,0 +1,23 @@
+packaging/homebrew/lurar.rb
+  s_1d78f8b64e2b6b::t_24aec703e937b4 1-12,16-18,20-29
+  s_1d78f8b64e2b6b::t_be9bf0d0967f66 13-15,19
+packaging/homebrew/README.md
+  s_1d78f8b64e2b6b::t_5c951163321bf7 1-38,43,48-61
+  s_1d78f8b64e2b6b::t_85033ec9196650 39-42,44-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "667a2aba76716301f3f246395f1f98fb40101e6f",
+  "prompts": {},
+  "sessions": {
+    "s_1d78f8b64e2b6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "366df4c9-6588-4562-8ac3-f814faa24467",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Linus Sjöberg <linus.sjoberg@tradera.com>"
+    }
+  }
+}
