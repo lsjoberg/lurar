@@ -4,6 +4,12 @@ A macOS menu bar parametric EQ for headphone listening. Captures every app's aud
 
 **[Download for macOS →](https://lurar.app/)**
 
+Or install with [Homebrew](https://github.com/lsjoberg/homebrew-lurar):
+
+```bash
+brew install --cask lsjoberg/lurar/lurar
+```
+
 ## Prerequisites (development)
 
 ```bash

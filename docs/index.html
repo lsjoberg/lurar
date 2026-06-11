@@ -8,12 +8,19 @@
   <meta name="theme-color" content="#0a0a0a">
   <link rel="stylesheet" href="style.css">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <meta property="og:title" content="Lurar">
-  <meta property="og:description" content="Headphone correction for macOS with AutoEq built in. Free, no subscription, no driver.">
+  <meta property="og:title" content="Lurar — system-wide audio EQ for macOS">
+  <meta property="og:description" content="Headphone correction for macOS with the AutoEq catalog built in. Free, open source, no account, no driver to install.">
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Lurar">
   <meta property="og:url" content="https://lurar.app/">
   <meta property="og:image" content="https://lurar.app/screenshots/og.png">
+  <meta property="og:image:width" content="2408">
+  <meta property="og:image:height" content="1260">
+  <meta property="og:image:alt" content="Lurar menu bar EQ for macOS with the AutoEq catalog built in">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Lurar — system-wide audio EQ for macOS">
+  <meta name="twitter:description" content="Headphone correction for macOS with the AutoEq catalog built in. Free, open source, no driver.">
+  <meta name="twitter:image" content="https://lurar.app/screenshots/og.png">
   <link rel="canonical" href="https://lurar.app/">
   <script type="application/ld+json">
   {
@@ -93,10 +100,22 @@
       <a class="download" href="https://github.com/lsjoberg/lurar/releases/latest/download/Lurar.dmg">
         Download for macOS
       </a>
+      <div class="install-brew">
+        <span class="install-or">or install with Homebrew</span>
+        <div class="brew-cmd">
+          <code id="brew-cmd">brew install --cask lsjoberg/lurar/lurar</code>
+          <button type="button" class="brew-copy" data-copy="brew-cmd" aria-label="Copy command to clipboard">Copy</button>
+        </div>
+      </div>
       <p class="requirements">
         <span>Requires macOS 14.2 or later · Apple Silicon &amp; Intel</span>
-        <span>Signed &amp; notarized</span>
       </p>
+      <ul class="trust" aria-label="At a glance">
+        <li>Open source (MIT)</li>
+        <li>Free — no account</li>
+        <li>No telemetry</li>
+        <li>Signed &amp; notarized</li>
+      </ul>
     </section>
 
     <section class="screenshot hero-screenshot" aria-label="Lurar menu bar interface">
@@ -336,6 +355,18 @@
       </details>
 
       <details>
+        <summary>Can I install it with Homebrew?</summary>
+        <p>
+          Yes: <code>brew install --cask lsjoberg/lurar/lurar</code>. That taps
+          <code>lsjoberg/homebrew-lurar</code> and installs the same signed,
+          notarized build you'd get from the DMG. Updates still arrive in-app
+          via Sparkle, so <code>brew upgrade</code> is normally a no-op. To
+          remove it completely, including presets and settings, run
+          <code>brew uninstall --zap --cask lurar</code>.
+        </p>
+      </details>
+
+      <details>
         <summary>Does Lurar raise the orange microphone indicator?</summary>
         <p>
           No. Lurar reads tap samples via an <code>AudioDeviceIOProc</code> on
@@ -419,5 +450,19 @@
       <a href="https://github.com/lsjoberg/lurar/issues">Report an issue</a>
     </p>
   </footer>
+
+  <script>
+    document.querySelectorAll(".brew-copy").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var el = document.getElementById(btn.dataset.copy);
+        if (!el || !navigator.clipboard) return;
+        navigator.clipboard.writeText(el.textContent.trim()).then(function () {
+          var prev = btn.textContent;
+          btn.textContent = "Copied";
+          setTimeout(function () { btn.textContent = prev; }, 1500);
+        });
+      });
+    });
+  </script>
 </body>
 </html>

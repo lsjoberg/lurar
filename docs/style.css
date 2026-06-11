@@ -188,6 +188,79 @@ h2 {
   gap: 8px 14px;
 }
 
+/* ---------- homebrew install ---------- */
+
+.install-brew {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.install-or {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.brew-cmd {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  background: var(--card-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 7px 7px 7px 14px;
+}
+
+.brew-cmd code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13.5px;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow-x: auto;
+}
+
+.brew-copy {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--fg);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 4px 11px;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.brew-copy:hover { background: var(--card-soft); }
+
+/* ---------- trust strip ---------- */
+
+.trust {
+  list-style: none;
+  padding: 0;
+  margin: 22px auto 0;
+  max-width: 560px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 10px;
+}
+
+.trust li {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 12px;
+}
+
 /* ---------- screenshots ----------
  *
  * Screenshots are PNGs captured with `screencapture -o -w`, which means the
