@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/lsjoberg/lurar/compare/v0.9.1...v0.10.0) (2026-06-12)
+
+
+### Features
+
+* three-way menu bar icon style — mark, volume, or both ([734254c](https://github.com/lsjoberg/lurar/commit/734254c768cac978d33240a1c90774dd9abb62b6))
+
 ## [0.9.1](https://github.com/lsjoberg/lurar/compare/v0.9.0...v0.9.1) (2026-06-10)
 
 
