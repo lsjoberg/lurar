@@ -128,6 +128,9 @@ struct LurarApp: App {
 
     init() {
         bootLog.info("[lurar] Booted: Process Tap + vDSP biquad EQ + HAL output (no AVAudioEngine)")
+        // Must run before the MenuBarExtra label or Settings read the style,
+        // so users who had the original "show volume" Bool on keep their look.
+        MenuBarIconStyle.migrateLegacyShowVolumeSetting()
         // DeviceManager needs the user's output preferences (last-used UID,
         // follow mode) at init time so its first refresh restores the right
         // device. Construct prefs eagerly and share the same instance with
@@ -222,10 +225,9 @@ private struct MenuBarLabel: View {
 
     @Environment(\.openWindow) private var openWindow
 
-    /// Opt-in (issue #118): show the output device's volume as a speaker glyph
-    /// next to the brand mark. Off by default — the menu bar item stays the
-    /// plain mark until the user enables it in Settings.
-    @AppStorage("lurar.menuBarShowVolume") private var menuBarShowVolume: Bool = false
+    /// What the status item shows (issue #118): the brand mark, the output
+    /// volume, or both. Defaults to the plain mark — the original look.
+    @AppStorage(MenuBarIconStyle.storageKey) private var menuBarIconStyle: MenuBarIconStyle = .logo
 
     /// `true` by default — the new flow assumes Lurar "just runs" once it has
     /// permission. Settings exposes a toggle for users who'd rather start it
@@ -243,17 +245,27 @@ private struct MenuBarLabel: View {
     /// every toggle.
     @State private var didRunLaunchCoordinator: Bool = false
 
-    /// The plain brand mark, or the mark with the output volume beside it when
-    /// the opt-in setting is on and the device actually exposes a volume.
+    /// The status item per the chosen style. Volume-bearing styles need the
+    /// device to actually expose a volume; when it doesn't (HDMI, optical,
+    /// fixed line-outs) they fall back to the plain mark so the item never
+    /// goes blank.
     private var statusImage: NSImage {
-        if menuBarShowVolume, let volume = outputVolumeMonitor.volume {
+        switch (menuBarIconStyle, outputVolumeMonitor.volume) {
+        case (.volume, let volume?):
+            return LurarMark.statusBarVolumeImage(
+                filled: engine.isRunning,
+                volume: volume,
+                isMuted: outputVolumeMonitor.isMuted
+            )
+        case (.logoAndVolume, let volume?):
             return LurarMark.statusBarImageWithVolume(
                 filled: engine.isRunning,
                 volume: volume,
                 isMuted: outputVolumeMonitor.isMuted
             )
+        case (.logo, _), (.volume, nil), (.logoAndVolume, nil):
+            return LurarMark.statusBarImage(filled: engine.isRunning)
         }
-        return LurarMark.statusBarImage(filled: engine.isRunning)
     }
 
     var body: some View {

@@ -51,7 +51,7 @@ private struct GeneralSettingsTab: View {
 
     @AppStorage("startEngineOnLaunch") private var startEngineOnLaunch: Bool = true
     @AppStorage(EQEngine.muteOnDeviceRateChangeKey) private var muteOnDeviceRateChange: Bool = true
-    @AppStorage("lurar.menuBarShowVolume") private var menuBarShowVolume: Bool = false
+    @AppStorage(MenuBarIconStyle.storageKey) private var menuBarIconStyle: MenuBarIconStyle = .logo
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -107,10 +107,20 @@ private struct GeneralSettingsTab: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 6) {
-                Toggle("Show output volume in the menu bar", isOn: $menuBarShowVolume)
-                    .toggleStyle(.switch)
-                    .help("Show a speaker glyph next to the Lurar icon that mirrors the output device's volume")
-                Text("Adds a speaker glyph beside the Lurar mark that tracks your output volume, so you can remove the system volume item from the menu bar. Outputs without a volume control (HDMI, optical) show just the Lurar mark.")
+                HStack {
+                    Text("Menu bar icon")
+                    Spacer()
+                    Picker("", selection: $menuBarIconStyle) {
+                        ForEach(MenuBarIconStyle.allCases) { style in
+                            Text(style.title).tag(style)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .fixedSize()
+                    .help("Choose what Lurar shows in the menu bar: the Lurar mark, a speaker glyph that mirrors your output volume, or both")
+                }
+                Text(menuBarIconStyle.detail)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

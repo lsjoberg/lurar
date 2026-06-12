@@ -128,9 +128,40 @@ extension LurarMark {
         return image
     }
 
+    /// Standalone speaker glyph mirroring the output volume — the
+    /// `.volume` menu bar style (issue #118), for users who want the native
+    /// volume-icon look with no brand mark. Engine state carries over from
+    /// the mark's visual language: filled when running, outline when idle.
+    /// Callers pass a non-nil volume; for devices without a volume control
+    /// they should fall back to `statusBarImage` so the item never goes blank.
+    @MainActor
+    static func statusBarVolumeImage(
+        filled: Bool,
+        volume: Float,
+        isMuted: Bool,
+        pointSize: CGFloat = 18
+    ) -> NSImage {
+        let symbol: String = switch (isMuted, filled) {
+        case (true, true):   "speaker.slash.fill"
+        case (true, false):  "speaker.slash"
+        case (false, true):  "speaker.wave.3.fill"
+        case (false, false): "speaker.wave.3"
+        }
+        let renderer = ImageRenderer(
+            content: Image(systemName: symbol, variableValue: isMuted ? nil : Double(volume))
+                .font(.system(size: pointSize * 0.8))
+                .foregroundStyle(.black)
+                .frame(height: pointSize)
+        )
+        renderer.scale = NSScreen.main?.backingScaleFactor ?? 2.0
+        let image = renderer.nsImage ?? statusBarImage(filled: filled, pointSize: pointSize)
+        image.isTemplate = true
+        return image
+    }
+
     /// Brand mark with the output device's volume drawn beside it, baked into
-    /// one template NSImage. Used when the "show volume in menu bar" setting is
-    /// on (issue #118): the speaker sits *next to* the mark, so Lurar keeps its
+    /// one template NSImage. Used by the `.logoAndVolume` menu bar style
+    /// (issue #118): the speaker sits *next to* the mark, so Lurar keeps its
     /// identity instead of being replaced by a generic volume icon.
     ///
     /// Baked into a single image for the same reason as `statusBarImage` —
