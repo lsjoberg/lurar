@@ -19,6 +19,9 @@ final class DeviceManager: ObservableObject {
     /// Called by EQEngine to react to device topology changes (re-bind / stop / restart).
     var onTopologyChange: (() -> Void)?
 
+    /// Closure to query whether audio is currently actively playing.
+    var isPlayingAudio: () -> Bool = { false }
+
     private let preferences: OutputSelectionPreferences
     private var topologyListener: DeviceChangeListener?
     private var defaultOutputListener: DefaultOutputDeviceListener?
@@ -65,7 +68,9 @@ final class DeviceManager: ObservableObject {
         // aggregate filter above keeps our own tap churn out of `addedUIDs`, so
         // this fires on genuine, user-visible plug-ins. When it doesn't apply
         // we fall through to the normal keep/restore policy below.
-        let newlyConnected = (!initial && preferences.switchesToNewDevices)
+        // Also abort if audio is actively playing and the user prefers not to switch.
+        let isPlaying = isPlayingAudio()
+        let newlyConnected = (!initial && preferences.switchesToNewDevices && (!preferences.preventAutoSwitchWhilePlaying || !isPlaying))
             ? outs.first(where: { addedUIDs.contains($0.uid) })
             : nil
 
@@ -119,6 +124,10 @@ final class DeviceManager: ObservableObject {
         }
         if resolved.uid == selectedOutput?.uid { return }
         if preferences.followsSystemDefault {
+            if preferences.preventAutoSwitchWhilePlaying && isPlayingAudio() {
+                log.info("System default changed → \(resolved.name, privacy: .public); but audio is playing — no action")
+                return
+            }
             log.info("System default changed → \(resolved.name, privacy: .public); following")
             selectedOutput = resolved
         } else {
