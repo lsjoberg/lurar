@@ -72,6 +72,19 @@ enum CoreAudioDevices {
         return try? device(for: id)
     }
 
+    static func setDefaultOutput(id: AudioDeviceID) throws {
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var deviceID = id
+        try check(
+            AudioObjectSetPropertyData(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, UInt32(MemoryLayout<AudioDeviceID>.size), &deviceID),
+            "set default output device"
+        )
+    }
+
     private static func systemDeviceIDs() throws -> [AudioDeviceID] {
         var addr = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDevices,

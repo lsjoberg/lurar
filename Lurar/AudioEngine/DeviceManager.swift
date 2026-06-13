@@ -11,8 +11,19 @@ final class DeviceManager: ObservableObject {
 
     @Published var selectedOutput: AudioDevice? {
         didSet {
-            guard let uid = selectedOutput?.uid, uid != oldValue?.uid else { return }
-            preferences.lastOutputUID = uid
+            guard let newOutput = selectedOutput else { return }
+            guard newOutput.uid != oldValue?.uid else { return }
+            preferences.lastOutputUID = newOutput.uid
+            
+            // Sync the macOS system default output so volume keys control the right device
+            if CoreAudioDevices.defaultOutput()?.id != newOutput.id {
+                do {
+                    try CoreAudioDevices.setDefaultOutput(id: newOutput.id)
+                    log.info("Synced macOS default output to \(newOutput.name, privacy: .public)")
+                } catch {
+                    log.error("Failed to sync macOS default output: \(String(describing: error))")
+                }
+            }
         }
     }
 
