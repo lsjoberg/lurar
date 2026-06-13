@@ -11,6 +11,8 @@ struct EQEditorView: View {
     @State private var showDeleteConfirm = false
     @State private var showResetConfirm = false
     @State private var showLibrary = false
+
+    @AppStorage("disableTransparency") private var disableTransparency: Bool = false
     /// When the user picks a different preset in the dropdown but the current
     /// draft has unsaved edits, we stash the target here and present the
     /// Save/Discard/Cancel alert. Mirrors `closeCoordinator.pendingClose` but
@@ -759,7 +761,7 @@ struct EQEditorView: View {
             .padding(.vertical, 5)
             .background(
                 Capsule()
-                    .fill(.regularMaterial)
+                    .fill(disableTransparency ? AnyShapeStyle(Color(NSColor.windowBackgroundColor)) : AnyShapeStyle(.regularMaterial))
             )
             .overlay(
                 Capsule()
@@ -1210,6 +1212,8 @@ struct ToastBanner: View {
 
     let content: Content
 
+    @AppStorage("disableTransparency") private var disableTransparency: Bool = false
+
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: content.kind == .info ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
@@ -1221,7 +1225,7 @@ struct ToastBanner: View {
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(.regularMaterial)
+                .fill(disableTransparency ? AnyShapeStyle(Color(NSColor.windowBackgroundColor)) : AnyShapeStyle(.regularMaterial))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8)

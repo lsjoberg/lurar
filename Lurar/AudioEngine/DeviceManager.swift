@@ -19,6 +19,10 @@ final class DeviceManager: ObservableObject {
     /// Called by EQEngine to react to device topology changes (re-bind / stop / restart).
     var onTopologyChange: (() -> Void)?
 
+    /// Queries whether audio is currently actively playing. Wired to the engine
+    /// so the auto-switch policy can hold off while the user is listening.
+    var isPlayingAudio: () -> Bool = { false }
+
     private let preferences: OutputSelectionPreferences
     private var topologyListener: DeviceChangeListener?
     private var defaultOutputListener: DefaultOutputDeviceListener?
@@ -64,9 +68,12 @@ final class DeviceManager: ObservableObject {
         // initial population) and only when the user enabled the toggle. The
         // aggregate filter above keeps our own tap churn out of `addedUIDs`, so
         // this fires on genuine, user-visible plug-ins. When it doesn't apply
-        // we fall through to the normal keep/restore policy below.
-        let newlyConnected = (!initial && preferences.switchesToNewDevices)
-            ? outs.first(where: { addedUIDs.contains($0.uid) })
+        // we fall through to the normal keep/restore policy below. Blocklisted
+        // devices are skipped, and the jump is held off entirely while audio is
+        // playing if the user opted into that.
+        let holdWhilePlaying = preferences.preventAutoSwitchWhilePlaying && isPlayingAudio()
+        let newlyConnected = (!initial && preferences.switchesToNewDevices && !holdWhilePlaying)
+            ? outs.first(where: { addedUIDs.contains($0.uid) && !preferences.autoSwitchBlocklist.contains($0.uid) })
             : nil
 
         // Output policy: jump to a just-connected device if auto-switch claimed
@@ -119,6 +126,14 @@ final class DeviceManager: ObservableObject {
         }
         if resolved.uid == selectedOutput?.uid { return }
         if preferences.followsSystemDefault {
+            if preferences.autoSwitchBlocklist.contains(resolved.uid) {
+                log.info("System default changed → \(resolved.name, privacy: .public); but device is blocklisted — no action")
+                return
+            }
+            if preferences.preventAutoSwitchWhilePlaying && isPlayingAudio() {
+                log.info("System default changed → \(resolved.name, privacy: .public); but audio is playing — no action")
+                return
+            }
             log.info("System default changed → \(resolved.name, privacy: .public); following")
             selectedOutput = resolved
         } else {

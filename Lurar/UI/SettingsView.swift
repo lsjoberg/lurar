@@ -52,6 +52,7 @@ private struct GeneralSettingsTab: View {
     @AppStorage("startEngineOnLaunch") private var startEngineOnLaunch: Bool = true
     @AppStorage(EQEngine.muteOnDeviceRateChangeKey) private var muteOnDeviceRateChange: Bool = true
     @AppStorage(MenuBarIconStyle.storageKey) private var menuBarIconStyle: MenuBarIconStyle = .logo
+    @AppStorage("disableTransparency") private var disableTransparency: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -102,6 +103,43 @@ private struct GeneralSettingsTab: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                if outputPreferences.switchPolicy != .stay {
+                    Toggle("Don't auto-switch while audio is playing", isOn: $outputPreferences.preventAutoSwitchWhilePlaying)
+                        .toggleStyle(.switch)
+                        .padding(.top, 4)
+                        .help("Hold off on automatic output switches while audio is actively playing, so a device that connects mid-track doesn't interrupt what you're listening to")
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Ignored devices")
+                            .font(.subheadline.weight(.medium))
+                            .padding(.top, 4)
+                        if deviceManager.outputDevices.isEmpty {
+                            Text("No devices connected")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(deviceManager.outputDevices) { device in
+                                Toggle(device.name, isOn: Binding(
+                                    get: { outputPreferences.autoSwitchBlocklist.contains(device.uid) },
+                                    set: { newValue in
+                                        if newValue {
+                                            outputPreferences.autoSwitchBlocklist.insert(device.uid)
+                                        } else {
+                                            outputPreferences.autoSwitchBlocklist.remove(device.uid)
+                                        }
+                                    }
+                                ))
+                                .toggleStyle(.checkbox)
+                            }
+                        }
+                        Text("Lurar won't automatically switch to a device that's ignored, even when it connects or becomes the system default.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.leading, 4)
+                }
             }
 
             Divider()
@@ -133,6 +171,18 @@ private struct GeneralSettingsTab: View {
                     .toggleStyle(.switch)
                     .help("Fade audio out for ~150 ms when the output device's sample rate changes, to mask the resampler transient")
                 Text("Apple Music and other hi-res sources can change your DAC's sample rate between tracks. Fading briefly hides the audible pitch glitch as Core Audio's internal sample-rate converter re-tunes. Turn this off if you'd rather hear the unmasked transition.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Disable transparency", isOn: $disableTransparency)
+                    .toggleStyle(.switch)
+                    .help("Use solid opaque backgrounds instead of blurred glass effects")
+                Text("Disables the translucent glass effect in the menu bar popover and editor overlays. This can reduce GPU overhead on older Macs.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
