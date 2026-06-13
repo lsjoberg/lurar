@@ -102,6 +102,35 @@ private struct GeneralSettingsTab: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                if outputPreferences.switchPolicy != .stay {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Ignored devices")
+                            .font(.subheadline.weight(.medium))
+                            .padding(.top, 4)
+                        if deviceManager.outputDevices.isEmpty {
+                            Text("No devices connected")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(deviceManager.outputDevices) { device in
+                                let isIgnored = outputPreferences.autoSwitchBlocklist.contains(device.uid)
+                                Toggle(device.name, isOn: Binding(
+                                    get: { isIgnored },
+                                    set: { newValue in
+                                        if newValue {
+                                            outputPreferences.autoSwitchBlocklist.insert(device.uid)
+                                        } else {
+                                            outputPreferences.autoSwitchBlocklist.remove(device.uid)
+                                        }
+                                    }
+                                ))
+                                .toggleStyle(.checkbox)
+                            }
+                        }
+                    }
+                    .padding(.leading, 4)
+                }
             }
 
             Divider()
