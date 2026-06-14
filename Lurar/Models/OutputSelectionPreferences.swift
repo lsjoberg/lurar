@@ -54,7 +54,6 @@ final class OutputSelectionPreferences: ObservableObject {
 
     static let lastOutputUIDKey = "lurar.lastOutputDeviceUID"
     static let switchPolicyKey = "lurar.outputSwitchPolicy"
-    static let autoSwitchBlocklistKey = "lurar.autoSwitchBlocklist"
     static let preventAutoSwitchWhilePlayingKey = "lurar.preventAutoSwitchWhilePlaying"
     /// Legacy key (\u{2264} 0.6.0): "autoFollow" / "ignore". Read once to seed
     /// `switchPolicy` for users upgrading from the two-state follow toggle, so

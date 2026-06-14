@@ -137,10 +137,10 @@ struct LurarApp: App {
         // the @StateObject wrapper.
         let prefs = OutputSelectionPreferences()
         _outputPreferences = StateObject(wrappedValue: prefs)
-        
+
         let manager = DeviceManager(preferences: prefs)
         _deviceManager = StateObject(wrappedValue: manager)
-        
+
         // PresetStore needs the sync settings at init time so it can pick the
         // right backing location (local vs iCloud) before its first read. We
         // construct both eagerly here and share the same instance.
@@ -164,7 +164,7 @@ struct LurarApp: App {
         excludedAppsStore.onChange = { [weak engine] in
             engine?.reEnumerateTapTargets()
         }
-        
+
         manager.isPlayingAudio = { [weak engine] in
             engine?.isPlayingAudio ?? false
         }
