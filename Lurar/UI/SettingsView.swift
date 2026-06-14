@@ -102,6 +102,12 @@ private struct GeneralSettingsTab: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                if outputPreferences.switchPolicy != .stay {
+                    Toggle("Don't auto-switch while audio is playing", isOn: $outputPreferences.preventAutoSwitchWhilePlaying)
+                        .padding(.top, 4)
+                        .padding(.bottom, 2)
+                }
             }
 
             Divider()
