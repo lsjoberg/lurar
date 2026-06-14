@@ -52,6 +52,7 @@ private struct GeneralSettingsTab: View {
     @AppStorage("startEngineOnLaunch") private var startEngineOnLaunch: Bool = true
     @AppStorage(EQEngine.muteOnDeviceRateChangeKey) private var muteOnDeviceRateChange: Bool = true
     @AppStorage(MenuBarIconStyle.storageKey) private var menuBarIconStyle: MenuBarIconStyle = .logo
+    @AppStorage("disableTransparency") private var disableTransparency: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -133,6 +134,18 @@ private struct GeneralSettingsTab: View {
                     .toggleStyle(.switch)
                     .help("Fade audio out for ~150 ms when the output device's sample rate changes, to mask the resampler transient")
                 Text("Apple Music and other hi-res sources can change your DAC's sample rate between tracks. Fading briefly hides the audible pitch glitch as Core Audio's internal sample-rate converter re-tunes. Turn this off if you'd rather hear the unmasked transition.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Disable transparency", isOn: $disableTransparency)
+                    .toggleStyle(.switch)
+                    .help("Use solid opaque backgrounds instead of blurred glass effects")
+                Text("Disables the translucent glass effect in the menu bar popover and editor overlays. This can reduce GPU overhead on older Macs.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
