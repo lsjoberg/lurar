@@ -100,23 +100,15 @@ final class OutputSelectionPreferences: ObservableObject {
 
     /// Whether Lurar should track the system default output. True for every
     /// policy except `.stay`.
-    var followsSystemDefault: Bool {
-        switchPolicy != .stay
-    }
+    var followsSystemDefault: Bool { switchPolicy != .stay }
 
-    /// Whether Lurar should jump to newly connected devices even if macOS
-    /// doesn't promote them to default. True only for `.switchToNew`.
-    var switchesToNewDevices: Bool {
-        switchPolicy == .switchToNew
-    }
+    /// Whether Lurar should jump to a device the moment it connects.
+    var switchesToNewDevices: Bool { switchPolicy == .switchToNew }
 
     /// Set of device UIDs that Lurar should ignore when evaluating automatic
-    /// output switches.
+    /// output switches — both newly-connected jumps and system-default follows.
     var autoSwitchBlocklist: Set<String> {
-        get {
-            let array = defaults.stringArray(forKey: Self.autoSwitchBlocklistKey) ?? []
-            return Set(array)
-        }
+        get { Set(defaults.stringArray(forKey: Self.autoSwitchBlocklistKey) ?? []) }
         set {
             defaults.set(Array(newValue), forKey: Self.autoSwitchBlocklistKey)
             objectWillChange.send()
