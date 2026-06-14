@@ -16,6 +16,7 @@ struct MenuBarView: View {
     @State private var selectedPresetID: UUID?
     @State private var showCrossfeedHelp: Bool = false
     @State private var showLoudnessHelp: Bool = false
+    @AppStorage("disableTransparency") private var disableTransparency: Bool = false
     /// Remembered loudness offset (dB) so toggling loudness off and back on
     /// restores the user's last amount instead of resetting to a default.
     @AppStorage("lurar.loudnessLastOffset") private var loudnessLastOffset: Double = -20
@@ -79,6 +80,7 @@ struct MenuBarView: View {
                 permissionGate
             }
         }
+        .background(disableTransparency ? Color(NSColor.windowBackgroundColor) : Color.clear)
     }
 
     /// Pre-consent popover. Replaces the full control set so the user can't
