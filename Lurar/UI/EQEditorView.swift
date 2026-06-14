@@ -10,7 +10,6 @@ struct EQEditorView: View {
     @State private var draft: EQPreset = .flat
     @State private var showDeleteConfirm = false
     @State private var showResetConfirm = false
-    @State private var boundsMax: Double = 12
     @State private var showLibrary = false
 
     @AppStorage("disableTransparency") private var disableTransparency: Bool = false
