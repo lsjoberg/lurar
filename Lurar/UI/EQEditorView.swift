@@ -13,6 +13,9 @@ struct EQEditorView: View {
     @State private var showLibrary = false
 
     @AppStorage("disableTransparency") private var disableTransparency: Bool = false
+    /// Unit the band frequency fields render and parse in. Persisted, so the
+    /// choice survives closing the editor.
+    @AppStorage(FrequencyUnit.storageKey) private var frequencyUnit: FrequencyUnit = .automatic
 
     /// When the user picks a different preset in the dropdown but the current
     /// draft has unsaved edits, we stash the target here and present the
@@ -484,6 +487,18 @@ struct EQEditorView: View {
             .disabled(dropdownPresets.isEmpty)
 
             Spacer()
+
+            Text("Frequency")
+                .foregroundStyle(.secondary)
+            Picker("Frequency unit", selection: $frequencyUnit) {
+                ForEach(FrequencyUnit.allCases) { unit in
+                    Text(unit.title).tag(unit)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.segmented)
+            .fixedSize()
+            .help("Unit for the band frequency fields. Auto switches to kHz at 1 kHz; pinning Hz or kHz means a number you type is always read in that unit.")
         }
     }
 
@@ -1079,6 +1094,7 @@ struct EQEditorView: View {
             band: band,
             displayPosition: displayPosition,
             editsLocked: editsLocked,
+            frequencyUnit: frequencyUnit,
             onBandChange: { updated in
                 if let i = draft.bands.firstIndex(where: { $0.id == bandID }) {
                     draft.bands[i] = updated
@@ -1111,7 +1127,7 @@ struct EQEditorView: View {
                 Text("Add band")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                Text(Self.formatFrequency(defaultFreq))
+                Text(Self.formatFrequency(defaultFreq, unit: frequencyUnit))
                     .font(.system(size: 9))
                     .foregroundStyle(.tertiary)
                     .monospacedDigit()
@@ -1133,39 +1149,76 @@ struct EQEditorView: View {
         }
         .buttonStyle(.plain)
         .disabled(editsLocked || draft.bands.count >= SlotMath.count)
-        .help("Add a band centered near \(Self.formatFrequency(defaultFreq))")
+        .help("Add a band centered near \(Self.formatFrequency(defaultFreq, unit: frequencyUnit))")
     }
 
     // MARK: - Numeric field parsing
 
-    /// Pretty-print a frequency in Hz, switching to "kHz" with one decimal at
-    /// 1 kHz and above so band labels stay short. The accompanying parser
-    /// accepts either form on input so the round-trip is lossless for users.
-    static func formatFrequency(_ hz: Float) -> String {
-        hz >= 1000
-            ? String(format: "%.1f kHz", hz / 1000)
-            : String(format: "%.0f Hz", hz)
+    /// Pretty-print a frequency in the editor's chosen unit.
+    ///
+    /// The kHz form carries enough decimals to name the exact frequency —
+    /// three below 10 kHz (0.001 kHz = 1 Hz), two above, where the string
+    /// would otherwise outgrow the strip's value field. Trailing zeros are
+    /// trimmed, so round numbers still read as "1 kHz" rather than
+    /// "1.000 kHz". The old single-decimal form displayed an 8,950 Hz band as
+    /// "9.0 kHz", and since the field re-parsed its own text on commit that
+    /// display rounding used to become the stored value (#144).
+    static func formatFrequency(_ hz: Float, unit: FrequencyUnit = .automatic) -> String {
+        guard unit.resolved(for: hz) == .kilohertz else {
+            return String(format: "%.0f Hz", hz)
+        }
+        let decimals = hz >= 10_000 ? 2 : 3
+        var text = String(format: "%.\(decimals)f", hz / 1000)
+        while text.hasSuffix("0") { text.removeLast() }
+        if text.hasSuffix(".") { text.removeLast() }
+        return text + " kHz"
     }
 
-    /// Arrow-key step size matched to `formatFrequency`'s least significant
-    /// visible digit: 1 Hz under 1 kHz (display reads in Hz), 100 Hz at and
-    /// above 1 kHz (display reads in kHz with one decimal = 0.1 kHz = 100 Hz).
+    /// Arrow-key step size, scaled to the value's decade so one press is
+    /// always worth roughly a percent: 1 Hz below 1 kHz, 10 Hz up to 10 kHz,
+    /// 100 Hz above. The previous table jumped straight from 1 Hz to 100 Hz at
+    /// the 1 kHz mark — that matched the one-decimal kHz display it was
+    /// written for, but left no way to nudge a band sitting at 1.2 kHz.
     static func frequencyStep(_ hz: Float) -> Float {
-        hz >= 1000 ? 100 : 1
+        if hz < 1_000 { return 1 }
+        if hz < 10_000 { return 10 }
+        return 100
     }
 
     /// Permissive frequency parser: accepts "8900", "8900 Hz", "8.9k",
     /// "8.9 kHz", with any casing and trimmed whitespace. Returns nil only
     /// when the numeric portion can't be parsed at all.
-    static func parseFrequency(_ raw: String) -> Float? {
+    ///
+    /// A unit written into the text always wins. Without one, `unit` decides —
+    /// so with the picker on kHz, "1.5" means 1.5 kHz. In `.automatic`, a bare
+    /// value below the 20 Hz band minimum is read as kHz too: it can't have
+    /// been meant as Hz (it would just clamp), and "0.9" for 900 Hz is what
+    /// people reach for once the field starts showing kHz (#144).
+    static func parseFrequency(_ raw: String, unit: FrequencyUnit = .automatic) -> Float? {
         var s = raw.lowercased()
-        s = s.replacingOccurrences(of: "hz", with: "")
-        s = s.replacingOccurrences(of: ",", with: ".")
-        s = s.replacingOccurrences(of: " ", with: "")
-        let isKHz = s.hasSuffix("k")
-        if isKHz { s.removeLast() }
+            .replacingOccurrences(of: ",", with: ".")
+            .replacingOccurrences(of: " ", with: "")
+        // "khz" first — it also ends in "hz".
+        var written: FrequencyUnit?
+        if s.hasSuffix("khz") {
+            s.removeLast(3)
+            written = .kilohertz
+        } else if s.hasSuffix("hz") {
+            s.removeLast(2)
+            written = .hertz
+        } else if s.hasSuffix("k") {
+            s.removeLast()
+            written = .kilohertz
+        }
         guard let value = Float(s) else { return nil }
-        return isKHz ? value * 1000 : value
+        switch written ?? unit {
+        case .kilohertz:
+            return value * 1000
+        case .hertz:
+            return value
+        case .automatic:
+            return value < Float(SlotMath.minFreq) ? value * 1000 : value
+        }
     }
 
     /// Accepts signed decibels with or without the unit and either sign
@@ -1280,9 +1333,14 @@ private struct EditableValueLabel: View {
     var format: (Float) -> String
     var parse: (String) -> Float?
     /// Step delta for arrow-key nudges, sized to the value's current decade
-    /// (e.g. 1 Hz under 1 kHz, 100 Hz above; 0.1 dB; 0.01 Q). The closure is
+    /// (see `EQEditorView.frequencyStep`; 0.1 dB; 0.01 Q). The closure is
     /// passed the latest value so frequency stepping can scale with magnitude.
     var step: (Float) -> Float = { _ in 1 }
+    /// Changes whenever `format`/`parse` are reconfigured (the editor's Hz/kHz
+    /// unit). The displayed text is only refreshed from the bound value on
+    /// value changes, so without this the field would keep rendering in the
+    /// old unit until something else moved the value.
+    var formatToken: AnyHashable = 0
     var disabled: Bool = false
     var onCommit: (Float) -> Void = { _ in }
 
@@ -1317,13 +1375,27 @@ private struct EditableValueLabel: View {
             // in-progress digits would get overwritten.
             if !focused { syncFromValue() }
         }
+        .onChange(of: formatToken) { _, _ in
+            if !focused { syncFromValue() }
+        }
     }
 
     private func syncFromValue() {
         text = format(value)
     }
 
+    /// True when the field still shows exactly what `format` produced for the
+    /// current value — i.e. the user hasn't typed anything. `format` is lossy
+    /// by design (a frequency renders as "1.5 kHz", not "1500.0000 Hz"), so
+    /// feeding our own output back through `parse` would quietly round the
+    /// stored value on every focus/blur. Editing gestures check this first and
+    /// leave an untouched field alone.
+    private var textIsPristine: Bool {
+        text == format(value)
+    }
+
     private func commit() {
+        guard !textIsPristine else { return }
         if let parsed = parse(text) {
             let clamped = clamp(parsed)
             if clamped != value {
@@ -1338,7 +1410,7 @@ private struct EditableValueLabel: View {
     /// typed unsaved digits, parse and use those as the base so stepping
     /// continues from what's visible rather than the last committed value.
     private func stepBy(_ direction: Float) {
-        let base = parse(text).map(clamp) ?? value
+        let base = textIsPristine ? value : (parse(text).map(clamp) ?? value)
         let delta = step(base) * direction
         let next = clamp(base + delta)
         if next != value {
@@ -1462,6 +1534,7 @@ private struct BandStrip: View, Equatable {
     let band: EQBand
     let displayPosition: Int
     let editsLocked: Bool
+    let frequencyUnit: FrequencyUnit
     let onBandChange: (EQBand) -> Void
     let onRemove: () -> Void
     let onSliderEditingChanged: (Bool) -> Void
@@ -1470,6 +1543,7 @@ private struct BandStrip: View, Equatable {
         lhs.band == rhs.band
             && lhs.displayPosition == rhs.displayPosition
             && lhs.editsLocked == rhs.editsLocked
+            && lhs.frequencyUnit == rhs.frequencyUnit
     }
 
     var body: some View {
@@ -1531,10 +1605,14 @@ private struct BandStrip: View, Equatable {
             EditableValueLabel(
                 value: frequencyBinding,
                 range: 20...20_000,
-                width: 64,
-                format: EQEditorView.formatFrequency,
-                parse: EQEditorView.parseFrequency,
+                // A touch wider than the gain/Q fields: the kHz form now
+                // spells the frequency out ("1.234 kHz") instead of rounding
+                // it to one decimal.
+                width: 66,
+                format: { EQEditorView.formatFrequency($0, unit: frequencyUnit) },
+                parse: { EQEditorView.parseFrequency($0, unit: frequencyUnit) },
                 step: EQEditorView.frequencyStep,
+                formatToken: AnyHashable(frequencyUnit),
                 disabled: editsLocked
             )
         }
