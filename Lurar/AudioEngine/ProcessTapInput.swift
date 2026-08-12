@@ -22,6 +22,12 @@ final class ProcessTapInput {
     /// Aggregate device ID after `prepare()`. Zero before prepare / after stop.
     private(set) var deviceID: AudioDeviceID = 0
 
+    /// The process objects the live tap was built around. A tap's target list
+    /// is fixed at creation time, so `EQEngine` diffs this against the current
+    /// system process list to notice apps that started producing audio after
+    /// the tap was created and rebuild for them.
+    private(set) var tappedProcessObjects: Set<AudioObjectID> = []
+
     private var tapID: AudioObjectID = 0
     private var procID: AudioDeviceIOProcID?
     private var frameHandler: FrameHandler?
@@ -57,8 +63,10 @@ final class ProcessTapInput {
         //    `stereoGlobalTapButExcludeProcesses` convenience init delivers silent
         //    buffers in the presence of 3rd-party audio drivers (Rogue Amoeba's ARK
         //    in particular) — the explicit-include form works around it.
-        //    Note: apps that start producing audio *after* this point won't be tapped
-        //    until the engine is restarted.
+        //    Note: apps that start producing audio *after* this point aren't part of
+        //    this tap — a tap's target list can't be edited once created. The engine
+        //    watches for that (see `EQEngine.refreshTapTargetsIfNeeded`) and rebuilds
+        //    the tap, using `tappedProcessObjects` below as the reference set.
         let allProcesses = (try? AudioProcessInfo.allProcessObjects()) ?? []
         var excludedCount = 0
         let targets = allProcesses.filter { obj in
@@ -129,6 +137,7 @@ final class ProcessTapInput {
             throw CoreAudioError.osStatus(aggStatus, "AudioHardwareCreateAggregateDevice")
         }
         self.deviceID = newAggregateID
+        self.tappedProcessObjects = Set(targets)
 
         let sampleRate = try CoreAudioSampleRate.nominal(for: newAggregateID)
         log.info("Process tap ready: tapID=\(newTapID) aggregateID=\(newAggregateID) rate=\(sampleRate)")
@@ -188,6 +197,7 @@ final class ProcessTapInput {
     }
 
     private func teardownTapAndAggregate() throws {
+        tappedProcessObjects = []
         if deviceID != 0 {
             let status = AudioHardwareDestroyAggregateDevice(deviceID)
             if status != noErr {

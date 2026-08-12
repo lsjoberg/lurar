@@ -104,6 +104,18 @@ final class EQEngine: ObservableObject {
     // changes; we're keeping the listener purely to surface what's happening.
     private var inputRateListener: AudioDevicePropertyListener?
     private var outputRateListener: AudioDevicePropertyListener?
+    /// Watches `kAudioHardwarePropertyProcessObjectList`. A process tap's
+    /// target list is fixed when the tap is created, so an app that registers
+    /// with Core Audio after the engine started isn't captured — its audio
+    /// goes straight to the DAC, which reads as "Lurar is bypassed" until the
+    /// user stops and starts the engine by hand (#144). This listener is how
+    /// we notice; `refreshTapTargetsIfNeeded` decides whether to act.
+    private var processListListener: AudioProcessListChangeListener?
+    private var pendingTapTargetCheck: DispatchWorkItem?
+    /// Earliest time an automatic tap rebuild may run. Keeps a burst of
+    /// process-list churn (a browser spinning up media processes) from
+    /// turning into a burst of rebuilds.
+    private var tapRefreshCooldownUntil: Date = .distantPast
     private var pendingRestart: DispatchWorkItem?
     private var restartCooldownUntil: Date = .distantPast
     /// Periodic tick while running (see `diagnosticInterval`). Dumps
@@ -144,6 +156,15 @@ final class EQEngine: ObservableObject {
     /// fade masks an audible artifact from the HAL Output AU's internal
     /// SRC re-tuning when the DAC's nominal rate changes mid-stream.
     static let muteOnDeviceRateChangeKey = "muteOnDeviceRateChange"
+
+    /// User-defaults key for "capture apps that start after Lurar"
+    /// (Settings → General). Defaults to `true` — without it, an app launched
+    /// mid-session plays around Lurar until the engine is restarted.
+    static let followNewAudioAppsKey = "followNewAudioApps"
+
+    private static var followNewAudioAppsEnabled: Bool {
+        UserDefaults.standard.object(forKey: followNewAudioAppsKey) as? Bool ?? true
+    }
 
     init() {
         let stored = UserDefaults.standard.object(forKey: Self.loudnessOffsetDefaultsKey) as? Double
@@ -604,6 +625,89 @@ final class EQEngine: ObservableObject {
                 self?.handleOutputRateNotification(deviceID: outputDeviceID)
             }
         }
+        // Apps registering (or de-registering) with Core Audio. Always
+        // installed; the handler consults the user setting, so toggling it
+        // takes effect without restarting the engine.
+        processListListener = AudioProcessListChangeListener { [weak self] in
+            Task { @MainActor in
+                self?.scheduleTapTargetCheck()
+            }
+        }
+    }
+
+    // MARK: - Following apps that launch mid-session
+
+    /// Debounce on process-list notifications: an app registers several
+    /// process objects in quick succession as it warms up, and we only want
+    /// to look once they've settled.
+    private static let tapTargetCheckDebounce: TimeInterval = 1.0
+    /// Floor on the spacing between two automatic tap rebuilds.
+    private static let tapRefreshMinInterval: TimeInterval = 5.0
+
+    private func scheduleTapTargetCheck() {
+        pendingTapTargetCheck?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            Task { @MainActor in
+                self?.refreshTapTargetsIfNeeded()
+            }
+        }
+        pendingTapTargetCheck = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.tapTargetCheckDebounce, execute: work)
+    }
+
+    /// Rebuild the tap when audio-producing processes have appeared since it
+    /// was created.
+    ///
+    /// Called from the process-list listener (debounced) and from the
+    /// diagnostic tick, which covers the case the listener can't see: a
+    /// process that registered before the tap noticed it, then started
+    /// playing later without any further list change.
+    ///
+    /// Rebuilding costs a short fade-out/in, so we don't do it for every app
+    /// that merely shows up. We pay it immediately when one of the missing
+    /// processes is actually playing — its audio is bypassing Lurar right now,
+    /// which is the bug — and otherwise only while our own output is silent,
+    /// where the gap is inaudible.
+    private func refreshTapTargetsIfNeeded() {
+        guard isRunning, Self.followNewAudioAppsEnabled else { return }
+        guard Date() >= tapRefreshCooldownUntil else { return }
+        let untapped = untappedProcessObjects()
+        guard !untapped.isEmpty else { return }
+        let audible = untapped.contains { AudioProcessInfo.isRunningOutput($0) }
+        guard audible || outputIsSilent else { return }
+        tapRefreshCooldownUntil = Date().addingTimeInterval(Self.tapRefreshMinInterval)
+        log.info("Tap is missing \(untapped.count) process(es) (playing=\(audible)); rebuilding")
+        // force: the cooldown exists to damp restart loops from system events;
+        // this path is already rate-limited by `tapRefreshCooldownUntil`, and
+        // every rebuild strictly grows the target set, so it converges.
+        scheduleRestart(reason: "audio process appeared after tap creation", force: true)
+    }
+
+    /// Process objects that exist now but weren't targets when the current tap
+    /// was built — excluding our own process (its output is the EQ'd signal we
+    /// just played) and anything on the user's exclusion list (deliberately
+    /// untapped).
+    private func untappedProcessObjects() -> [AudioObjectID] {
+        let tapped = tapInput.tappedProcessObjects
+        guard !tapped.isEmpty,
+              let all = try? AudioProcessInfo.allProcessObjects() else { return [] }
+        let excluded = excludedAppsStore?.excludedBundleIDs ?? []
+        let ownObject = try? AudioProcessInfo.processObject(for: getpid())
+        return all.filter { obj in
+            if let ownObject, obj == ownObject { return false }
+            if tapped.contains(obj) { return false }
+            if !excluded.isEmpty,
+               let bundleID = AudioProcessInfo.bundleID(for: obj),
+               excluded.contains(bundleID) { return false }
+            return true
+        }
+    }
+
+    /// True when nothing audible is leaving the chain right now — the moment
+    /// to take an optional rebuild's fade for free.
+    private var outputIsSilent: Bool {
+        let snapshot = clipMeter.snapshot()
+        return max(snapshot.peakDBL, snapshot.peakDBR) <= Self.silenceFloorDB
     }
 
     /// Tap rate changed — the system default output (which the aggregate
@@ -713,6 +817,10 @@ final class EQEngine: ObservableObject {
                 guard let self else { return }
                 self.pollPlayback()
                 self.logDiagnosticSnapshot()
+                // Backstop for apps that registered with Core Audio before the
+                // tap was built but only started playing later — no process
+                // list change fires for that, so the listener never sees it.
+                self.refreshTapTargetsIfNeeded()
             }
         }
         // Neither job is time-critical (debug logging + a coarse playback
@@ -808,8 +916,11 @@ final class EQEngine: ObservableObject {
         pendingFadeInWork = nil
         pendingStartFadeInWork?.cancel()
         pendingStartFadeInWork = nil
+        pendingTapTargetCheck?.cancel()
+        pendingTapTargetCheck = nil
         inputRateListener = nil
         outputRateListener = nil
+        processListListener = nil
     }
 
     private func scheduleRestart(reason: String, force: Bool = false) {

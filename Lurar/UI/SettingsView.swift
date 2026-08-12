@@ -63,6 +63,7 @@ private struct GeneralSettingsTab: View {
     @State private var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled
 
     @AppStorage("startEngineOnLaunch") private var startEngineOnLaunch: Bool = true
+    @AppStorage(EQEngine.followNewAudioAppsKey) private var followNewAudioApps: Bool = true
     @AppStorage(EQEngine.muteOnDeviceRateChangeKey) private var muteOnDeviceRateChange: Bool = true
     @AppStorage(MenuBarIconStyle.storageKey) private var menuBarIconStyle: MenuBarIconStyle = .logo
     @AppStorage("disableTransparency") private var disableTransparency: Bool = false
@@ -88,6 +89,18 @@ private struct GeneralSettingsTab: View {
                     .toggleStyle(.switch)
                     .help("Begin processing audio as soon as Lurar boots, instead of waiting for a manual start")
                 Text("When Lurar has audio-capture permission, the engine starts automatically on launch. Turn this off if you'd rather start it manually from the menu bar.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Capture apps that start after Lurar", isOn: $followNewAudioApps)
+                    .toggleStyle(.switch)
+                    .help("Rebuild the audio tap when an app that launched later starts playing, so its audio goes through Lurar too")
+                Text("macOS fixes the list of apps an audio tap covers at the moment the tap is created, so an app you open later plays around Lurar until the engine restarts. With this on, Lurar rebuilds the tap itself — silently when nothing is playing, and with a brief fade when something is. Turn it off if you'd rather never hear that interruption.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
