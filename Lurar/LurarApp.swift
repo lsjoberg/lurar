@@ -55,6 +55,20 @@ struct LurarApp: App {
                 }
                 .keyboardShortcut(",", modifiers: [.command])
             }
+            // AppKit synthesizes a "Lurar Help" item that opens a bundled
+            // help book. Lurar doesn't ship one, so picking it produced
+            // "Help isn't available for Lurar" (#144). Point the menu at the
+            // documentation on the website instead, and offer the issue
+            // tracker next to it since that's the other thing people reach
+            // for from this menu.
+            CommandGroup(replacing: .help) {
+                Button("Lurar Help") { openHelpURL(Self.helpURL) }
+                    .keyboardShortcut("?", modifiers: [.command])
+                    .help("Open Lurar's documentation at lurar.app")
+                Button("Frequently Asked Questions") { openHelpURL(Self.faqURL) }
+                Divider()
+                Button("Report an Issue\u{2026}") { openHelpURL(Self.issuesURL) }
+            }
             // Global \u{2318}/ \u{2014} surfaces the cheat sheet from any focused
             // window so enthusiasts can browse the full hotkey list without
             // hunting through tooltips.
@@ -124,6 +138,21 @@ struct LurarApp: App {
         }
         .windowResizability(.contentSize)
         .commandsRemoved()
+    }
+
+    // MARK: - Help menu destinations
+
+    /// Landing page — "How it works", the feature list, and the privacy
+    /// section double as Lurar's user documentation.
+    private static let helpURL = URL(string: "https://lurar.app/")!
+    private static let faqURL = URL(string: "https://lurar.app/#faq")!
+    private static let issuesURL = URL(string: "https://github.com/lsjoberg/lurar/issues")!
+
+    /// Open a help destination in the user's browser. Lurar runs as an
+    /// `LSUIElement`, so it isn't necessarily the active app when the menu
+    /// item fires — `NSWorkspace.open` hands focus to the browser either way.
+    private func openHelpURL(_ url: URL) {
+        NSWorkspace.shared.open(url)
     }
 
     init() {
