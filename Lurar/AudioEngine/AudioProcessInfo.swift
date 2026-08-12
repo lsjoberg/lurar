@@ -41,6 +41,23 @@ enum AudioProcessInfo {
         return value.isEmpty ? nil : value
     }
 
+    /// True while the process has an IO proc running output — it is playing
+    /// audio *right now*, not merely registered with Core Audio. The engine
+    /// uses this to tell "some app appeared in the process list" apart from
+    /// "audio is coming out of an app our tap doesn't cover", which is the
+    /// only case worth interrupting playback to rebuild the tap for.
+    static func isRunningOutput(_ processObject: AudioObjectID) -> Bool {
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioProcessPropertyIsRunningOutput,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var value: UInt32 = 0
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        let status = AudioObjectGetPropertyData(processObject, &addr, 0, nil, &size, &value)
+        return status == noErr && value != 0
+    }
+
     /// Reads `kAudioProcessPropertyPID` from a Core Audio process object.
     /// Used to look up an `NSRunningApplication` for display name / icon.
     static func pid(for processObject: AudioObjectID) -> pid_t? {
