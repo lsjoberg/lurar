@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.11.0](https://github.com/lsjoberg/lurar/compare/v0.10.0...v0.11.0) (2026-08-12)
+
+
+### Features
+
+* Hz/kHz selection for EQ band frequencies, and stop rounding them ([641eb1c](https://github.com/lsjoberg/lurar/commit/641eb1cb431a0b1f635b46a528af1f0b8c6c54ed)), closes [#144](https://github.com/lsjoberg/lurar/issues/144)
+
+
+### Bug Fixes
+
+* importing an exported catalog preset no longer creates an undeletable twin ([81f1ab3](https://github.com/lsjoberg/lurar/commit/81f1ab321b7e3b41bb88632bbb34edc2bdd2c68a)), closes [#144](https://github.com/lsjoberg/lurar/issues/144)
+* point the Help menu at the docs instead of a missing help book ([50884d5](https://github.com/lsjoberg/lurar/commit/50884d50398bfa889b32ecf5f8732313703a136f)), closes [#144](https://github.com/lsjoberg/lurar/issues/144)
+* rebuild the tap for apps that start playing after the engine did ([fb1d43d](https://github.com/lsjoberg/lurar/commit/fb1d43d4439ca64fd49306ac3592f43248f761bb)), closes [#144](https://github.com/lsjoberg/lurar/issues/144)
+* stretch the Excluded Apps settings tab to fill the window ([5263803](https://github.com/lsjoberg/lurar/commit/5263803ef44cc23b09b151f40f761476ee62f759)), closes [#144](https://github.com/lsjoberg/lurar/issues/144)
+
 ## [0.10.0](https://github.com/lsjoberg/lurar/compare/v0.9.1...v0.10.0) (2026-06-12)
 
 
