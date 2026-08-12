@@ -25,9 +25,22 @@ struct SettingsView: View {
                 .padding(20)
                 .frame(width: 460)
 
+            // Flexible height, not a fixed one: a macOS `TabView` sizes itself
+            // to its tallest tab and centres every shorter tab inside that
+            // area. General is by far the tallest, so pinning this tab to 460
+            // pt left the app list floating with dead space above and below
+            // it (#144). `idealHeight` keeps 460 as the sizing hint the window
+            // adopts when General ever gets shorter; `maxHeight: .infinity`
+            // lets the list stretch to fill whatever height it's actually
+            // given.
             ExcludedAppsView(store: excludedAppsStore, embedded: true)
                 .tabItem { Label("Excluded Apps", systemImage: "square.slash") }
-                .frame(width: 520, height: 460)
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: 460,
+                    idealHeight: 460,
+                    maxHeight: .infinity
+                )
 
             SyncSettingsTab(syncSettings: syncSettings, presetStore: presetStore)
                 .tabItem { Label("Sync", systemImage: "icloud") }
