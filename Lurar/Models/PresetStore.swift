@@ -503,8 +503,17 @@ final class PresetStore: ObservableObject {
     /// ID collides with something already on disk. Names are passed through
     /// unchanged — only IDs are touched, so two presets called "Bass Boost"
     /// can co-exist (matching how the existing duplicate flow works).
+    ///
+    /// `reservedIDs` are identities the library must not adopt even though
+    /// nothing in `presets` holds them — in practice the catalog's entry IDs.
+    /// Importing an exported copy of a catalog built-in used to keep that ID,
+    /// which put the same UUID in both `catalog.enabledPresets` and the user's
+    /// library: the preset showed up twice in every picker, and because
+    /// "is this a catalog entry?" is an ID lookup, the copy was treated as
+    /// read-only and had no Delete button (#144). Re-stamping the ID makes the
+    /// import a normal, deletable user preset.
     @discardableResult
-    func merge(incoming: [EQPreset]) -> MergeResult {
+    func merge(incoming: [EQPreset], reservedIDs: Set<UUID> = []) -> MergeResult {
         var next = presets
         var existingIDs = Set(next.map(\.id))
         var imported = 0
@@ -512,7 +521,7 @@ final class PresetStore: ObservableObject {
         for var preset in incoming {
             // Never overwrite Flat. If a paste contains it, drop it.
             if preset.id == EQPreset.flatID { continue }
-            if existingIDs.contains(preset.id) {
+            if existingIDs.contains(preset.id) || reservedIDs.contains(preset.id) {
                 preset.id = UUID()
                 renamed += 1
             }

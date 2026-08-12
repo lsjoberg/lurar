@@ -88,9 +88,11 @@ struct EQEditorView: View {
     }
 
     /// Both bundled Flat and any catalog-sourced preset are read-only — users must
-    /// Tweak the preset to keep edits.
+    /// Tweak the preset to keep edits. A catalog ID that also sits in the user's
+    /// own library is an imported copy and stays editable; see
+    /// `isReadOnlyPreset`.
     private var isBuiltIn: Bool {
-        presetStore.isBundledFlat(draft) || presetCatalog.isBuiltIn(draft.id)
+        isReadOnlyPreset(draft, catalog: presetCatalog, store: presetStore)
     }
 
     /// Band/preamp sliders are disabled when comparison or bypass mode is
@@ -1188,7 +1190,7 @@ struct EQEditorView: View {
     // MARK: - Helpers
 
     private func runImport() {
-        guard let summary = PresetImportExport.importIntoStore(presetStore) else { return }
+        guard let summary = PresetImportExport.importIntoStore(presetStore, catalog: presetCatalog) else { return }
         presentToast(.init(message: summary.message, kind: summary.imported > 0 ? .info : .warning))
     }
 

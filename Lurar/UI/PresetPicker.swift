@@ -7,6 +7,23 @@ func visiblePresets(catalog: PresetCatalog, store: PresetStore) -> [EQPreset] {
     catalog.enabledPresets + store.presets
 }
 
+/// True when a preset is one Lurar owns rather than the user: the bundled
+/// Flat preset, or a preset the catalog is vending. Those are read-only — the
+/// editor's Tweak… flow is how you get an editable copy.
+///
+/// A catalog ID that *also* exists in the user's library is deliberately not
+/// read-only. That can only happen when an exported copy of a catalog built-in
+/// was imported before Lurar started re-stamping those IDs (#144); the copy
+/// belongs to the user, so it has to stay editable and deletable — otherwise
+/// it is stuck in the library with no way to remove it short of deleting
+/// `presets.json` by hand.
+@MainActor
+func isReadOnlyPreset(_ preset: EQPreset, catalog: PresetCatalog, store: PresetStore) -> Bool {
+    if store.isBundledFlat(preset) { return true }
+    guard catalog.isBuiltIn(preset.id) else { return false }
+    return !store.presets.contains { $0.id == preset.id }
+}
+
 /// Build the dropdown's row list: built-ins (catalog + bundled Flat) above a
 /// separator, user presets below, alphabetical within each section. Shared by
 /// the editor and the menu bar so both dropdowns look the same.
@@ -19,7 +36,7 @@ func sortedPresetItems(
     var builtIns: [EQPreset] = []
     var customs: [EQPreset] = []
     for preset in presets {
-        if store.isBundledFlat(preset) || catalog.isBuiltIn(preset.id) {
+        if isReadOnlyPreset(preset, catalog: catalog, store: store) {
             builtIns.append(preset)
         } else {
             customs.append(preset)
