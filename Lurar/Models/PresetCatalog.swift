@@ -115,6 +115,12 @@ final class PresetCatalog: ObservableObject {
         entryIDs.contains(id)
     }
 
+    /// Every catalog entry's ID. Import uses this to spot presets carrying a
+    /// catalog identity (an exported copy of a built-in) and re-stamp them, so
+    /// the copy lands in the user's library as a preset of its own rather than
+    /// shadowing the catalog entry it came from — see `PresetStore.merge`.
+    var builtInIDs: Set<UUID> { entryIDs }
+
     /// Add `id` to enabled IDs and synchronously persist; kicks off a fetch if the
     /// preset isn't already hydrated. Returns true if a fetch was scheduled.
     @discardableResult

@@ -79,8 +79,11 @@ enum PresetImportExport {
 
     // MARK: - Import
 
+    /// `catalog` is consulted so an exported copy of a catalog built-in gets a
+    /// fresh UUID on the way in instead of colliding with the entry it was
+    /// exported from — see `PresetStore.merge(incoming:reservedIDs:)`.
     @MainActor
-    static func importIntoStore(_ store: PresetStore) -> ImportSummary? {
+    static func importIntoStore(_ store: PresetStore, catalog: PresetCatalog? = nil) -> ImportSummary? {
         let panel = NSOpenPanel()
         panel.title = "Import Presets"
         panel.allowedContentTypes = [singleType, bundleType]
@@ -89,7 +92,7 @@ enum PresetImportExport {
         guard panel.runModal() == .OK, let url = panel.url else { return nil }
         do {
             let incoming = try decodePresets(at: url)
-            let result = store.merge(incoming: incoming)
+            let result = store.merge(incoming: incoming, reservedIDs: catalog?.builtInIDs ?? [])
             return ImportSummary(imported: result.imported, renamed: result.renamed)
         } catch {
             presentError("Couldn't import presets", error: error)
