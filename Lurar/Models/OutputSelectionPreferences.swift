@@ -54,6 +54,7 @@ final class OutputSelectionPreferences: ObservableObject {
 
     static let lastOutputUIDKey = "lurar.lastOutputDeviceUID"
     static let switchPolicyKey = "lurar.outputSwitchPolicy"
+    static let autoSwitchBlocklistKey = "lurar.autoSwitchBlocklist"
     /// Legacy key (\u{2264} 0.6.0): "autoFollow" / "ignore". Read once to seed
     /// `switchPolicy` for users upgrading from the two-state follow toggle, so
     /// someone who had turned following off doesn't silently get it back.
@@ -99,8 +100,26 @@ final class OutputSelectionPreferences: ObservableObject {
 
     /// Whether Lurar should track the system default output. True for every
     /// policy except `.stay`.
-    var followsSystemDefault: Bool { switchPolicy != .stay }
+    var followsSystemDefault: Bool {
+        switchPolicy != .stay
+    }
 
-    /// Whether Lurar should jump to a device the moment it connects.
-    var switchesToNewDevices: Bool { switchPolicy == .switchToNew }
+    /// Whether Lurar should jump to newly connected devices even if macOS
+    /// doesn't promote them to default. True only for `.switchToNew`.
+    var switchesToNewDevices: Bool {
+        switchPolicy == .switchToNew
+    }
+
+    /// Set of device UIDs that Lurar should ignore when evaluating automatic
+    /// output switches.
+    var autoSwitchBlocklist: Set<String> {
+        get {
+            let array = defaults.stringArray(forKey: Self.autoSwitchBlocklistKey) ?? []
+            return Set(array)
+        }
+        set {
+            defaults.set(Array(newValue), forKey: Self.autoSwitchBlocklistKey)
+            objectWillChange.send()
+        }
+    }
 }

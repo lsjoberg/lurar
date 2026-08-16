@@ -66,7 +66,7 @@ final class DeviceManager: ObservableObject {
         // this fires on genuine, user-visible plug-ins. When it doesn't apply
         // we fall through to the normal keep/restore policy below.
         let newlyConnected = (!initial && preferences.switchesToNewDevices)
-            ? outs.first(where: { addedUIDs.contains($0.uid) })
+            ? outs.first(where: { addedUIDs.contains($0.uid) && !preferences.autoSwitchBlocklist.contains($0.uid) })
             : nil
 
         // Output policy: jump to a just-connected device if auto-switch claimed
@@ -119,6 +119,10 @@ final class DeviceManager: ObservableObject {
         }
         if resolved.uid == selectedOutput?.uid { return }
         if preferences.followsSystemDefault {
+            if preferences.autoSwitchBlocklist.contains(resolved.uid) {
+                log.info("System default changed → \(resolved.name, privacy: .public); but device is blocklisted — no action")
+                return
+            }
             log.info("System default changed → \(resolved.name, privacy: .public); following")
             selectedOutput = resolved
         } else {
