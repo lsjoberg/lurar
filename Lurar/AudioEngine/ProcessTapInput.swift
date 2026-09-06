@@ -30,6 +30,13 @@ final class ProcessTapInput {
 
     private var tapID: AudioObjectID = 0
     private var procID: AudioDeviceIOProcID?
+
+    /// Index of the first buffer that belongs to the tap in the aggregate's input
+    /// AudioBufferList. The list is laid out as
+    ///   [main sub-device input streams…] + [tap streams…]
+    /// so an output device that also has inputs (any audio interface) contributes
+    /// its own line/mic streams first. Those must be skipped.
+    private var tapBufferStartIndex: Int = 0
     private var frameHandler: FrameHandler?
 
     /// Per-channel scratch used to deinterleave the tap's interleaved buffer for the
@@ -109,7 +116,8 @@ final class ProcessTapInput {
         //    - Tap entry references `tapDescription.uuid.uuidString` — *not* the tap
         //      object's `kAudioTapPropertyUID`. Passing the wrong one makes the
         //      aggregate accept the tap but deliver only zeros.
-        let mainSubDeviceUID = try Self.systemDefaultOutputUID()
+        let mainSubDevice = try Self.systemDefaultOutput()
+        let mainSubDeviceUID = mainSubDevice.uid
         let aggregateUID = "app.lurar.Lurar.aggregate.\(UUID().uuidString)"
         let aggregateDescription: [String: Any] = [
             kAudioAggregateDeviceNameKey as String: "Lurar System Tap (private)",
@@ -138,6 +146,8 @@ final class ProcessTapInput {
         }
         self.deviceID = newAggregateID
         self.tappedProcessObjects = Set(targets)
+        self.tapBufferStartIndex = Self.inputBufferCount(of: mainSubDevice.id)
+        log.info("Aggregate input layout: skipping \(self.tapBufferStartIndex) sub-device input buffer(s)")
 
         let sampleRate = try CoreAudioSampleRate.nominal(for: newAggregateID)
         log.info("Process tap ready: tapID=\(newTapID) aggregateID=\(newAggregateID) rate=\(sampleRate)")
@@ -198,6 +208,7 @@ final class ProcessTapInput {
 
     private func teardownTapAndAggregate() throws {
         tappedProcessObjects = []
+        tapBufferStartIndex = 0
         if deviceID != 0 {
             let status = AudioHardwareDestroyAggregateDevice(deviceID)
             if status != noErr {
@@ -238,11 +249,20 @@ final class ProcessTapInput {
         let abl = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: inputData))
         guard abl.count > 0 else { return }
 
-        // Deinterleaved stereo: 2 separate buffers, one per channel.
-        if abl.count >= 2,
-           let leftRaw = abl[0].mData,
-           let rightRaw = abl[1].mData {
-            let frames = Int(abl[0].mDataByteSize) / MemoryLayout<Float>.size
+        // Skip the main sub-device's own input streams. Without this an audio
+        // interface's line inputs are read as the left channel and the tap — still
+        // interleaved — as the right, which plays back one octave down at half speed.
+        var start = tapBufferStartIndex
+        if start >= abl.count { start = abl.count - 1 }
+        let remaining = abl.count - start
+
+        // Deinterleaved stereo tap: two single-channel buffers.
+        if remaining >= 2,
+           abl[start].mNumberChannels == 1,
+           abl[start + 1].mNumberChannels == 1,
+           let leftRaw = abl[start].mData,
+           let rightRaw = abl[start + 1].mData {
+            let frames = Int(abl[start].mDataByteSize) / MemoryLayout<Float>.size
             guard frames > 0 else { return }
             handler(leftRaw.assumingMemoryBound(to: Float.self),
                     rightRaw.assumingMemoryBound(to: Float.self),
@@ -250,13 +270,12 @@ final class ProcessTapInput {
             return
         }
 
-        // Interleaved fallback: 1 buffer, 2 channels. Deinterleave into scratch.
-        if abl.count == 1,
-           let raw = abl[0].mData,
+        // Interleaved tap: one buffer carrying N channels. Deinterleave into scratch.
+        if let raw = abl[start].mData,
            let l = leftScratch,
            let r = rightScratch {
-            let channels = Int(abl[0].mNumberChannels)
-            let totalFloats = Int(abl[0].mDataByteSize) / MemoryLayout<Float>.size
+            let channels = Int(abl[start].mNumberChannels)
+            let totalFloats = Int(abl[start].mDataByteSize) / MemoryLayout<Float>.size
             let frames = channels > 0 ? totalFloats / channels : 0
             guard frames > 0, frames <= scratchCapacityFrames else { return }
             let interleaved = raw.assumingMemoryBound(to: Float.self)
@@ -279,7 +298,27 @@ final class ProcessTapInput {
 
     // MARK: - Core Audio object helpers
 
-    private static func systemDefaultOutputUID() throws -> String {
+    /// How many *input* buffers a device contributes when used as an aggregate
+    /// sub-device. Zero for a plain output device (speakers, DAC, monitor).
+    private static func inputBufferCount(of deviceID: AudioDeviceID) -> Int {
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyStreamConfiguration,
+            mScope: kAudioObjectPropertyScopeInput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var size: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(deviceID, &addr, 0, nil, &size) == noErr, size > 0 else { return 0 }
+        let raw = UnsafeMutableRawPointer.allocate(
+            byteCount: Int(size),
+            alignment: MemoryLayout<AudioBufferList>.alignment
+        )
+        defer { raw.deallocate() }
+        guard AudioObjectGetPropertyData(deviceID, &addr, 0, nil, &size, raw) == noErr else { return 0 }
+        let list = UnsafeMutableAudioBufferListPointer(raw.assumingMemoryBound(to: AudioBufferList.self))
+        return list.reduce(0) { $0 + ($1.mNumberChannels > 0 ? 1 : 0) }
+    }
+
+    private static func systemDefaultOutput() throws -> (id: AudioDeviceID, uid: String) {
         var addr = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDefaultOutputDevice,
             mScope: kAudioObjectPropertyScopeGlobal,
@@ -306,6 +345,6 @@ final class ProcessTapInput {
         guard let cf = cfRef?.takeRetainedValue() else {
             throw CoreAudioError.osStatus(-1, "default output UID nil")
         }
-        return cf as String
+        return (deviceID, cf as String)
     }
 }
