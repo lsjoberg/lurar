@@ -6,27 +6,21 @@
     <description>System-wide audio EQ for macOS.</description>
     <language>en</language>
     <item>
-      <title>Lurar 0.11.0</title>
-      <pubDate>Tue, 01 Sep 2026 19:22:04 +0000</pubDate>
-      <sparkle:version>33</sparkle:version>
-      <sparkle:shortVersionString>0.11.0</sparkle:shortVersionString>
+      <title>Lurar 0.11.1</title>
+      <pubDate>Fri, 11 Sep 2026 19:03:48 +0000</pubDate>
+      <sparkle:version>34</sparkle:version>
+      <sparkle:shortVersionString>0.11.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.2</sparkle:minimumSystemVersion>
-      <description><![CDATA[<h3 dir="auto">Features</h3>
+      <description><![CDATA[<h3 dir="auto">Bug Fixes</h3>
 <ul dir="auto">
-<li>Hz/kHz selection for EQ band frequencies, and stop rounding them (<a href="https://github.com/lsjoberg/lurar/commit/641eb1cb431a0b1f635b46a528af1f0b8c6c54ed">641eb1c</a>), closes <a href="https://github.com/lsjoberg/lurar/issues/144" data-hovercard-type="issue" data-hovercard-url="/lsjoberg/lurar/issues/144/hovercard">#144</a></li>
-</ul>
-<h3 dir="auto">Bug Fixes</h3>
-<ul dir="auto">
-<li>importing an exported catalog preset no longer creates an undeletable twin (<a href="https://github.com/lsjoberg/lurar/commit/81f1ab321b7e3b41bb88632bbb34edc2bdd2c68a">81f1ab3</a>), closes <a href="https://github.com/lsjoberg/lurar/issues/144" data-hovercard-type="issue" data-hovercard-url="/lsjoberg/lurar/issues/144/hovercard">#144</a></li>
-<li>point the Help menu at the docs instead of a missing help book (<a href="https://github.com/lsjoberg/lurar/commit/50884d50398bfa889b32ecf5f8732313703a136f">50884d5</a>), closes <a href="https://github.com/lsjoberg/lurar/issues/144" data-hovercard-type="issue" data-hovercard-url="/lsjoberg/lurar/issues/144/hovercard">#144</a></li>
-<li>rebuild the tap for apps that start playing after the engine did (<a href="https://github.com/lsjoberg/lurar/commit/fb1d43d4439ca64fd49306ac3592f43248f761bb">fb1d43d</a>), closes <a href="https://github.com/lsjoberg/lurar/issues/144" data-hovercard-type="issue" data-hovercard-url="/lsjoberg/lurar/issues/144/hovercard">#144</a></li>
-<li>stretch the Excluded Apps settings tab to fill the window (<a href="https://github.com/lsjoberg/lurar/commit/5263803ef44cc23b09b151f40f761476ee62f759">5263803</a>), closes <a href="https://github.com/lsjoberg/lurar/issues/144" data-hovercard-type="issue" data-hovercard-url="/lsjoberg/lurar/issues/144/hovercard">#144</a></li>
-</ul><p style="margin-top:1.5em;font-size:0.9em"><a href="https://github.com/lsjoberg/lurar/releases/tag/v0.11.0">View full release on GitHub →</a></p>]]></description>
+<li>don't fall back to the sub-device's input when the tap has no buffer (<a href="https://github.com/lsjoberg/lurar/commit/ad58e1e8e937bbdcd6fc0571b5b5900fee02bb41">ad58e1e</a>)</li>
+<li>skip the output device's own inputs when reading the process tap (<a href="https://github.com/lsjoberg/lurar/commit/b761e125ce73727251effdc82aa068fe273695c1">b761e12</a>)</li>
+</ul><p style="margin-top:1.5em;font-size:0.9em"><a href="https://github.com/lsjoberg/lurar/releases/tag/v0.11.1">View full release on GitHub →</a></p>]]></description>
       <enclosure
-        url="https://github.com/lsjoberg/lurar/releases/download/v0.11.0/Lurar-0.11.0.dmg"
-        length="2712747"
+        url="https://github.com/lsjoberg/lurar/releases/download/v0.11.1/Lurar-0.11.1.dmg"
+        length="2713449"
         type="application/octet-stream"
-        sparkle:edSignature="djhWD9mADyXjGIeGdPfcLS4jAjFRC0t2gjR8755Crq2ZZfkxR+1NfLKg4ksmfLgg/K+x26ZZnYRW1BK3dHkyDw==" />
+        sparkle:edSignature="j8R6G2HSf8MlhgAW5buZVKdVNH5VbKF/NEUIYCDSZ6zIcIcwJ7Wi5yvBzXNjFHiUhIHNp/QVQDaCH5be8+4GAg==" />
     </item>
   </channel>
 </rss>
