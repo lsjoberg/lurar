@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.11.1](https://github.com/lsjoberg/lurar/compare/v0.11.0...v0.11.1) (2026-09-11)
+
+
+### Bug Fixes
+
+* don't fall back to the sub-device's input when the tap has no buffer ([ad58e1e](https://github.com/lsjoberg/lurar/commit/ad58e1e8e937bbdcd6fc0571b5b5900fee02bb41))
+* skip the output device's own inputs when reading the process tap ([b761e12](https://github.com/lsjoberg/lurar/commit/b761e125ce73727251effdc82aa068fe273695c1))
+
 ## [0.11.0](https://github.com/lsjoberg/lurar/compare/v0.10.0...v0.11.0) (2026-08-12)
 
 
