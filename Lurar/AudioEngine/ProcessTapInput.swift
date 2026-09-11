@@ -252,8 +252,14 @@ final class ProcessTapInput {
         // Skip the main sub-device's own input streams. Without this an audio
         // interface's line inputs are read as the left channel and the tap — still
         // interleaved — as the right, which plays back one octave down at half speed.
-        var start = tapBufferStartIndex
-        if start >= abl.count { start = abl.count - 1 }
+        //
+        // If the tap contributed no buffer of its own, every buffer in the list
+        // belongs to the sub-device. Falling back to one of those would push the
+        // interface's live line/mic input through the EQ and out to the speakers —
+        // and a direct IOProc on a tap-backed aggregate raises no privacy
+        // indicator. Emit nothing instead.
+        let start = tapBufferStartIndex
+        guard start < abl.count else { return }
         let remaining = abl.count - start
 
         // Deinterleaved stereo tap: two single-channel buffers.
@@ -315,7 +321,7 @@ final class ProcessTapInput {
         defer { raw.deallocate() }
         guard AudioObjectGetPropertyData(deviceID, &addr, 0, nil, &size, raw) == noErr else { return 0 }
         let list = UnsafeMutableAudioBufferListPointer(raw.assumingMemoryBound(to: AudioBufferList.self))
-        return list.reduce(0) { $0 + ($1.mNumberChannels > 0 ? 1 : 0) }
+        return list.count
     }
 
     private static func systemDefaultOutput() throws -> (id: AudioDeviceID, uid: String) {
