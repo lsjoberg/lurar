@@ -86,7 +86,7 @@ enum PresetImportExport {
     static func importIntoStore(_ store: PresetStore, catalog: PresetCatalog? = nil) -> ImportSummary? {
         let panel = NSOpenPanel()
         panel.title = "Import Presets"
-        panel.allowedContentTypes = [singleType, bundleType]
+        panel.allowedContentTypes = [singleType, bundleType, .text, .json]
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         guard panel.runModal() == .OK, let url = panel.url else { return nil }
@@ -102,17 +102,49 @@ enum PresetImportExport {
 
     private static func decodePresets(at url: URL) throws -> [EQPreset] {
         let data = try Data(contentsOf: url)
-        let decoder = JSONDecoder()
         let ext = url.pathExtension.lowercased()
+        
         if ext == singleExt {
-            return [try decoder.decode(EQPreset.self, from: data)]
+            return [try JSONDecoder().decode(EQPreset.self, from: data)]
         }
         if ext == bundleExt {
-            return try decoder.decode([EQPreset].self, from: data)
+            return try JSONDecoder().decode([EQPreset].self, from: data)
         }
-        // Unknown extension — try array first, then single.
+        
+        if ext == "txt" {
+            guard let text = String(data: data, encoding: .utf8) else {
+                throw NSError(domain: "PresetIO", code: 1, userInfo: [NSLocalizedDescriptionKey: "TXT file is not valid UTF-8"])
+            }
+            do {
+                let parsed = try AutoEqClient.parseParametricEQ(text)
+                let name = url.deletingPathExtension().lastPathComponent
+                let preset = EQPreset(
+                    name: name,
+                    headphone: "Imported from TXT",
+                    source: "AutoEq / SoundSource",
+                    preamp: parsed.preamp,
+                    bands: parsed.bands
+                )
+                return [preset]
+            } catch {
+                throw NSError(domain: "PresetIO", code: 2, userInfo: [NSLocalizedDescriptionKey: "Could not parse ParametricEQ format: \(error.localizedDescription)"])
+            }
+        }
+
+        // Unknown or .json extension — try native arrays/single first.
+        let decoder = JSONDecoder()
         if let array = try? decoder.decode([EQPreset].self, from: data) { return array }
-        return [try decoder.decode(EQPreset.self, from: data)]
+        if let single = try? decoder.decode(EQPreset.self, from: data) { return [single] }
+        
+        // Generic competitor JSON parsing fallback
+        do {
+            let json = try JSONSerialization.jsonObject(with: data, options: [])
+            if let parsed = CompetitorParser.parse(json: json, defaultName: url.deletingPathExtension().lastPathComponent) {
+                return [parsed]
+            }
+        } catch { }
+
+        throw NSError(domain: "PresetIO", code: 3, userInfo: [NSLocalizedDescriptionKey: "Unrecognized preset format."])
     }
 
     // MARK: - Helpers
