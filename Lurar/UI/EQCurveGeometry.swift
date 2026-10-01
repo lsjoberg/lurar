@@ -81,19 +81,13 @@ enum EQCurveGeometry {
         func magnitudeDB(at frequency: Double) -> Double {
             let w = 2 * Double.pi * frequency / EQCurveGeometry.referenceSampleRate
             let cosw = cos(w)
-            let cos2w = cos(2 * w)
-            let sinw = sin(w)
-            let sin2w = sin(2 * w)
+            let cos2w = 2 * cosw * cosw - 1
 
-            let numRe = b0 + b1 * cosw + b2 * cos2w
-            let numIm = -(b1 * sinw + b2 * sin2w)
-            let denRe = a0 + a1 * cosw + a2 * cos2w
-            let denIm = -(a1 * sinw + a2 * sin2w)
+            let numSq = b0 * b0 + b1 * b1 + b2 * b2 + 2 * (b0 * b1 + b1 * b2) * cosw + 2 * b0 * b2 * cos2w
+            let denSq = a0 * a0 + a1 * a1 + a2 * a2 + 2 * (a0 * a1 + a1 * a2) * cosw + 2 * a0 * a2 * cos2w
 
-            let numMag = sqrt(numRe * numRe + numIm * numIm)
-            let denMag = sqrt(denRe * denRe + denIm * denIm)
-            guard denMag > 0 else { return 0 }
-            return 20 * log10(numMag / denMag)
+            guard denSq > 0 else { return 0 }
+            return 10 * log10(numSq / denSq)
         }
     }
 

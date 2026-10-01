@@ -68,6 +68,12 @@ struct SpectrumOverlayView: View {
         // Half a 1/12-octave window on each side of the probe frequency.
         let octaveFraction = pow(2.0, 1.0 / 24.0)
 
+        // Precompute constants for frequency sweeping and x-axis mapping
+        let logMin = log10(minFreq)
+        let logMax = log10(maxFreq)
+        let logSpan = logMax - logMin
+        let freqRatio = maxFreq / minFreq
+
         var path = Path()
         let bottom = size.height
         path.move(to: CGPoint(x: 0, y: bottom))
@@ -75,7 +81,7 @@ struct SpectrumOverlayView: View {
         magnitudes.withUnsafeBufferPointer { mag in
             for i in 0...columns {
                 let t = Double(i) / Double(columns)
-                let f = minFreq * pow(maxFreq / minFreq, t)
+                let f = minFreq * pow(freqRatio, t)
                 let kLo = max(1, Int((f / octaveFraction / binHz).rounded(.down)))
                 let kHi = min(binCount - 1, Int((f * octaveFraction / binHz).rounded(.up)))
 
@@ -87,7 +93,9 @@ struct SpectrumOverlayView: View {
                 }
                 let db = min(max(Double(peak), spectrumMinDB), spectrumMaxDB)
                 let yT = (spectrumMaxDB - db) / (spectrumMaxDB - spectrumMinDB)
-                let x = xPos(forFreq: f, width: size.width)
+                
+                let xT = (log10(f) - logMin) / logSpan
+                let x = CGFloat(xT) * size.width
                 let y = CGFloat(yT) * size.height
                 path.addLine(to: CGPoint(x: x, y: y))
             }
@@ -96,12 +104,5 @@ struct SpectrumOverlayView: View {
         path.closeSubpath()
 
         ctx.fill(path, with: .color(Color.secondary.opacity(0.28)))
-    }
-
-    private func xPos(forFreq f: Double, width: CGFloat) -> CGFloat {
-        let logMin = log10(minFreq)
-        let logMax = log10(maxFreq)
-        let t = (log10(f) - logMin) / (logMax - logMin)
-        return CGFloat(t) * width
     }
 }

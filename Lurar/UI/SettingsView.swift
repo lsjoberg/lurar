@@ -42,6 +42,15 @@ struct SettingsView: View {
                     maxHeight: .infinity
                 )
 
+            VoIPAppsView(store: VoIPAppsStore.shared, embedded: true)
+                .tabItem { Label("VoIP Apps", systemImage: "phone.bubble") }
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: 460,
+                    idealHeight: 460,
+                    maxHeight: .infinity
+                )
+
             SyncSettingsTab(syncSettings: syncSettings, presetStore: presetStore)
                 .tabItem { Label("Sync", systemImage: "icloud") }
                 .padding(20)
@@ -63,6 +72,7 @@ private struct GeneralSettingsTab: View {
     @State private var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled
 
     @AppStorage("startEngineOnLaunch") private var startEngineOnLaunch: Bool = true
+    @AppStorage("suspendDuringVoIP") private var suspendDuringVoIP: Bool = true
     @AppStorage(EQEngine.followNewAudioAppsKey) private var followNewAudioApps: Bool = true
     @AppStorage(EQEngine.muteOnDeviceRateChangeKey) private var muteOnDeviceRateChange: Bool = true
     @AppStorage(MenuBarIconStyle.storageKey) private var menuBarIconStyle: MenuBarIconStyle = .logo
@@ -89,6 +99,18 @@ private struct GeneralSettingsTab: View {
                     .toggleStyle(.switch)
                     .help("Begin processing audio as soon as Lurar boots, instead of waiting for a manual start")
                 Text("When Lurar has audio-capture permission, the engine starts automatically on launch. Turn this off if you'd rather start it manually from the menu bar.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Bypass automatically during VoIP calls", isOn: $suspendDuringVoIP)
+                    .toggleStyle(.switch)
+                    .help("Suspends Lurar when your microphone is active to prevent FaceTime or Zoom from ducking your audio.")
+                Text("FaceTime and Zoom aggressively lower your output volume to prevent echoes when an aggregate audio device is active. Bypassing Lurar when the mic is active restores hardware echo cancellation.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

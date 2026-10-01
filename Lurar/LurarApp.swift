@@ -20,6 +20,10 @@ struct LurarApp: App {
     @StateObject private var updater = UpdaterController()
     @StateObject private var burnInTracker = BurnInTracker()
     @StateObject private var outputVolumeMonitor = OutputVolumeMonitor()
+    @StateObject private var voipMonitor = VoIPMonitor()
+
+    @AppStorage("suspendDuringVoIP") private var suspendDuringVoIP: Bool = true
+    @State private var wasSuspendedForVoIP: Bool = false
 
     @Environment(\.openWindow) private var openWindow
 
@@ -45,6 +49,22 @@ struct LurarApp: App {
             )
         }
         .menuBarExtraStyle(.window)
+        .onChange(of: voipMonitor.isInputActive, initial: false) { _, active in
+            guard suspendDuringVoIP else { return }
+            if active {
+                if engine.isRunning {
+                    wasSuspendedForVoIP = true
+                    engine.stop()
+                }
+            } else {
+                if wasSuspendedForVoIP {
+                    wasSuspendedForVoIP = false
+                    if let output = deviceManager.selectedOutput {
+                        engine.start(output: output)
+                    }
+                }
+            }
+        }
         // Global ⌘, command so Settings opens regardless of which window is
         // key — including when the menu bar popover is closed.
         .commands {
