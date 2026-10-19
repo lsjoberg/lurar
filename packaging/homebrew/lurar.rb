@@ -2,8 +2,7 @@ cask "lurar" do
   version "0.9.1"
   sha256 "0235bcfd9aa359fac94dda74277cc64b8d817312c8a95cee00bcb6f1ee3482a4"
 
-  url "https://github.com/lsjoberg/lurar/releases/download/v#{version}/Lurar-#{version}.dmg",
-      verified: "github.com/lsjoberg/lurar/"
+  url "https://github.com/lsjoberg/lurar/releases/download/v#{version}/Lurar-#{version}.dmg"
   name "Lurar"
   desc "System-wide parametric headphone EQ with the AutoEq catalog built in"
   homepage "https://lurar.app/"
