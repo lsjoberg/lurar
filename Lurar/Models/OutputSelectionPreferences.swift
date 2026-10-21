@@ -54,6 +54,8 @@ final class OutputSelectionPreferences: ObservableObject {
 
     static let lastOutputUIDKey = "lurar.lastOutputDeviceUID"
     static let switchPolicyKey = "lurar.outputSwitchPolicy"
+    static let autoSwitchBlocklistKey = "lurar.autoSwitchBlocklist"
+    static let preventAutoSwitchWhilePlayingKey = "lurar.preventAutoSwitchWhilePlaying"
     /// Legacy key (\u{2264} 0.6.0): "autoFollow" / "ignore". Read once to seed
     /// `switchPolicy` for users upgrading from the two-state follow toggle, so
     /// someone who had turned following off doesn't silently get it back.
@@ -103,4 +105,14 @@ final class OutputSelectionPreferences: ObservableObject {
 
     /// Whether Lurar should jump to a device the moment it connects.
     var switchesToNewDevices: Bool { switchPolicy == .switchToNew }
+
+    /// Whether Lurar should abort an automatic device switch if audio is actively
+    /// playing through the current output.
+    var preventAutoSwitchWhilePlaying: Bool {
+        get { defaults.bool(forKey: Self.preventAutoSwitchWhilePlayingKey) }
+        set {
+            defaults.set(newValue, forKey: Self.preventAutoSwitchWhilePlayingKey)
+            objectWillChange.send()
+        }
+    }
 }
