@@ -1,0 +1,454 @@
+import SwiftUI
+import ServiceManagement
+import OSLog
+
+private let settingsLog = Logger(subsystem: "app.anmol.anmolAudio", category: "Settings")
+
+struct SettingsView: View {
+    @ObservedObject var syncSettings: PresetSyncSettings
+    @ObservedObject var presetStore: PresetStore
+    @ObservedObject var presetCatalog: PresetCatalog
+    @ObservedObject var devicePresetMemory: DevicePresetMemory
+    @ObservedObject var excludedAppsStore: ExcludedAppsStore
+    @ObservedObject var outputPreferences: OutputSelectionPreferences
+    @ObservedObject var updater: UpdaterController
+    @ObservedObject var burnInTracker: BurnInTracker
+    @ObservedObject var deviceManager: DeviceManager
+
+    var body: some View {
+        TabView {
+            GeneralSettingsTab(
+                outputPreferences: outputPreferences,
+                updater: updater,
+                burnInTracker: burnInTracker,
+                deviceManager: deviceManager
+            )
+                .tabItem { Label("General", systemImage: "gearshape") }
+                .padding(20)
+                .frame(width: 540)
+
+            DevicesSettingsView(
+                outputPreferences: outputPreferences,
+                deviceManager: deviceManager,
+                devicePresetMemory: devicePresetMemory,
+                presetStore: presetStore,
+                presetCatalog: presetCatalog
+            )
+                .tabItem { Label("Devices", systemImage: "headphones") }
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: 460,
+                    idealHeight: 460,
+                    maxHeight: .infinity
+                )
+
+            UnifiedAppsView(
+                outputPreferences: outputPreferences,
+                excludedAppsStore: excludedAppsStore,
+                voipAppsStore: VoIPAppsStore.shared
+            )
+                .tabItem { Label("Apps", systemImage: "square.stack.3d.up") }
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: 460,
+                    idealHeight: 460,
+                    maxHeight: .infinity
+                )
+
+            SyncSettingsTab(syncSettings: syncSettings, presetStore: presetStore)
+                .tabItem { Label("Sync", systemImage: "icloud") }
+                .padding(20)
+                .frame(width: 540)
+        }
+        .frame(width: 600)
+        .showsInDockWhileVisible()
+    }
+}
+
+// MARK: - General
+
+private struct GeneralSettingsTab: View {
+    @ObservedObject var outputPreferences: OutputSelectionPreferences
+    @ObservedObject var updater: UpdaterController
+    @ObservedObject var burnInTracker: BurnInTracker
+    @ObservedObject var deviceManager: DeviceManager
+
+    @State private var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled
+
+    @AppStorage("startEngineOnLaunch") private var startEngineOnLaunch: Bool = true
+    @AppStorage("suspendDuringVoIP") private var suspendDuringVoIP: Bool = true
+    @AppStorage(EQEngine.followNewAudioAppsKey) private var followNewAudioApps: Bool = true
+    @AppStorage(EQEngine.muteOnDeviceRateChangeKey) private var muteOnDeviceRateChange: Bool = true
+    @AppStorage(MenuBarIconStyle.storageKey) private var menuBarIconStyle: MenuBarIconStyle = .logo
+    @AppStorage("disableTransparency") private var disableTransparency: Bool = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Start at login", isOn: $launchAtLogin)
+                    .toggleStyle(.switch)
+                    .help("Register Lurar with Login Items so it launches when you sign in")
+                    .onChange(of: launchAtLogin, initial: false) { _, newValue in
+                        toggleLaunchAtLogin(newValue)
+                    }
+                Text("Lurar launches automatically when you sign in.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Start engine when Lurar launches", isOn: $startEngineOnLaunch)
+                    .toggleStyle(.switch)
+                    .help("Begin processing audio as soon as Lurar boots, instead of waiting for a manual start")
+                Text("When Lurar has audio-capture permission, the engine starts automatically on launch. Turn this off if you'd rather start it manually from the menu bar.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Bypass automatically during VoIP calls", isOn: $suspendDuringVoIP)
+                    .toggleStyle(.switch)
+                    .help("Suspends Lurar when your microphone is active to prevent FaceTime or Zoom from ducking your audio.")
+                Text("FaceTime and Zoom aggressively lower your output volume to prevent echoes when an aggregate audio device is active. Bypassing Lurar when the mic is active restores hardware echo cancellation.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Capture apps that start after Lurar", isOn: $followNewAudioApps)
+                    .toggleStyle(.switch)
+                    .help("Rebuild the audio tap when an app that launched later starts playing, so its audio goes through Lurar too")
+                Text("macOS fixes the list of apps an audio tap covers at the moment the tap is created, so an app you open later plays around Lurar until the engine restarts. With this on, Lurar rebuilds the tap itself — silently when nothing is playing, and with a brief fade when something is. Turn it off if you'd rather never hear that interruption.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("When devices change")
+                    Spacer()
+                    Picker("", selection: Binding(
+                        get: { outputPreferences.switchPolicy },
+                        set: { outputPreferences.switchPolicy = $0 }
+                    )) {
+                        ForEach(OutputSelectionPreferences.SwitchPolicy.allCases) { policy in
+                            Text(policy.title).tag(policy)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .fixedSize()
+                    .help("How Lurar reacts when an output device connects or the system default changes")
+                }
+                Text(outputPreferences.switchPolicy.detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("Menu bar icon")
+                    Spacer()
+                    Picker("", selection: $menuBarIconStyle) {
+                        ForEach(MenuBarIconStyle.allCases) { style in
+                            Text(style.title).tag(style)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .fixedSize()
+                    .help("Choose what Lurar shows in the menu bar: the Lurar mark, a speaker glyph that mirrors your output volume, or both")
+                }
+                Text(menuBarIconStyle.detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Mute briefly on output rate change", isOn: $muteOnDeviceRateChange)
+                    .toggleStyle(.switch)
+                    .help("Fade audio out for ~150 ms when the output device's sample rate changes, to mask the resampler transient")
+                Text("Apple Music and other hi-res sources can change your DAC's sample rate between tracks. Fading briefly hides the audible pitch glitch as Core Audio's internal sample-rate converter re-tunes. Turn this off if you'd rather hear the unmasked transition.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Disable transparency", isOn: $disableTransparency)
+                    .toggleStyle(.switch)
+                    .help("Use solid opaque backgrounds instead of blurred glass effects")
+                Text("Disables the translucent glass effect in the menu bar popover and editor overlays. This can reduce GPU overhead on older Macs.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 10) {
+                    Text("Updates").font(.callout.weight(.semibold))
+                    Spacer()
+                    Text("Lurar \(appVersion)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .help("Currently installed version")
+                    Button("Check for Updates\u{2026}") { updater.checkForUpdates() }
+                        .disabled(!updater.canCheckForUpdates)
+                        .help("Manually check for a newer Lurar release")
+                }
+                Text("Lurar checks for new releases automatically. You can also check manually.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Divider()
+
+            BurnInSection(tracker: burnInTracker, deviceManager: deviceManager)
+
+            Spacer(minLength: 0)
+        }
+        .onAppear {
+            // Re-sync in case the user toggled the login item from System Settings.
+            launchAtLogin = SMAppService.mainApp.status == .enabled
+        }
+    }
+
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
+    }
+
+    private func toggleLaunchAtLogin(_ on: Bool) {
+        do {
+            if on {
+                if SMAppService.mainApp.status == .enabled { return }
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+        } catch {
+            settingsLog.error("Launch-at-login toggle failed: \(String(describing: error))")
+            launchAtLogin = SMAppService.mainApp.status == .enabled
+        }
+    }
+}
+
+// MARK: - Sync
+
+private struct SyncSettingsTab: View {
+    @ObservedObject var syncSettings: PresetSyncSettings
+    @ObservedObject var presetStore: PresetStore
+
+    @State private var iCloudAvailable: Bool = PresetStore.iCloudIsAvailable()
+    @State private var showMigratePrompt: Bool = false
+    @State private var pendingToggleValue: Bool = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Preset sync").font(.title3.weight(.semibold))
+
+            Toggle("Sync presets via iCloud", isOn: Binding(
+                get: { syncSettings.iCloudEnabled },
+                set: { handleToggle(newValue: $0) }
+            ))
+            .toggleStyle(.switch)
+            .disabled(!iCloudAvailable)
+
+            statusBlurb
+
+            Divider().padding(.vertical, 4)
+
+            Text("Current file")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            HStack(spacing: 6) {
+                Image(systemName: presetStore.locationKind == .iCloud ? "icloud" : "internaldrive")
+                    .foregroundStyle(.secondary)
+                Text(presetStore.fileURL.path)
+                    .font(.caption.monospaced())
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+                    .textSelection(.enabled)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .alert(
+            "Move existing presets to iCloud?",
+            isPresented: $showMigratePrompt
+        ) {
+            Button("Move") {
+                pendingToggleValue = true
+                syncSettings.iCloudEnabled = true
+            }
+            Button("Cancel", role: .cancel) {
+                pendingToggleValue = false
+            }
+        } message: {
+            Text("Your current presets.json will be copied to your iCloud Drive container so it syncs to your other Macs. Lurar on other devices will pick up changes automatically.")
+        }
+        .onAppear {
+            // Refresh in case the user signed into iCloud since launch.
+            iCloudAvailable = PresetStore.iCloudIsAvailable()
+        }
+    }
+
+    @ViewBuilder
+    private var statusBlurb: some View {
+        if !iCloudAvailable {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("iCloud Drive isn\u{2019}t available")
+                        .font(.callout.weight(.semibold))
+                    Text("Sign in to iCloud and enable iCloud Drive in System Settings. The build must also be signed with a developer team that has the iCloud capability.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            } icon: {
+                Image(systemName: "exclamationmark.icloud")
+                    .foregroundStyle(.orange)
+            }
+        } else if syncSettings.iCloudEnabled {
+            Label {
+                Text("Presets are synced via iCloud Drive. Changes from other Macs appear automatically.")
+                    .font(.caption)
+                    .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: "checkmark.icloud")
+                    .foregroundStyle(.green)
+            }
+        } else {
+            Text("Presets are stored locally in Application Support. Turn on iCloud to keep them in sync across your Macs.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func handleToggle(newValue: Bool) {
+        if newValue {
+            // Only prompt if there's a local file to migrate — first launches
+            // with iCloud directly are fine without the confirmation.
+            let hasLocal = FileManager.default.fileExists(atPath: PresetStore.localFileURL.path)
+            if hasLocal && presetStore.locationKind == .local {
+                showMigratePrompt = true
+            } else {
+                syncSettings.iCloudEnabled = true
+            }
+        } else {
+            syncSettings.iCloudEnabled = false
+        }
+    }
+}
+
+// MARK: - Burn-in
+
+private struct BurnInSection: View {
+    @ObservedObject var tracker: BurnInTracker
+    @ObservedObject var deviceManager: DeviceManager
+
+    @State private var showHelp: Bool = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 4) {
+                Text("Burn-in counter").font(.callout.weight(.semibold))
+                Button {
+                    showHelp.toggle()
+                } label: {
+                    Image(systemName: "questionmark.circle")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("What is the burn-in counter?")
+                .popover(isPresented: $showHelp, arrowEdge: .top) {
+                    burnInHelp
+                }
+                Spacer()
+            }
+            let entries = tracker.entries()
+            if entries.isEmpty {
+                Text("Lurar will tally engine runtime per output once you start it.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(entries, id: \.uid) { entry in
+                        HStack(spacing: 8) {
+                            Text(displayName(for: entry))
+                                .font(.callout)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            if entry.uid == tracker.activeDeviceUID {
+                                Text("running")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 1)
+                                    .background(.secondary.opacity(0.15), in: Capsule())
+                            }
+                            Spacer()
+                            Text(Self.format(seconds: entry.seconds))
+                                .font(.callout.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var burnInHelp: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Burn-in counter").font(.headline)
+            Text("How many hours of audio Lurar has actually played through each output device \u{2014} paused or silent time doesn\u{2019}t count. It\u{2019}s just a tally \u{2014} Lurar doesn\u{2019}t change anything about how it processes audio based on this number.")
+                .fixedSize(horizontal: false, vertical: true)
+            Text("The name is a nod to the audiophile tradition of \u{201C}burning in\u{201D} new headphones by playing audio through them for tens or hundreds of hours, in the belief that the diaphragms loosen up and the sound improves. The evidence is contested at best; Lurar takes no position.")
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .font(.callout)
+        .padding(14)
+        .frame(width: 320)
+    }
+
+    private func displayName(for entry: BurnInTracker.Entry) -> String {
+        // Prefer the device's current live name in case the user renamed it
+        // in Audio MIDI Setup since the last time we recorded a run.
+        if let live = deviceManager.outputDevices.first(where: { $0.uid == entry.uid }) {
+            return live.name
+        }
+        return entry.name
+    }
+
+    private static func format(seconds: Double) -> String {
+        if seconds < 60 { return "<1m" }
+        if seconds < 3600 { return "~\(Int(seconds / 60))m" }
+        let hours = seconds / 3600
+        if hours < 10 {
+            return String(format: "~%.1fh", hours)
+        }
+        return "~\(Int(hours))h"
+    }
+}

@@ -18,9 +18,18 @@
 
 export default {
   async fetch(request, env, ctx) {
-    // A subrequest to this Worker's own route goes to origin (GitHub Pages),
-    // not back through the Worker — so this serves the real appcast.
-    const response = await fetch(request);
+    // Avoid recursive subrequest loops on the custom domain route:
+    // If UPSTREAM_ORIGIN is configured in env, rewrite hostname to the direct upstream origin.
+    const targetUrl = new URL(request.url);
+    if (env.UPSTREAM_ORIGIN) {
+      targetUrl.hostname = env.UPSTREAM_ORIGIN;
+    }
+    const response = await fetch(targetUrl.toString(), {
+      method: request.method,
+      headers: request.headers,
+      body: request.body,
+      redirect: "follow",
+    });
 
     // Tally out of band: never block the response, never throw.
     ctx.waitUntil(recordHit(env, request).catch(() => {}));
